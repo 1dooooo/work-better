@@ -3,7 +3,11 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use wb_collector::runner;
 use wb_storage::config::{AppConfig, CollectorConfig};
+
+/// lark-cli 工具路径
+const LARK_CLI: &str = "/opt/homebrew/bin/lark-cli";
 
 /// 模型配置（前端 DTO）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +41,9 @@ fn config_path() -> Result<PathBuf, String> {
 }
 
 /// 从配置文件加载 AppConfig，文件不存在时返回默认值
-fn load_config() -> Result<AppConfig, String> {
+///
+/// 此函数为 `pub(crate)` 可见性，供 `collect` 和 `collectors` 模块使用。
+pub(crate) fn load_config() -> Result<AppConfig, String> {
     let path = config_path()?;
     if !path.exists() {
         return Ok(AppConfig::default());
@@ -46,6 +52,11 @@ fn load_config() -> Result<AppConfig, String> {
         .map_err(|e| format!("读取配置文件失败: {e}"))?;
     AppConfig::from_json(&content)
         .map_err(|e| format!("解析配置文件失败: {e}"))
+}
+
+/// 对外暴露的配置加载函数（用于采集模块）
+pub fn load_config_for_collect() -> Result<AppConfig, String> {
+    load_config()
 }
 
 /// 将 AppConfig 保存到配置文件
@@ -90,8 +101,18 @@ pub async fn get_collector_statuses() -> Result<Vec<CollectorStatus>, String> {
     Ok(statuses)
 }
 
+/// 检查 lark-cli 工具是否真实可用
+fn check_lark_cli_available() -> bool {
+    runner::check_tool_available(LARK_CLI)
+}
+
 /// 根据 CollectorConfig 构建采集器状态列表
+///
+/// 对飞书采集器执行真实的健康检查（检查 lark-cli 是否可用），
+/// 而非仅依赖 enabled 状态。
 fn build_collector_statuses(collectors: &CollectorConfig) -> Vec<CollectorStatus> {
+    let lark_available = check_lark_cli_available();
+
     let known_collectors: Vec<(&str, &str)> = vec![
         ("feishu", "飞书"),
         ("manual", "手动输入"),
@@ -101,14 +122,52 @@ fn build_collector_statuses(collectors: &CollectorConfig) -> Vec<CollectorStatus
         .into_iter()
         .map(|(id, name)| {
             let enabled = collectors.enabled.get(id).copied().unwrap_or(false);
+            let healthy = match id {
+                "feishu" => enabled && lark_available,
+                "manual" => enabled,
+                _ => false,
+            };
             CollectorStatus {
                 id: id.to_string(),
                 name: name.to_string(),
                 enabled,
-                healthy: enabled, // 已启用即视为健康，后续可扩展真实健康检查
+                healthy,
             }
         })
         .collect()
+}
+
+/// 获取飞书采集模式
+#[tauri::command]
+pub async fn get_feishu_mode() -> Result<String, String> {
+    let app_config = load_config()?;
+    Ok(app_config.collectors.feishu_mode)
+}
+
+/// 保存飞书采集模式
+#[tauri::command]
+pub async fn save_feishu_mode(mode: String) -> Result<(), String> {
+    if mode != "cli" && mode != "api" {
+        return Err(format!("无效的飞书模式 '{}'，仅支持 'cli' 或 'api'", mode));
+    }
+    let mut app_config = load_config()?;
+    app_config.collectors.feishu_mode = mode;
+    save_config(&app_config)
+}
+
+/// 获取飞书会话 ID 配置
+#[tauri::command]
+pub async fn get_feishu_chat_id() -> Result<String, String> {
+    let app_config = load_config()?;
+    Ok(app_config.collectors.feishu_chat_id.clone().unwrap_or_default())
+}
+
+/// 保存飞书会话 ID 配置
+#[tauri::command]
+pub async fn save_feishu_chat_id(chat_id: String) -> Result<(), String> {
+    let mut app_config = load_config()?;
+    app_config.collectors.feishu_chat_id = Some(chat_id);
+    save_config(&app_config)
 }
 
 /// 获取存储配置
@@ -143,6 +202,7 @@ mod tests {
         let collectors = CollectorConfig {
             enabled,
             feishu_mode: "cli".into(),
+            feishu_chat_id: None,
         };
 
         let statuses = build_collector_statuses(&collectors);
@@ -150,7 +210,7 @@ mod tests {
 
         let feishu = statuses.iter().find(|s| s.id == "feishu").unwrap();
         assert!(feishu.enabled);
-        assert!(feishu.healthy);
+        // healthy depends on lark-cli availability -- we just check it doesn't panic
         assert_eq!(feishu.name, "飞书");
 
         let manual = statuses.iter().find(|s| s.id == "manual").unwrap();
@@ -163,6 +223,8 @@ mod tests {
         let collectors = CollectorConfig::default();
         let statuses = build_collector_statuses(&collectors);
         assert!(statuses.iter().all(|s| !s.enabled));
+        // disabled collectors should always be unhealthy
+        assert!(statuses.iter().all(|s| !s.healthy));
     }
 
     #[test]
@@ -170,5 +232,22 @@ mod tests {
         let path = config_path().unwrap();
         assert!(path.to_string_lossy().contains(".work-better"));
         assert!(path.to_string_lossy().ends_with("config.json"));
+    }
+
+    #[test]
+    fn test_build_collector_statuses_manual_enabled_is_healthy() {
+        let mut enabled = HashMap::new();
+        enabled.insert("manual".into(), true);
+
+        let collectors = CollectorConfig {
+            enabled,
+            feishu_mode: "cli".into(),
+            feishu_chat_id: None,
+        };
+
+        let statuses = build_collector_statuses(&collectors);
+        let manual = statuses.iter().find(|s| s.id == "manual").unwrap();
+        assert!(manual.enabled);
+        assert!(manual.healthy);
     }
 }

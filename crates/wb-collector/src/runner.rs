@@ -5,6 +5,17 @@ use std::process::Command;
 use serde::de::DeserializeOwned;
 use wb_core::error::{Result, WbError};
 
+/// 检查外部工具是否可用（通过执行 `<tool> --version`）
+///
+/// 返回 `true` 表示工具存在且可执行。
+pub fn check_tool_available(tool: &str) -> bool {
+    Command::new(tool)
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
 /// 执行外部命令，返回 stdout
 pub fn execute(program: &str, args: &[&str]) -> Result<String> {
     let output = Command::new(program)
@@ -40,4 +51,20 @@ pub fn execute_json<T: DeserializeOwned>(program: &str, args: &[&str]) -> Result
             &stdout[..stdout.len().min(200)]
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_tool_available_existing() {
+        // `cargo` should exist in dev environment and supports --version
+        assert!(check_tool_available("cargo"));
+    }
+
+    #[test]
+    fn test_check_tool_available_nonexistent() {
+        assert!(!check_tool_available("nonexistent_tool_12345"));
+    }
 }

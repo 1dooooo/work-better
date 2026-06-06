@@ -90,6 +90,24 @@ impl CollectorManager {
         results
     }
 
+    /// 从指定 ID 的采集器采集数据
+    ///
+    /// 返回 `Some(Ok(events))` 表示采集成功，`Some(Err(e))` 表示采集失败，
+    /// `None` 表示采集器未注册。
+    pub async fn collect_one(&self, id: &str) -> Option<Result<Vec<Event>>> {
+        let collectors = self.collectors.read().await;
+        let enabled = self.enabled.read().await;
+
+        let collector = collectors.get(id)?;
+        if !enabled.get(id).copied().unwrap_or(false) {
+            return Some(Err(wb_core::error::WbError::Collector(format!(
+                "Collector '{}' is disabled",
+                id
+            ))));
+        }
+        Some(collector.collect().await)
+    }
+
     /// 列出所有已注册的采集器 ID
     pub async fn list(&self) -> Vec<String> {
         self.collectors.read().await.keys().cloned().collect()
@@ -249,6 +267,40 @@ mod tests {
         let results = manager.collect_all().await;
         assert_eq!(results.len(), 1);
         assert!(results[0].is_err());
+    }
+
+    #[tokio::test]
+    async fn test_collect_one_success() {
+        let manager = CollectorManager::new();
+        let collector = Arc::new(MockCollector::new("test", "Test Collector"));
+
+        manager.register(collector).await;
+
+        let result = manager.collect_one("test").await;
+        assert!(result.is_some());
+        let events = result.unwrap().unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_collect_one_not_registered() {
+        let manager = CollectorManager::new();
+
+        let result = manager.collect_one("nonexistent").await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_collect_one_disabled() {
+        let manager = CollectorManager::new();
+        let collector = Arc::new(MockCollector::new("test", "Test Collector"));
+
+        manager.register(collector).await;
+        manager.disable("test").await;
+
+        let result = manager.collect_one("test").await;
+        assert!(result.is_some());
+        assert!(result.unwrap().is_err());
     }
 
     #[tokio::test]

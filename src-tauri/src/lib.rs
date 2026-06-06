@@ -7,6 +7,14 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             commands::events::init_event_log(app.handle());
+
+            // 异步注册内置采集器
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                commands::collectors::register_builtin_collectors().await;
+                let _ = handle; // 保持 handle 存活
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -28,6 +36,10 @@ pub fn run() {
             commands::settings::get_model_config,
             commands::settings::save_model_config,
             commands::settings::get_collector_statuses,
+            commands::settings::get_feishu_mode,
+            commands::settings::save_feishu_mode,
+            commands::settings::get_feishu_chat_id,
+            commands::settings::save_feishu_chat_id,
             commands::settings::get_storage_config,
             commands::settings::save_storage_config,
             commands::notify::send_notification,

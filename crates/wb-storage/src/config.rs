@@ -8,6 +8,9 @@ use std::collections::HashMap;
 pub struct CollectorConfig {
     pub enabled: HashMap<String, bool>,
     pub feishu_mode: String,
+    /// 飞书会话 ID，用于采集指定会话的消息
+    #[serde(default)]
+    pub feishu_chat_id: Option<String>,
 }
 
 impl Default for CollectorConfig {
@@ -15,6 +18,7 @@ impl Default for CollectorConfig {
         Self {
             enabled: HashMap::new(),
             feishu_mode: "cli".into(),
+            feishu_chat_id: None,
         }
     }
 }
@@ -109,6 +113,7 @@ mod tests {
     fn test_default_config() {
         let config = AppConfig::default();
         assert_eq!(config.collectors.feishu_mode, "cli");
+        assert_eq!(config.collectors.feishu_chat_id, None);
         assert_eq!(config.model.small_model, "gpt-4o-mini");
         assert_eq!(config.model.large_model, "gpt-4o");
         assert_eq!(config.model.token_budget, 4096);
@@ -126,6 +131,7 @@ mod tests {
             collectors: CollectorConfig {
                 enabled,
                 feishu_mode: "api".into(),
+                feishu_chat_id: Some("oc_abc123".into()),
             },
             model: ModelConfig {
                 small_model: "claude-3-haiku".into(),
@@ -175,6 +181,32 @@ mod tests {
         assert_eq!(config.collectors.feishu_mode, "cli");
         assert!(config.collectors.enabled["feishu"]);
         assert!(!config.scheduler.enabled);
+        // feishu_chat_id should default to None when missing
+        assert_eq!(config.collectors.feishu_chat_id, None);
+    }
+
+    #[test]
+    fn test_from_json_with_chat_id() {
+        let json = r#"{
+            "collectors": {
+                "enabled": {"feishu": true},
+                "feishu_mode": "cli",
+                "feishu_chat_id": "oc_xyz789"
+            },
+            "model": {
+                "small_model": "gpt-4o-mini",
+                "large_model": "gpt-4o",
+                "api_endpoint": "https://api.openai.com/v1",
+                "token_budget": 4096
+            },
+            "scheduler": {
+                "enabled": true,
+                "tasks": []
+            }
+        }"#;
+
+        let config = AppConfig::from_json(json).unwrap();
+        assert_eq!(config.collectors.feishu_chat_id, Some("oc_xyz789".into()));
     }
 
     #[test]
@@ -217,6 +249,7 @@ mod tests {
         let config = CollectorConfig::default();
         assert!(config.enabled.is_empty());
         assert_eq!(config.feishu_mode, "cli");
+        assert_eq!(config.feishu_chat_id, None);
     }
 
     #[test]

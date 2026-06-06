@@ -13,6 +13,25 @@ pub fn get_collector_manager() -> &'static CollectorManager {
     COLLECTOR_MANAGER.get_or_init(CollectorManager::new)
 }
 
+/// 注册内置采集器到全局 CollectorManager。
+///
+/// 应在 Tauri setup 阶段调用，确保采集器在任何命令调用之前就绪。
+pub async fn register_builtin_collectors() {
+    let manager = get_collector_manager();
+
+    // 从配置读取 chat_id，注册飞书采集器
+    let chat_id = super::settings::load_config_for_collect()
+        .ok()
+        .and_then(|c| c.collectors.feishu_chat_id)
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "oc_default".to_string());
+
+    let feishu_collector = std::sync::Arc::new(
+        wb_collector::feishu::collector::FeishuCollector::new(chat_id, 50),
+    );
+    manager.register(feishu_collector).await;
+}
+
 /// 采集器健康信息（序列化返回给前端）
 #[derive(serde::Serialize)]
 pub struct CollectorHealthInfo {

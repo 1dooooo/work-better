@@ -3,6 +3,7 @@
 pub mod approvals;
 pub mod bitable;
 pub mod calendar;
+pub mod collector;
 pub mod docs;
 pub mod emails;
 pub mod meetings;
