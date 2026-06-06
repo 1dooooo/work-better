@@ -8,7 +8,7 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 use crate::runner;
 use crate::traits::{HealthStatus, Collector};
 
-/// lark-cli 知识库列表响应
+/// lark-cli wiki spaces list 响应
 #[derive(Debug, Deserialize)]
 struct LarkWikiResponse {
     data: Option<LarkWikiData>,
@@ -75,7 +75,8 @@ impl Collector for FeishuWikiCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
-        let args = vec!["wiki", "list"];
+        // wiki spaces list --format json
+        let args = vec!["wiki", "spaces", "list", "--format", "json"];
 
         let response: LarkWikiResponse = runner::execute_json("lark-cli", &args)?;
 

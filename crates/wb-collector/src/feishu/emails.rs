@@ -8,7 +8,7 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 use crate::runner;
 use crate::traits::{HealthStatus, Collector};
 
-/// lark-cli 邮件列表响应
+/// lark-cli mail user_mailbox.messages list 响应
 #[derive(Debug, Deserialize)]
 struct LarkEmailsResponse {
     data: Option<LarkEmailsData>,
@@ -76,7 +76,9 @@ impl Collector for FeishuEmailCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
-        let args = vec!["email", "list"];
+        // mail user_mailbox.messages list 需要 --user-mailbox-id，使用默认空值
+        let default_mailbox_id = "";
+        let args = vec!["mail", "user_mailbox.messages", "list", "--user-mailbox-id", default_mailbox_id, "--format", "json"];
 
         let response: LarkEmailsResponse = runner::execute_json("lark-cli", &args)?;
 

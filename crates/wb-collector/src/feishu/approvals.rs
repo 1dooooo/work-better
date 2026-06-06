@@ -6,15 +6,16 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
 
-/// lark-cli 审批列表响应
+/// lark-cli approval instances initiated 响应
 #[derive(Debug, Deserialize)]
 struct LarkApprovalsResponse {
     data: Option<LarkApprovalsData>,
 }
 
+/// 审批实例数据（注意：使用 instances 而非 items）
 #[derive(Debug, Deserialize)]
 struct LarkApprovalsData {
-    items: Option<Vec<LarkApproval>>,
+    instances: Option<Vec<LarkApproval>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,11 +38,11 @@ impl FeishuApprovalsCollector {
     /// * `limit` - 最大采集数量
     pub fn collect(limit: u32) -> Result<Vec<Event>> {
         let limit_str = limit.to_string();
-        let args = vec!["approval", "list", "--page-size", &limit_str];
+        let args = vec!["approval", "instances", "initiated", "--page-size", &limit_str, "--format", "json"];
 
         let response: LarkApprovalsResponse = runner::execute_json("lark-cli", &args)?;
 
-        let items = response.data.and_then(|d| d.items).unwrap_or_default();
+        let items = response.data.and_then(|d| d.instances).unwrap_or_default();
 
         let events: Vec<Event> = items
             .into_iter()

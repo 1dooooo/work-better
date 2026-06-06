@@ -6,15 +6,11 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
 
-/// lark-cli 日历事件列表响应
+/// lark-cli 日历事件列表响应（calendar +agenda 格式）
 #[derive(Debug, Deserialize)]
 struct LarkCalendarResponse {
-    data: Option<LarkCalendarData>,
-}
-
-#[derive(Debug, Deserialize)]
-struct LarkCalendarData {
-    items: Option<Vec<LarkCalendarEvent>>,
+    ok: Option<bool>,
+    data: Option<Vec<LarkCalendarEvent>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,13 +30,12 @@ impl FeishuCalendarCollector {
     ///
     /// # Arguments
     /// * `limit` - 最大采集数量
-    pub fn collect(limit: u32) -> Result<Vec<Event>> {
-        let limit_str = limit.to_string();
-        let args = vec!["calendar", "list", "--page-size", &limit_str];
+    pub fn collect(_limit: u32) -> Result<Vec<Event>> {
+        let args = vec!["calendar", "+agenda"];
 
         let response: LarkCalendarResponse = runner::execute_json("lark-cli", &args)?;
 
-        let items = response.data.and_then(|d| d.items).unwrap_or_default();
+        let items = response.data.unwrap_or_default();
 
         let events: Vec<Event> = items
             .into_iter()

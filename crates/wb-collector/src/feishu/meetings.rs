@@ -8,7 +8,7 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 use crate::runner;
 use crate::traits::{HealthStatus, Collector};
 
-/// lark-cli 会议列表响应
+/// lark-cli vc +search 响应
 #[derive(Debug, Deserialize)]
 struct LarkMeetingsResponse {
     data: Option<LarkMeetingsData>,
@@ -78,7 +78,9 @@ impl Collector for FeishuMeetingCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
-        let args = vec!["meeting", "list"];
+        // vc +search 需要时间范围参数，使用默认空值（搜全部）
+        let default_time = "";
+        let args = vec!["vc", "+search", "--start", default_time, "--end", default_time, "--format", "json"];
 
         let response: LarkMeetingsResponse = runner::execute_json("lark-cli", &args)?;
 

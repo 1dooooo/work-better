@@ -6,7 +6,7 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
 
-/// lark-cli 任务列表响应
+/// lark-cli task +get-my-tasks 响应
 #[derive(Debug, Deserialize)]
 struct LarkTasksResponse {
     data: Option<LarkTasksData>,
@@ -37,7 +37,7 @@ impl FeishuProjectsCollector {
     /// * `limit` - 最大采集数量
     pub fn collect(limit: u32) -> Result<Vec<Event>> {
         let limit_str = limit.to_string();
-        let args = vec!["task", "list", "--page-size", &limit_str];
+        let args = vec!["task", "+get-my-tasks", "--page-size", &limit_str, "--format", "json"];
 
         let response: LarkTasksResponse = runner::execute_json("lark-cli", &args)?;
 
