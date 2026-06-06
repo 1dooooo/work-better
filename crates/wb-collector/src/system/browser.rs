@@ -178,12 +178,15 @@ impl BrowserHistoryCollector {
             raw_payload,
         );
 
-        // 使用 URL + 时间戳作为事件 id（保证幂等）
-        event.id = format!(
-            "chrome-{}-{}",
-            visit.url,
-            visit.visit_time.timestamp()
-        );
+        // 使用 URL 的哈希 + 时间戳作为事件 id（保证幂等，避免明文 URL）
+        let url_hash = {
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::{Hash, Hasher};
+            let mut hasher = DefaultHasher::new();
+            visit.url.hash(&mut hasher);
+            format!("{:016x}", hasher.finish())
+        };
+        event.id = format!("chrome-{}-{}", url_hash, visit.visit_time.timestamp());
 
         event
     }
@@ -243,8 +246,9 @@ mod tests {
         assert_eq!(event.content["url"], "https://example.com");
         assert_eq!(event.content["title"], "Example Domain");
         assert!(event.content["visit_time"].is_string());
-        // id 应该包含 URL
-        assert!(event.id.contains("chrome-https://example.com"));
+        // id 应该以 chrome- 开头且不包含明文 URL
+        assert!(event.id.starts_with("chrome-"));
+        assert!(!event.id.contains("https://example.com"));
     }
 
     #[test]

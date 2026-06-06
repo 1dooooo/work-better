@@ -21,6 +21,17 @@ use uuid::Uuid;
 use confirm::ReportStatus;
 use wb_core::record::WorkRecord;
 
+/// 判断任务状态是否为"已完成"
+///
+/// 匹配：done / completed / 完成 / 已完成（不区分大小写）
+pub(crate) fn is_done_status(status: &str) -> bool {
+    let lower = status.to_lowercase();
+    lower.contains("done")
+        || lower.contains("completed")
+        || lower.contains("已完成")
+        || lower.contains("完成")
+}
+
 /// 按状态过滤计数
 ///
 /// 将 `records` 中 `task_status` 包含任一 `statuses` 关键词的记录计数。

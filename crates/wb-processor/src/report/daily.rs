@@ -11,7 +11,7 @@ use super::Report;
 /// 从指定日期的 WorkRecord 中聚合数据，生成 Markdown 格式日报。
 /// 内容包含：完成事项、进行中、明日计划、阻塞项。
 pub fn generate_daily(date: NaiveDate, records: &[WorkRecord]) -> Report {
-    let completed = filter_by_status(records, &["done", "completed", "已完成", "完成"]);
+    let completed = filter_by_status(records, &["done", "completed", "已完成"]);
     let in_progress = filter_by_status(records, &["in_progress", "进行中", "doing"]);
     let blocked = filter_by_status(records, &["blocked", "阻塞", "blocked_by"]);
 

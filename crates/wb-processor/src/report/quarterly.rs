@@ -4,8 +4,7 @@ use chrono::{Datelike, NaiveDate};
 
 use wb_core::record::{Category, WorkRecord};
 
-use super::count_by_status;
-use super::Report;
+use super::{count_by_status, is_done_status, Report};
 
 /// OKR 条目
 #[derive(Debug, Clone, PartialEq)]
@@ -151,17 +150,7 @@ fn build_okr_from_records(records: &[WorkRecord]) -> Vec<OkrItem> {
 
         let entry = objectives.entry(key.to_string()).or_insert((0, 0));
         entry.1 += 1; // total
-        if r.task_status
-            .as_ref()
-            .map(|s| {
-                let lower = s.to_lowercase();
-                lower.contains("done")
-                    || lower.contains("completed")
-                    || lower.contains("完成")
-                    || lower.contains("已完成")
-            })
-            .unwrap_or(false)
-        {
+        if r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false) {
             entry.0 += 1; // done
         }
     }
@@ -193,18 +182,7 @@ fn build_milestones(records: &[WorkRecord], projects: &[String]) -> Vec<Mileston
 
             let done_count = proj_records
                 .iter()
-                .filter(|r| {
-                    r.task_status
-                        .as_ref()
-                        .map(|s| {
-                            let lower = s.to_lowercase();
-                            lower.contains("done")
-                                || lower.contains("completed")
-                                || lower.contains("完成")
-                                || lower.contains("已完成")
-                        })
-                        .unwrap_or(false)
-                })
+                .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
                 .count();
 
             let total = proj_records.len();
@@ -241,18 +219,7 @@ fn build_capability_metrics(
             .collect();
         let done = month_records
             .iter()
-            .filter(|r| {
-                r.task_status
-                    .as_ref()
-                    .map(|s| {
-                        let lower = s.to_lowercase();
-                        lower.contains("done")
-                            || lower.contains("completed")
-                            || lower.contains("完成")
-                            || lower.contains("已完成")
-                    })
-                    .unwrap_or(false)
-            })
+            .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
             .count();
         monthly_done.push(done);
     }

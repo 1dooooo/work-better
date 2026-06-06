@@ -1,8 +1,11 @@
 //! 设置命令
 
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+use wb_storage::config::{AppConfig, CollectorConfig};
 
-/// 模型配置
+/// 模型配置（前端 DTO）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
     pub api_endpoint: String,
@@ -19,66 +22,153 @@ pub struct CollectorStatus {
     pub healthy: bool,
 }
 
-/// 存储配置
+/// 存储配置（前端 DTO）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {
     pub vault_path: String,
     pub db_path: String,
 }
 
+/// 配置文件路径：~/.work-better/config.json
+fn config_path() -> Result<PathBuf, String> {
+    let home =
+        std::env::var("HOME").map_err(|e| format!("无法获取 HOME 环境变量: {e}"))?;
+    Ok(PathBuf::from(home).join(".work-better").join("config.json"))
+}
+
+/// 从配置文件加载 AppConfig，文件不存在时返回默认值
+fn load_config() -> Result<AppConfig, String> {
+    let path = config_path()?;
+    if !path.exists() {
+        return Ok(AppConfig::default());
+    }
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("读取配置文件失败: {e}"))?;
+    AppConfig::from_json(&content)
+        .map_err(|e| format!("解析配置文件失败: {e}"))
+}
+
+/// 将 AppConfig 保存到配置文件
+fn save_config(config: &AppConfig) -> Result<(), String> {
+    let path = config_path()?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("创建配置目录失败: {e}"))?;
+    }
+    let json = config
+        .to_json()
+        .map_err(|e| format!("序列化配置失败: {e}"))?;
+    fs::write(&path, json).map_err(|e| format!("写入配置文件失败: {e}"))
+}
+
 /// 获取模型配置
 #[tauri::command]
 pub async fn get_model_config() -> Result<ModelConfig, String> {
-    // TODO: 从配置文件读取
+    let app_config = load_config()?;
     Ok(ModelConfig {
-        api_endpoint: "https://api.openai.com/v1".to_string(),
-        api_key: String::new(),
-        token_budget: 4096,
+        api_endpoint: app_config.model.api_endpoint,
+        api_key: String::new(), // 出于安全考虑，不从文件回传 api_key
+        token_budget: app_config.model.token_budget,
     })
 }
 
 /// 保存模型配置
 #[tauri::command]
 pub async fn save_model_config(config: ModelConfig) -> Result<(), String> {
-    // TODO: 保存到配置文件
-    let _ = config;
-    Ok(())
+    let mut app_config = load_config()?;
+    app_config.model.api_endpoint = config.api_endpoint;
+    app_config.model.token_budget = config.token_budget;
+    // api_key 单独处理（暂不持久化到 config.json，避免明文存储风险）
+    save_config(&app_config)
 }
 
 /// 获取采集器状态列表
 #[tauri::command]
 pub async fn get_collector_statuses() -> Result<Vec<CollectorStatus>, String> {
-    // TODO: 从采集器模块读取真实状态
-    Ok(vec![
-        CollectorStatus {
-            id: "feishu".to_string(),
-            name: "飞书".to_string(),
-            enabled: true,
-            healthy: true,
-        },
-        CollectorStatus {
-            id: "manual".to_string(),
-            name: "手动输入".to_string(),
-            enabled: true,
-            healthy: true,
-        },
-    ])
+    let app_config = load_config()?;
+    let statuses = build_collector_statuses(&app_config.collectors);
+    Ok(statuses)
+}
+
+/// 根据 CollectorConfig 构建采集器状态列表
+fn build_collector_statuses(collectors: &CollectorConfig) -> Vec<CollectorStatus> {
+    let known_collectors: Vec<(&str, &str)> = vec![
+        ("feishu", "飞书"),
+        ("manual", "手动输入"),
+    ];
+
+    known_collectors
+        .into_iter()
+        .map(|(id, name)| {
+            let enabled = collectors.enabled.get(id).copied().unwrap_or(false);
+            CollectorStatus {
+                id: id.to_string(),
+                name: name.to_string(),
+                enabled,
+                healthy: enabled, // 已启用即视为健康，后续可扩展真实健康检查
+            }
+        })
+        .collect()
 }
 
 /// 获取存储配置
 #[tauri::command]
 pub async fn get_storage_config() -> Result<StorageConfig, String> {
-    // TODO: 从配置文件读取
+    let app_config = load_config()?;
     Ok(StorageConfig {
-        vault_path: "~/Documents/Obsidian".to_string(),
-        db_path: "~/.work-better/data.db".to_string(),
+        vault_path: app_config.storage.vault_path,
+        db_path: app_config.storage.db_path,
     })
 }
 
 /// 保存存储配置
 #[tauri::command]
 pub async fn save_storage_config(config: StorageConfig) -> Result<(), String> {
-    // TODO: 保存到配置文件
-    let _ = config;
-    Ok(())
+    let mut app_config = load_config()?;
+    app_config.storage.vault_path = config.vault_path;
+    app_config.storage.db_path = config.db_path;
+    save_config(&app_config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_build_collector_statuses_from_config() {
+        let mut enabled = HashMap::new();
+        enabled.insert("feishu".into(), true);
+
+        let collectors = CollectorConfig {
+            enabled,
+            feishu_mode: "cli".into(),
+        };
+
+        let statuses = build_collector_statuses(&collectors);
+        assert_eq!(statuses.len(), 2);
+
+        let feishu = statuses.iter().find(|s| s.id == "feishu").unwrap();
+        assert!(feishu.enabled);
+        assert!(feishu.healthy);
+        assert_eq!(feishu.name, "飞书");
+
+        let manual = statuses.iter().find(|s| s.id == "manual").unwrap();
+        assert!(!manual.enabled);
+        assert_eq!(manual.name, "手动输入");
+    }
+
+    #[test]
+    fn test_build_collector_statuses_all_disabled() {
+        let collectors = CollectorConfig::default();
+        let statuses = build_collector_statuses(&collectors);
+        assert!(statuses.iter().all(|s| !s.enabled));
+    }
+
+    #[test]
+    fn test_config_path_is_under_home() {
+        let path = config_path().unwrap();
+        assert!(path.to_string_lossy().contains(".work-better"));
+        assert!(path.to_string_lossy().ends_with("config.json"));
+    }
 }

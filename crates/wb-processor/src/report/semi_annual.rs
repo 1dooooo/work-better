@@ -4,8 +4,7 @@ use chrono::NaiveDate;
 
 use wb_core::record::{Category, WorkRecord};
 
-use super::count_by_status;
-use super::Report;
+use super::{count_by_status, is_done_status, Report};
 
 /// 目标调整
 #[derive(Debug, Clone, PartialEq)]
@@ -167,18 +166,7 @@ fn build_goal_adjustments(
 fn build_key_achievements(records: &[WorkRecord]) -> Vec<String> {
     let done_records: Vec<&WorkRecord> = records
         .iter()
-        .filter(|r| {
-            r.task_status
-                .as_ref()
-                .map(|s| {
-                    let lower = s.to_lowercase();
-                    lower.contains("done")
-                        || lower.contains("completed")
-                        || lower.contains("完成")
-                        || lower.contains("已完成")
-                })
-                .unwrap_or(false)
-        })
+        .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
         .collect();
 
     if done_records.is_empty() {

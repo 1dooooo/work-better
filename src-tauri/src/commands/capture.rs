@@ -27,12 +27,18 @@ pub async fn hide_capture_window(app: AppHandle) -> Result<(), String> {
 /// `-i` 交互模式，`-c` 写入剪贴板。
 #[tauri::command]
 pub async fn take_screenshot(app: AppHandle) -> Result<(), String> {
-    use std::process::Command;
+    use std::time::Duration;
+    use tokio::process::Command;
 
-    let status = Command::new("screencapture")
-        .args(["-i", "-c"])
-        .status()
-        .map_err(|e| format!("screencapture 执行失败: {e}"))?;
+    let status = tokio::time::timeout(
+        Duration::from_secs(60),
+        Command::new("screencapture")
+            .args(["-i", "-c"])
+            .status(),
+    )
+    .await
+    .map_err(|_| "截图超时，请重试".to_string())?
+    .map_err(|e| format!("screencapture 执行失败: {e}"))?;
 
     if status.success() {
         if let Some(window) = app.get_webview_window("capture") {

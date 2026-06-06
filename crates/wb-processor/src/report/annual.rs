@@ -4,8 +4,7 @@ use chrono::{Datelike, NaiveDate};
 
 use wb_core::record::{Category, WorkRecord};
 
-use super::count_by_status;
-use super::Report;
+use super::{count_by_status, is_done_status, Report};
 
 /// 成长轨迹点
 #[derive(Debug, Clone, PartialEq)]
@@ -145,18 +144,7 @@ fn build_growth_trajectory(records: &[WorkRecord], year: i32) -> Vec<GrowthPoint
             quarter_total += month_records.len();
             quarter_done += month_records
                 .iter()
-                .filter(|r| {
-                    r.task_status
-                        .as_ref()
-                        .map(|s| {
-                            let lower = s.to_lowercase();
-                            lower.contains("done")
-                                || lower.contains("completed")
-                                || lower.contains("完成")
-                                || lower.contains("已完成")
-                        })
-                        .unwrap_or(false)
-                })
+                .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
                 .count();
         }
 

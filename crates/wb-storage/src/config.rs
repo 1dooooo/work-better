@@ -63,11 +63,29 @@ impl Default for SchedulerConfig {
     }
 }
 
+/// 存储配置
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct StorageConfig {
+    pub vault_path: String,
+    pub db_path: String,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self {
+            vault_path: "~/Documents/Obsidian".into(),
+            db_path: "~/.work-better/data.db".into(),
+        }
+    }
+}
+
 /// 应用配置
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct AppConfig {
     pub collectors: CollectorConfig,
     pub model: ModelConfig,
+    #[serde(default)]
+    pub storage: StorageConfig,
     pub scheduler: SchedulerConfig,
 }
 
@@ -114,6 +132,10 @@ mod tests {
                 large_model: "claude-3-opus".into(),
                 api_endpoint: "https://api.anthropic.com".into(),
                 token_budget: 8192,
+            },
+            storage: StorageConfig {
+                vault_path: "/tmp/test-vault".into(),
+                db_path: "/tmp/test.db".into(),
             },
             scheduler: SchedulerConfig {
                 enabled: true,

@@ -8,7 +8,7 @@ pub mod sync_log;
 pub mod vector;
 
 pub use config::{
-    AppConfig, CollectorConfig, ModelConfig, SchedulerConfig, ScheduledTaskConfig,
+    AppConfig, CollectorConfig, ModelConfig, SchedulerConfig, ScheduledTaskConfig, StorageConfig,
 };
 pub use obsidian::ObsidianWriter;
 pub use sqlite::SqliteEventLog;

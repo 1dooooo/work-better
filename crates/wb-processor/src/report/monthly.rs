@@ -78,13 +78,7 @@ fn group_by_week(records: &[WorkRecord], done_only: bool) -> Vec<(String, usize)
             let is_done = r
                 .task_status
                 .as_ref()
-                .map(|s| {
-                    let lower = s.to_lowercase();
-                    lower.contains("done")
-                        || lower.contains("completed")
-                        || lower.contains("完成")
-                        || lower.contains("已完成")
-                })
+                .map(|s| super::is_done_status(s))
                 .unwrap_or(false);
             if !is_done {
                 continue;

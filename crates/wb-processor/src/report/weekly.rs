@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 
 use wb_core::record::{Category, WorkRecord};
 
-use super::Report;
+use super::{is_done_status, Report};
 
 /// 生成周报
 ///
@@ -16,17 +16,7 @@ pub fn generate_week(week_start: NaiveDate, records: &[WorkRecord]) -> Report {
     // 分类统计
     let done_records: Vec<&WorkRecord> = records
         .iter()
-        .filter(|r| {
-            r.task_status
-                .as_ref()
-                .map(|s| {
-                    let lower = s.to_lowercase();
-                    lower.contains("done")
-                        || lower.contains("completed")
-                        || lower.contains("完成")
-                })
-                .unwrap_or(false)
-        })
+        .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
         .collect();
 
     let blocked_records: Vec<&WorkRecord> = records
