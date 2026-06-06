@@ -1,0 +1,13 @@
+[package]
+name = "wb-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+async-trait = "0.1"
+ts-rs = "10"

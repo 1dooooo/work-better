@@ -1,0 +1,10 @@
+[package]
+name = "wb-processor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wb-core = { path = "../wb-core" }
+wb-ai = { path = "../wb-ai" }
+serde = { workspace = true }
+serde_json = { workspace = true }

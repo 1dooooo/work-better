@@ -1,0 +1,24 @@
+[package]
+name = "work-better"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "work_better_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+wb-core = { path = "../crates/wb-core" }
+wb-collector = { path = "../crates/wb-collector" }
+wb-processor = { path = "../crates/wb-processor" }
+wb-storage = { path = "../crates/wb-storage" }
+wb-ai = { path = "../crates/wb-ai" }

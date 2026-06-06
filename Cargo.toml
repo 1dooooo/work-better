@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "src-tauri",
+    "crates/wb-core",
+    "crates/wb-collector",
+    "crates/wb-processor",
+    "crates/wb-storage",
+    "crates/wb-ai",
+    "crates/wb-scheduler",
+]
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4", "serde"] }
