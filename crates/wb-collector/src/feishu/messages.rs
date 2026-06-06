@@ -6,15 +6,16 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
 
-/// lark-cli 消息响应
+/// lark-cli 消息响应（+chat-messages-list 格式）
 #[derive(Debug, Deserialize)]
 struct LarkMessagesResponse {
+    ok: Option<bool>,
     data: Option<LarkMessagesData>,
 }
 
 #[derive(Debug, Deserialize)]
 struct LarkMessagesData {
-    items: Option<Vec<LarkMessage>>,
+    messages: Option<Vec<LarkMessage>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,12 +25,13 @@ struct LarkMessage {
     content: Option<String>,
     sender: Option<LarkSender>,
     create_time: Option<String>,
-    update_time: Option<String>,
+    chat_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LarkSender {
-    sender_id: Option<String>,
+    id: Option<String>,
+    name: Option<String>,
     sender_type: Option<String>,
     tenant_key: Option<String>,
 }
@@ -47,8 +49,7 @@ impl FeishuMessageCollector {
         let limit_str = limit.to_string();
         let args = vec![
             "im",
-            "messages",
-            "list",
+            "+chat-messages-list",
             "--chat-id",
             chat_id,
             "--page-size",
@@ -57,7 +58,7 @@ impl FeishuMessageCollector {
 
         let response: LarkMessagesResponse = runner::execute_json("lark-cli", &args)?;
 
-        let items = response.data.and_then(|d| d.items).unwrap_or_default();
+        let items = response.data.and_then(|d| d.messages).unwrap_or_default();
 
         let events: Vec<Event> = items
             .into_iter()
@@ -106,12 +107,13 @@ mod tests {
             msg_type: Some("text".to_string()),
             content: Some(r#"{"text":"Hello, world!"}"#.to_string()),
             sender: Some(LarkSender {
-                sender_id: Some("user-001".to_string()),
+                id: Some("user-001".to_string()),
+                name: Some("testuser".to_string()),
                 sender_type: Some("user".to_string()),
                 tenant_key: None,
             }),
             create_time: Some("1717689600".to_string()),
-            update_time: None,
+            chat_id: Some("oc_test".to_string()),
         };
 
         let event = FeishuMessageCollector::convert_message(msg);
@@ -132,7 +134,7 @@ mod tests {
             content: Some("{}".to_string()),
             sender: None,
             create_time: None,
-            update_time: None,
+            chat_id: None,
         };
 
         let event = FeishuMessageCollector::convert_message(msg);
@@ -147,7 +149,7 @@ mod tests {
             content: Some("not-json".to_string()),
             sender: None,
             create_time: None,
-            update_time: None,
+            chat_id: None,
         };
 
         let event = FeishuMessageCollector::convert_message(msg).unwrap();
