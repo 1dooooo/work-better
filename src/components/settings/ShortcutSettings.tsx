@@ -26,18 +26,18 @@ export default function ShortcutSettings() {
   };
 
   return (
-    <section className="settings-section">
-      <h3>快捷键配置</h3>
-      <p className="settings-hint">自定义全局快捷键</p>
+    <section className="settings__section">
+      <h3 className="settings__section-title">快捷键配置</h3>
+      <p className="settings__hint">自定义全局快捷键</p>
 
-      <div className="shortcut-list">
+      <div className="settings__list">
         {shortcuts.map((s) => (
-          <div key={s.id} className={`shortcut-item ${editing === s.id ? "shortcut-item--editing" : ""}`}>
-            <span className="shortcut-label">{s.label}</span>
-            <kbd className="shortcut-key" onClick={() => setEditing(editing === s.id ? null : s.id)}>
+          <div key={s.id} className={`settings__list-item ${editing === s.id ? "settings__list-item--editing" : ""}`}>
+            <span className="settings__label">{s.label}</span>
+            <kbd className="settings__kbd" onClick={() => setEditing(editing === s.id ? null : s.id)}>
               {formatKey(s)}
             </kbd>
-            {editing === s.id && <span className="shortcut-hint">按下新的快捷键组合...</span>}
+            {editing === s.id && <span className="settings__hint">按下新的快捷键组合...</span>}
           </div>
         ))}
       </div>

@@ -38,25 +38,26 @@ export default function ReportSettings() {
   };
 
   return (
-    <section className="settings-section">
-      <h3>报告配置</h3>
-      <p className="settings-hint">报告定时任务和确认策略</p>
+    <section className="settings__section">
+      <h3 className="settings__section-title">报告配置</h3>
+      <p className="settings__hint">报告定时任务和确认策略</p>
 
-      <div className="report-list">
+      <div className="settings__list">
         {configs.map((c) => (
-          <div key={c.id} className="report-item">
-            <label className="report-toggle">
+          <div key={c.id} className="settings__list-item">
+            <label className="settings__toggle">
               <input
                 type="checkbox"
                 checked={c.enabled}
                 onChange={() => toggleReport(c.id)}
               />
-              <span className="report-name">{c.name}</span>
+              <span className="settings__toggle-slider" />
             </label>
-            <span className="report-schedule">
+            <span>{c.name}</span>
+            <span className="settings__hint">
               {SCHEDULE_LABELS[c.schedule] ?? c.schedule}
             </span>
-            <label className="report-auto">
+            <label className="settings__auto-label">
               <input
                 type="checkbox"
                 checked={c.autoConfirm}

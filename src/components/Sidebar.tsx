@@ -25,6 +25,12 @@ export default function Sidebar({
   onViewChange,
   unprocessedCount,
 }: SidebarProps) {
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const current = root.dataset.theme;
+    root.dataset.theme = current === "dark" ? "light" : "dark";
+  };
+
   return (
     <nav className="sidebar">
       <div className="sidebar__brand">
@@ -53,6 +59,13 @@ export default function Sidebar({
 
       <div className="sidebar__footer">
         <span className="sidebar__version">v0.1.0</span>
+        <button
+          className="sidebar__theme-btn"
+          onClick={toggleTheme}
+          title="切换主题"
+        >
+          🌓
+        </button>
       </div>
     </nav>
   );

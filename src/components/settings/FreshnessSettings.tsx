@@ -31,22 +31,23 @@ export default function FreshnessSettings() {
   };
 
   return (
-    <section className="settings-section">
-      <h3>保鲜规则配置</h3>
-      <p className="settings-hint">各类保鲜任务的频率和策略</p>
+    <section className="settings__section">
+      <h3 className="settings__section-title">保鲜规则配置</h3>
+      <p className="settings__hint">各类保鲜任务的频率和策略</p>
 
-      <div className="freshness-list">
+      <div className="settings__list">
         {rules.map((r) => (
-          <div key={r.id} className="freshness-item">
-            <label className="freshness-toggle">
+          <div key={r.id} className="settings__list-item">
+            <label className="settings__toggle">
               <input
                 type="checkbox"
                 checked={r.enabled}
                 onChange={() => toggleRule(r.id)}
               />
-              <span className="freshness-name">{r.name}</span>
+              <span className="settings__toggle-slider" />
             </label>
-            <span className="freshness-freq">
+            <span>{r.name}</span>
+            <span className="settings__hint">
               {FREQUENCY_LABELS[r.frequency] ?? r.frequency}
             </span>
           </div>
