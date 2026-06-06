@@ -19,8 +19,33 @@ pub enum AuditStep {
 #[ts(export)]
 pub enum ReviewVerdict {
     Approved,
-    NeedsFix,
-    NeedsReview,
+    NeedsFix(String),
+    NeedsReview(String),
+}
+
+/// 审核问题
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export)]
+pub struct Issue {
+    /// 问题类型：missing_field, invalid_state, format_error, low_confidence 等
+    pub issue_type: String,
+    /// 严重程度：critical, high, medium, low
+    pub severity: String,
+    /// 问题描述
+    pub description: String,
+    /// 修复建议
+    pub suggestion: String,
+}
+
+/// 审核结果
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[ts(export)]
+pub struct ReviewResult {
+    pub verdict: ReviewVerdict,
+    pub issues: Vec<Issue>,
+    /// 审核者：rule, small_model, large_model
+    pub reviewer: String,
+    pub confidence: f64,
 }
 
 /// 处理审计记录

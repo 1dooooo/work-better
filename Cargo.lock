@@ -4485,6 +4485,8 @@ dependencies = [
 name = "wb-collector"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "chrono",
  "serde",
  "serde_json",
  "tokio",
@@ -4517,6 +4519,16 @@ dependencies = [
 [[package]]
 name = "wb-scheduler"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+ "wb-core",
+]
 
 [[package]]
 name = "wb-storage"
@@ -5222,6 +5234,7 @@ dependencies = [
  "wb-collector",
  "wb-core",
  "wb-processor",
+ "wb-scheduler",
  "wb-storage",
 ]
 

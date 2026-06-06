@@ -22,3 +22,4 @@ wb-collector = { path = "../crates/wb-collector" }
 wb-processor = { path = "../crates/wb-processor" }
 wb-storage = { path = "../crates/wb-storage" }
 wb-ai = { path = "../crates/wb-ai" }
+wb-scheduler = { path = "../crates/wb-scheduler" }

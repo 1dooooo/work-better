@@ -14,10 +14,11 @@
       {
         "label": "main",
         "title": "Work Better",
-        "width": 420,
-        "height": 500,
+        "width": 960,
+        "height": 680,
         "decorations": true,
-        "resizable": true
+        "resizable": true,
+        "center": true
       }
     ],
     "security": {

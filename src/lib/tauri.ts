@@ -39,3 +39,55 @@ export async function triggerFeishuCollect(
     limit: limit ?? null,
   });
 }
+
+// ─── Collector Management ───────────────────────────────────────────
+
+export interface CollectorHealth {
+  level: string;
+  message: string | null;
+  error_count: number;
+}
+
+export async function listCollectors(): Promise<string[]> {
+  return invoke<string[]>("list_collectors");
+}
+
+export async function enableCollector(id: string): Promise<void> {
+  return invoke("enable_collector", { id });
+}
+
+export async function disableCollector(id: string): Promise<void> {
+  return invoke("disable_collector", { id });
+}
+
+export async function checkCollectorHealth(
+  id: string,
+): Promise<CollectorHealth> {
+  return invoke<CollectorHealth>("check_collector_health", { id });
+}
+
+// ─── Scheduler Management ───────────────────────────────────────────
+
+export interface TaskInfo {
+  id: string;
+  name: string;
+  layer: string;
+  cron: string;
+  sla_ms: number;
+}
+
+export async function listScheduledTasks(): Promise<TaskInfo[]> {
+  return invoke<TaskInfo[]>("list_scheduled_tasks");
+}
+
+export async function pauseScheduler(): Promise<void> {
+  return invoke("pause_scheduler");
+}
+
+export async function resumeScheduler(): Promise<void> {
+  return invoke("resume_scheduler");
+}
+
+export async function isSchedulerPaused(): Promise<boolean> {
+  return invoke<boolean>("is_scheduler_paused");
+}

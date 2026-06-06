@@ -3,4 +3,4 @@
 /**
  * 审核结论
  */
-export type ReviewVerdict = "Approved" | "NeedsFix" | "NeedsReview";
+export type ReviewVerdict = "Approved" | { "NeedsFix": string } | { "NeedsReview": string };

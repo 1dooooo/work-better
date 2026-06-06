@@ -1,11 +1,8 @@
-import MenuBar from "./components/MenuBar";
+import MainWindow from "./components/MainWindow";
+import "./styles/main-window.css";
 
 function App() {
-  return (
-    <main>
-      <MenuBar />
-    </main>
-  );
+  return <MainWindow />;
 }
 
 export default App;
