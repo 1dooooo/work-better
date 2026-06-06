@@ -1,11 +1,15 @@
 //! Report —— 报告生成系统
 //!
-//! 从 WorkRecord 聚合数据，生成日报 / 周报 / 月报，
-//! 支持模板管理和确认流程。
+//! 从 WorkRecord 聚合数据，生成日报 / 周报 / 月报 / 季报 / 半年报 / 年报，
+//! 支持模板管理、确认流程和报告导出。
 
+pub mod annual;
 pub mod confirm;
 pub mod daily;
+pub mod export;
 pub mod monthly;
+pub mod quarterly;
+pub mod semi_annual;
 pub mod template;
 pub mod weekly;
 
@@ -22,6 +26,9 @@ pub enum ReportType {
     Daily,
     Weekly,
     Monthly,
+    Quarterly,
+    SemiAnnual,
+    Annual,
 }
 
 /// 报告结构
@@ -61,7 +68,7 @@ impl Report {
 
 /// 报告生成器
 ///
-/// 汇总 WorkRecord，按类型生成日报 / 周报 / 月报。
+/// 汇总 WorkRecord，按类型生成日报 / 周报 / 月报 / 季报 / 半年报 / 年报。
 pub struct ReportGenerator;
 
 impl ReportGenerator {
@@ -82,6 +89,21 @@ impl ReportGenerator {
     /// 生成月报
     pub fn generate_month(year: i32, month: u32, records: &[WorkRecord]) -> Report {
         monthly::generate_month(year, month, records)
+    }
+
+    /// 生成季报（quarter: 1-4）
+    pub fn generate_quarter(year: i32, quarter: u32, records: &[WorkRecord]) -> Report {
+        quarterly::generate_quarter(year, quarter, records)
+    }
+
+    /// 生成半年报（half: 1=上半年, 2=下半年）
+    pub fn generate_semi_annual(year: i32, half: u32, records: &[WorkRecord]) -> Report {
+        semi_annual::generate_semi_annual(year, half, records)
+    }
+
+    /// 生成年报
+    pub fn generate_annual(year: i32, records: &[WorkRecord]) -> Report {
+        annual::generate_annual(year, records)
     }
 }
 

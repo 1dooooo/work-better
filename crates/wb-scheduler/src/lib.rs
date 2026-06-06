@@ -2,6 +2,7 @@
 
 pub mod cron;
 pub mod dependency;
+pub mod log;
 pub mod resource;
 pub mod scheduler;
 pub mod task;

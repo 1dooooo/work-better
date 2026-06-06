@@ -30,6 +30,8 @@ pub fn run() {
             commands::settings::get_collector_statuses,
             commands::settings::get_storage_config,
             commands::settings::save_storage_config,
+            commands::notify::send_notification,
+            commands::notify::get_pending_notifications,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
