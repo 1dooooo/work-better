@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use wb_core::error::Result;
 use wb_core::event::{Event, EventFilter, EventLog};
 
@@ -57,8 +57,7 @@ fn row_to_event(row: &rusqlite::Row) -> rusqlite::Result<Event> {
             .unwrap_or(wb_core::event::Confidence::Low),
         event_type: serde_json::from_str(&row.get::<_, String>(5)?)
             .unwrap_or(wb_core::event::EventType::ManualNote),
-        content: serde_json::from_str(&row.get::<_, String>(6)?)
-            .unwrap_or(serde_json::Value::Null),
+        content: serde_json::from_str(&row.get::<_, String>(6)?).unwrap_or(serde_json::Value::Null),
         raw_payload: row.get(7)?,
         tags: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_default(),
         related_ids: serde_json::from_str(&row.get::<_, String>(9)?).unwrap_or_default(),
@@ -72,9 +71,10 @@ const SELECT_COLUMNS: &str =
 #[async_trait::async_trait]
 impl EventLog for SqliteEventLog {
     async fn append(&self, event: &Event) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| {
-            wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e)))?;
 
         let content = serde_json::to_string(&event.content)?;
         let tags = serde_json::to_string(&event.tags)?;
@@ -104,9 +104,10 @@ impl EventLog for SqliteEventLog {
     }
 
     async fn get(&self, id: &str) -> Result<Option<Event>> {
-        let conn = self.conn.lock().map_err(|e| {
-            wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e)))?;
 
         let mut stmt = conn
             .prepare(&format!(
@@ -128,14 +129,12 @@ impl EventLog for SqliteEventLog {
     }
 
     async fn query(&self, filter: &EventFilter) -> Result<Vec<Event>> {
-        let conn = self.conn.lock().map_err(|e| {
-            wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e)))?;
 
-        let mut sql = format!(
-            "SELECT {} FROM events WHERE 1=1",
-            SELECT_COLUMNS
-        );
+        let mut sql = format!("SELECT {} FROM events WHERE 1=1", SELECT_COLUMNS);
         let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
         let mut param_idx = 1;
 
@@ -200,9 +199,10 @@ impl EventLog for SqliteEventLog {
     }
 
     async fn mark_processed(&self, id: &str) -> Result<()> {
-        let conn = self.conn.lock().map_err(|e| {
-            wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e))
-        })?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| wb_core::error::WbError::Storage(format!("Lock poisoned: {}", e)))?;
 
         let updated = conn
             .execute("UPDATE events SET processed = 1 WHERE id = ?1", params![id])

@@ -23,6 +23,13 @@ pub fn run() {
             commands::scheduler::pause_scheduler,
             commands::scheduler::resume_scheduler,
             commands::scheduler::is_scheduler_paused,
+            commands::capture::show_capture_window,
+            commands::capture::hide_capture_window,
+            commands::settings::get_model_config,
+            commands::settings::save_model_config,
+            commands::settings::get_collector_statuses,
+            commands::settings::get_storage_config,
+            commands::settings::save_storage_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

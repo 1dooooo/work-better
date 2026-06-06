@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -6,7 +6,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
+use wb_core::task::Priority;
 
+use crate::cron;
+use crate::dependency::DependencyGraph;
+use crate::resource;
 use crate::task::{ScheduledTask, TaskResult, TaskStatus};
 
 /// Runtime state for a registered task.
@@ -16,6 +20,7 @@ struct TaskState {
     last_status: Option<TaskStatus>,
     last_result: Option<TaskResult>,
     interval_secs: u64,
+    priority: Priority,
 }
 
 /// Information about a registered task (returned by `get_task_info`).
@@ -35,6 +40,8 @@ pub struct TaskInfo {
 struct SharedState {
     tasks: RwLock<HashMap<String, TaskState>>,
     paused: RwLock<bool>,
+    dependency_graph: RwLock<DependencyGraph>,
+    budget: RwLock<u32>,
 }
 
 /// The central scheduler that manages and executes scheduled tasks.
@@ -50,6 +57,8 @@ impl Scheduler {
             state: Arc::new(SharedState {
                 tasks: RwLock::new(HashMap::new()),
                 paused: RwLock::new(false),
+                dependency_graph: RwLock::new(DependencyGraph::new()),
+                budget: RwLock::new(100),
             }),
             loop_handle: RwLock::new(None),
         }
@@ -69,9 +78,58 @@ impl Scheduler {
             last_status: None,
             last_result: None,
             interval_secs,
+            priority: Priority::P2,
         };
         let mut tasks = self.state.tasks.write().await;
         tasks.insert(id, state);
+    }
+
+    /// Register a task with a custom interval and priority.
+    pub async fn register_with_priority(
+        &self,
+        task: Arc<dyn ScheduledTask>,
+        interval_secs: u64,
+        priority: Priority,
+    ) {
+        let id = task.id().to_string();
+        let state = TaskState {
+            task,
+            last_run: None,
+            last_status: None,
+            last_result: None,
+            interval_secs,
+            priority,
+        };
+        let mut tasks = self.state.tasks.write().await;
+        tasks.insert(id, state);
+    }
+
+    /// Register a task with dependencies and an optional priority.
+    pub async fn register_with_deps(
+        &self,
+        task: Arc<dyn ScheduledTask>,
+        interval_secs: u64,
+        depends_on: Vec<&str>,
+        priority: Priority,
+    ) {
+        let id = task.id().to_string();
+        {
+            let mut graph = self.state.dependency_graph.write().await;
+            graph.add_task(&id, depends_on);
+        }
+        self.register_with_priority(task, interval_secs, priority).await;
+    }
+
+    /// Set the resource budget (controls whether low-priority tasks are deferred).
+    pub async fn set_budget(&self, budget: u32) {
+        let mut b = self.state.budget.write().await;
+        *b = budget;
+    }
+
+    /// Get the current resource budget.
+    pub async fn budget(&self) -> u32 {
+        let b = self.state.budget.read().await;
+        *b
     }
 
     /// Unregister a task by id. Returns `true` if the task existed.
@@ -105,8 +163,8 @@ impl Scheduler {
 
                 let now = Utc::now();
 
-                // Collect ids of tasks that are due
-                let due_ids: Vec<(String, u64, u32)> = {
+                // Collect ids of tasks that are due (interval + cron)
+                let due_ids: Vec<(String, u64, u32, Priority)> = {
                     let tasks_guard = state.tasks.read().await;
                     tasks_guard
                         .iter()
@@ -114,12 +172,18 @@ impl Scheduler {
                             let due = match ts.last_run {
                                 None => true,
                                 Some(last) => {
+                                    // Interval-based check
                                     let elapsed = (now - last).num_seconds().max(0) as u64;
-                                    elapsed >= ts.interval_secs
+                                    if elapsed >= ts.interval_secs {
+                                        true
+                                    } else {
+                                        // Cron-based check (falls back to false on parse error)
+                                        cron::is_due(ts.task.cron_expression(), last).unwrap_or(false)
+                                    }
                                 }
                             };
                             if due {
-                                Some((id.clone(), ts.task.sla_ms(), ts.task.retry_limit()))
+                                Some((id.clone(), ts.task.sla_ms(), ts.task.retry_limit(), ts.priority.clone()))
                             } else {
                                 None
                             }
@@ -127,8 +191,44 @@ impl Scheduler {
                         .collect()
                 };
 
-                // Execute due tasks
-                for (id, sla_ms, retry_limit) in due_ids {
+                // Snapshot completed tasks for dependency check
+                let completed_ids: HashSet<String> = {
+                    let tasks_guard = state.tasks.read().await;
+                    tasks_guard
+                        .iter()
+                        .filter_map(|(id, ts)| {
+                            if ts.last_status.as_ref() == Some(&TaskStatus::Success) {
+                                Some(id.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                };
+                let completed_refs: HashSet<&str> = completed_ids.iter().map(|s| s.as_str()).collect();
+
+                // Snapshot dependency graph and budget (drop guards before loop body)
+                let can_run_map: HashMap<String, bool> = {
+                    let graph = state.dependency_graph.read().await;
+                    due_ids
+                        .iter()
+                        .map(|(id, _, _, _)| (id.clone(), graph.can_run(id, &completed_refs)))
+                        .collect()
+                };
+                let budget = *state.budget.read().await;
+
+                // Execute due tasks (filtered by dependency and resource checks)
+                for (id, sla_ms, retry_limit, priority) in due_ids {
+                    // Dependency gate: skip if dependencies are not met
+                    if !can_run_map.get(&id).copied().unwrap_or(true) {
+                        continue;
+                    }
+
+                    // Resource gate: defer low-priority tasks when budget is low
+                    if resource::should_defer(priority, budget) {
+                        continue;
+                    }
+
                     let task = {
                         let tasks_guard = state.tasks.read().await;
                         match tasks_guard.get(&id) {

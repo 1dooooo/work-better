@@ -19,6 +19,17 @@
         "decorations": true,
         "resizable": true,
         "center": true
+      },
+      {
+        "label": "capture",
+        "title": "快速捕获",
+        "width": 400,
+        "height": 300,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "center": true,
+        "url": "index.html?view=capture"
       }
     ],
     "security": {

@@ -12,6 +12,7 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 async-trait = "0.1"
 uuid = { workspace = true }
+cron = "0.13"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util", "macros"] }

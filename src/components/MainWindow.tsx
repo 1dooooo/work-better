@@ -4,6 +4,7 @@ import EventsView from "./views/EventsView";
 import TasksView from "./views/TasksView";
 import TimelineView from "./views/TimelineView";
 import ReportsView from "./views/ReportsView";
+import SettingsView from "./views/SettingsView";
 import { getUnprocessedCount } from "../lib/tauri";
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
@@ -11,6 +12,7 @@ const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   tasks: TasksView,
   timeline: TimelineView,
   reports: ReportsView,
+  settings: SettingsView,
 };
 
 export default function MainWindow() {

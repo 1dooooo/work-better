@@ -1,4 +1,4 @@
-export type ViewId = "events" | "tasks" | "timeline" | "reports";
+export type ViewId = "events" | "tasks" | "timeline" | "reports" | "settings";
 
 interface NavItem {
   id: ViewId;
@@ -11,6 +11,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "tasks", label: "任务", icon: "✅" },
   { id: "timeline", label: "时间线", icon: "📅" },
   { id: "reports", label: "报告", icon: "📊" },
+  { id: "settings", label: "设置", icon: "⚙" },
 ];
 
 interface SidebarProps {

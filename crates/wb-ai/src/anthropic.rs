@@ -164,7 +164,7 @@ impl ModelAdapter for AnthropicAdapter {
 }
 
 /// 从响应文本中提取 JSON（处理可能的 markdown 代码块包裹）
-fn extract_json(text: &str) -> &str {
+pub fn extract_json(text: &str) -> &str {
     let trimmed = text.trim();
 
     // 处理 ```json ... ``` 格式
