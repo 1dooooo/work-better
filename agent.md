@@ -32,6 +32,15 @@
 | 定时任务 | [docs/architecture/modules/scheduler.md](docs/architecture/modules/scheduler.md) | 定时任务系统架构 |
 | 事件模型 | [docs/architecture/modules/event-model.md](docs/architecture/modules/event-model.md) | 事件与数据模型定义 |
 | 开发指引 | [docs/development/setup.md](docs/development/setup.md) | 开发环境搭建与工作流指引 |
+| 测试策略 | [docs/testing/strategy.md](docs/testing/strategy.md) | 测试策略总览、分层定义、技术栈 |
+| 测试规范 | [docs/testing/conventions.md](docs/testing/conventions.md) | 命名、组织、编写规范 |
+| Harness 设计 | [docs/testing/infrastructure/harness.md](docs/testing/infrastructure/harness.md) | 测试夹具系统架构 |
+| Mock 系统 | [docs/testing/infrastructure/mocking.md](docs/testing/infrastructure/mocking.md) | AI/飞书 Mock 策略 |
+| 测试数据 | [docs/testing/infrastructure/fixtures.md](docs/testing/infrastructure/fixtures.md) | 工厂模式、种子数据 |
+| 单元测试 | [docs/testing/layers/unit.md](docs/testing/layers/unit.md) | 单元测试编写指南 |
+| 集成测试 | [docs/testing/layers/integration.md](docs/testing/layers/integration.md) | 集成测试编写指南 |
+| E2E 测试 | [docs/testing/layers/e2e.md](docs/testing/layers/e2e.md) | E2E 测试编写指南 |
+| CI 集成 | [docs/testing/ci.md](docs/testing/ci.md) | 流水线中的测试阶段 |
 
 ## 文档自维护规范
 
