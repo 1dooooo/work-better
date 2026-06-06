@@ -1,1 +1,4 @@
-// Tauri commands will be added in Task 8
+//! Tauri 命令模块
+
+pub mod collect;
+pub mod events;
