@@ -18,4 +18,5 @@ status: active
 | 开发 | [development/setup.md](development/setup.md) | 环境搭建与工作流 |
 | 测试 | [testing/strategy.md](testing/strategy.md) | 测试策略与规范 |
 | 设计规格 | [superpowers/specs/](superpowers/specs/) | 设计规格文档 |
+| 实现计划 | [superpowers/plans/](superpowers/plans/) | 实现计划 |
 | 规范 | [conventions.md](conventions.md) | 文档规范（本文档） |
