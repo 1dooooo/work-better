@@ -69,13 +69,9 @@ impl AnthropicAdapter {
 
         if !response.status().is_success() {
             let status = response.status();
-            let body = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "unknown".to_string());
             return Err(wb_core::error::WbError::Ai(format!(
-                "API error {}: {}",
-                status, body
+                "API error {}",
+                status
             )));
         }
 

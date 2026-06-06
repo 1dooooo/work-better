@@ -13,7 +13,7 @@ updated: 2026-06-06
 | [Phase 2: Core](plans/2026-06-06-phase2-core.md) | ✅ done | 138 tests, 8 tasks |
 | [Phase 3: Deep Insight](plans/2026-06-06-phase3-deep-insight.md) | ✅ done | 391 tests, 12 tasks |
 | [Phase 4: Task Intelligence](plans/2026-06-06-phase4-task-intelligence.md) | ✅ done | 605 tests, 8 tasks |
-| [Phase 5: Polish](plans/2026-06-06-phase5-polish.md) | 🟡 in progress | 6 tasks, 8 features |
+| [Phase 5: Polish](plans/2026-06-06-phase5-polish.md) | ✅ done | 6 tasks, 8 features |
 
 ## Specs
 

@@ -164,10 +164,15 @@ impl VectorStore for InMemoryVectorStore {
             let snippet_len = snippet.len();
 
             if total_chars + snippet_len > max_chars {
-                // 截断最后一个片段
+                // 截断最后一个片段（安全处理多字节字符）
                 let remaining = max_chars - total_chars;
                 if remaining > 50 {
-                    context.push_str(&snippet[..remaining]);
+                    let safe_boundary = snippet
+                        .char_indices()
+                        .find(|(i, _)| *i >= remaining)
+                        .map(|(i, _)| i)
+                        .unwrap_or(snippet.len());
+                    context.push_str(&snippet[..safe_boundary]);
                     context.push_str("...");
                 }
                 break;
@@ -305,6 +310,17 @@ mod tests {
 
         let context = store.rag_context("programming", 100).await.unwrap();
         assert!(!context.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_rag_context_utf8_safe_truncation() {
+        let store = create_store();
+        // 中文内容，每个字符 3 字节；如果直接用字节索引截断会 panic
+        store.upsert("doc1", "这是一个中文测试内容，用于验证多字节字符截断安全性").await.unwrap();
+        // max_tokens=5 → max_chars≈12，会触发截断逻辑
+        let context = store.rag_context("测试", 5).await.unwrap();
+        // 验证不会 panic 且结果非空或以 "..." 结尾（安全截断）
+        assert!(context.is_empty() || context.ends_with("...") || context.contains("测试"));
     }
 
     #[tokio::test]

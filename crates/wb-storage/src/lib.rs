@@ -10,11 +10,5 @@ pub mod vector;
 pub use config::{
     AppConfig, CollectorConfig, ModelConfig, SchedulerConfig, ScheduledTaskConfig,
 };
-pub use freshness::{FreshnessEngine, FreshnessReport};
 pub use obsidian::ObsidianWriter;
 pub use sqlite::SqliteEventLog;
-pub use sync_log::{SyncLayer, SyncLog, SyncLogEntry, SyncStatus};
-pub use vector::{
-    EmbeddingProvider, InMemoryVectorStore, MockEmbedding, SemanticSearch, SearchResult,
-    SyncReport, VectorStore, VectorSync,
-};

@@ -4,6 +4,7 @@ use chrono::NaiveDate;
 
 use wb_core::record::{Category, WorkRecord};
 
+use super::count_by_status;
 use super::Report;
 
 /// 目标调整
@@ -98,19 +99,6 @@ fn semi_annual_date_range(year: i32, half: u32) -> (NaiveDate, NaiveDate) {
             NaiveDate::from_ymd_opt(year, 12, 31).unwrap(),
         )
     }
-}
-
-/// 按状态过滤计数
-fn count_by_status(records: &[WorkRecord], statuses: &[&str]) -> usize {
-    records
-        .iter()
-        .filter(|r| {
-            r.task_status
-                .as_ref()
-                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
-                .unwrap_or(false)
-        })
-        .count()
 }
 
 /// 构建阶段总结

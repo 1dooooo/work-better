@@ -1,4 +1,7 @@
 //! 系统通知命令
+//!
+//! TODO: `send_notification` 当前为 stub，仅记录调试日志。
+//!      后续需接入 Tauri notification plugin 或系统通知 API 实现真正的通知发送。
 
 use serde::{Deserialize, Serialize};
 
@@ -22,10 +25,13 @@ pub struct NotifyRequest {
     pub action_url: Option<String>,
 }
 
-/// 发送系统通知
+/// 发送系统通知（stub 实现）
+///
+/// TODO: 当前仅记录调试日志到 stderr，不会发送真正的系统通知。
+///      后续需接入 Tauri notification plugin 或各平台系统通知 API。
 #[tauri::command]
 pub async fn send_notification(request: NotifyRequest) -> Result<(), String> {
-    println!("[通知] {} — {} ({:?})", request.title, request.body, request.kind);
+    eprintln!("[notify-stub] kind={:?} title={}", request.kind, request.title);
     Ok(())
 }
 

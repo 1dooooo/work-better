@@ -4,6 +4,7 @@ use chrono::NaiveDate;
 
 use wb_core::record::{Category, WorkRecord};
 
+use super::count_by_status;
 use super::Report;
 
 /// 生成月报
@@ -67,19 +68,6 @@ fn last_day_of_month(year: i32, month: u32) -> NaiveDate {
     } else {
         NaiveDate::from_ymd_opt(year, month + 1, 1).unwrap() - chrono::Days::new(1)
     }
-}
-
-/// 按状态过滤计数
-fn count_by_status(records: &[WorkRecord], statuses: &[&str]) -> usize {
-    records
-        .iter()
-        .filter(|r| {
-            r.task_status
-                .as_ref()
-                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
-                .unwrap_or(false)
-        })
-        .count()
 }
 
 /// 按 ISO 周分组，返回每周的记录数

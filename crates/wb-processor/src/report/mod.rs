@@ -21,6 +21,22 @@ use uuid::Uuid;
 use confirm::ReportStatus;
 use wb_core::record::WorkRecord;
 
+/// 按状态过滤计数
+///
+/// 将 `records` 中 `task_status` 包含任一 `statuses` 关键词的记录计数。
+/// 关键词匹配不区分大小写。
+pub(crate) fn count_by_status(records: &[WorkRecord], statuses: &[&str]) -> usize {
+    records
+        .iter()
+        .filter(|r| {
+            r.task_status
+                .as_ref()
+                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
+                .unwrap_or(false)
+        })
+        .count()
+}
+
 /// 报告类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReportType {

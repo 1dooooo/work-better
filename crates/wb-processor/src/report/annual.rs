@@ -4,6 +4,7 @@ use chrono::{Datelike, NaiveDate};
 
 use wb_core::record::{Category, WorkRecord};
 
+use super::count_by_status;
 use super::Report;
 
 /// 成长轨迹点
@@ -84,19 +85,6 @@ pub fn generate_annual(year: i32, records: &[WorkRecord]) -> Report {
         period_start,
         period_end,
     )
-}
-
-/// 按状态过滤计数
-fn count_by_status(records: &[WorkRecord], statuses: &[&str]) -> usize {
-    records
-        .iter()
-        .filter(|r| {
-            r.task_status
-                .as_ref()
-                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
-                .unwrap_or(false)
-        })
-        .count()
 }
 
 /// 构建全景总结

@@ -1,7 +1,7 @@
 ---
 title: Phase 5 — 收尾打磨
 date: 2026-06-06
-status: planning
+status: done
 goal: 完成剩余 8 个功能，实现 108/108 全覆盖
 phase: 5
 depends_on:

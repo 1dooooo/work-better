@@ -1,7 +1,7 @@
 ---
 title: Phase 4 — 任务智能
 date: 2026-06-06
-status: planning
+status: done
 goal: 从"信息流转"到"任务驱动"——让系统能发现、追踪、管理任务
 phase: 4
 depends_on:
