@@ -1,9 +1,15 @@
 //! 任务管理核心 —— CRUD + 父子层级 + 归档
 
 pub mod create;
+pub mod discovery;
+pub mod discovery_confirm;
+pub mod discovery_email;
+pub mod discovery_meeting;
+pub mod discovery_message;
 pub mod hierarchy;
 pub mod lifecycle;
 pub mod model;
+pub mod sync;
 
 use std::collections::HashMap;
 use std::sync::Arc;
