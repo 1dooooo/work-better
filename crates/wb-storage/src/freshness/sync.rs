@@ -35,7 +35,7 @@ impl<'a> SyncTask<'a> {
             let entry = entry?;
             let path = entry.path();
 
-            if !path.extension().map_or(false, |e| e == "md") {
+            if path.extension().is_none_or(|e| e != "md") {
                 continue;
             }
 
@@ -47,7 +47,11 @@ impl<'a> SyncTask<'a> {
                 .to_string();
 
             // 检查 frontmatter 中是否有 status: done
-            if content.contains("status:") && content.contains("done") {
+            let has_done_status = content.lines().any(|line| {
+                let trimmed = line.trim();
+                trimmed == "status: done" || trimmed == "status: \"done\""
+            });
+            if has_done_status {
                 // 如果没有 completed 字段，认为缺少完成日期
                 if !content.contains("completed:") {
                     issues.push(Issue {
@@ -81,7 +85,7 @@ impl<'a> SyncTask<'a> {
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension().map_or(false, |e| e == "md") {
+            if path.extension().is_some_and(|e| e == "md") {
                 if let Some(name) = path.file_stem() {
                     existing_dates.push(name.to_string_lossy().to_string());
                 }

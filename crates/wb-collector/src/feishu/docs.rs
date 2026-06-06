@@ -44,7 +44,7 @@ impl FeishuDocsCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|doc| Self::convert_doc(doc))
+            .filter_map(Self::convert_doc)
             .collect();
 
         Ok(events)

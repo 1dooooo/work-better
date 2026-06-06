@@ -130,7 +130,7 @@ impl<'a> QualityTask<'a> {
                 continue;
             }
 
-            if !path.extension().map_or(false, |e| e == "md") {
+            if path.extension().is_none_or(|e| e != "md") {
                 continue;
             }
 
@@ -179,7 +179,7 @@ impl<'a> QualityTask<'a> {
 
             if path.is_dir() {
                 self.walk_md_files(&path, files)?;
-            } else if path.extension().map_or(false, |e| e == "md") {
+            } else if path.extension().is_some_and(|e| e == "md") {
                 files.push(path);
             }
         }
@@ -188,7 +188,7 @@ impl<'a> QualityTask<'a> {
     }
 
     /// 获取相对于 vault 根的路径字符串
-    fn relative_path(&self, path: &std::path::PathBuf) -> String {
+    fn relative_path(&self, path: &Path) -> String {
         path.strip_prefix(self.vault_path)
             .unwrap_or(path)
             .to_string_lossy()

@@ -32,7 +32,7 @@ impl DependencyGraph {
         let entry = self
             .deps
             .entry(task_id.to_string())
-            .or_insert_with(HashSet::new);
+            .or_default();
         for dep in depends_on {
             entry.insert(dep.to_string());
         }

@@ -61,7 +61,7 @@ impl FeishuMessageCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|msg| Self::convert_message(msg))
+            .filter_map(Self::convert_message)
             .collect();
 
         Ok(events)

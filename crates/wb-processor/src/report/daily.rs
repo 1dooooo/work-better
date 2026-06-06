@@ -33,7 +33,10 @@ fn filter_by_status<'a>(records: &'a [WorkRecord], statuses: &[&str]) -> Vec<&'a
         .filter(|r| {
             r.task_status
                 .as_ref()
-                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
+                .map(|s| {
+                    let lower = s.to_lowercase();
+                    statuses.iter().any(|status| lower == *status)
+                })
                 .unwrap_or(false)
         })
         .collect()

@@ -86,14 +86,17 @@ impl Collector for FeishuMeetingCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|m| Self::convert_meeting(m))
+            .filter_map(Self::convert_meeting)
             .collect();
 
         Ok(events)
     }
 
     async fn health_check(&self) -> HealthStatus {
-        HealthStatus::healthy()
+        match crate::runner::execute("lark-cli", &["--version"]) {
+            Ok(_) => HealthStatus::healthy(),
+            Err(e) => HealthStatus::unhealthy(format!("lark-cli not available: {}", e)),
+        }
     }
 }
 

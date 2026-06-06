@@ -44,7 +44,7 @@ impl FeishuCalendarCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|evt| Self::convert_event(evt))
+            .filter_map(Self::convert_event)
             .collect();
 
         Ok(events)

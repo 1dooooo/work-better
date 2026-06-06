@@ -45,7 +45,7 @@ impl FeishuProjectsCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|task| Self::convert_task(task))
+            .filter_map(Self::convert_task)
             .collect();
 
         Ok(events)

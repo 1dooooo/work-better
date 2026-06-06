@@ -164,7 +164,7 @@ impl<'a> IntegrityTask<'a> {
 
             if path.is_dir() {
                 self.walk_md_files(&path, files)?;
-            } else if path.extension().map_or(false, |e| e == "md") {
+            } else if path.extension().is_some_and(|e| e == "md") {
                 files.push(path);
             }
         }
@@ -187,7 +187,7 @@ impl<'a> IntegrityTask<'a> {
     }
 
     /// 获取相对于 vault 根的路径字符串
-    fn relative_path(&self, path: &std::path::PathBuf) -> String {
+    fn relative_path(&self, path: &Path) -> String {
         path.strip_prefix(self.vault_path)
             .unwrap_or(path)
             .to_string_lossy()
@@ -201,27 +201,23 @@ fn extract_wikilinks(content: &str) -> Vec<String> {
     let mut chars = content.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '[' {
-            if chars.peek() == Some(&'[') {
+        if c == '[' && chars.peek() == Some(&'[') {
                 chars.next(); // consume second [
                 let mut link_content = String::new();
                 let mut found_close = false;
 
                 while let Some(ch) = chars.next() {
-                    if ch == ']' {
-                        if chars.peek() == Some(&']') {
+                    if ch == ']' && chars.peek() == Some(&']') {
                             chars.next();
                             found_close = true;
                             break;
                         }
-                    }
                     link_content.push(ch);
                 }
 
                 if found_close && !link_content.is_empty() {
                     links.push(link_content);
                 }
-            }
         }
     }
 
@@ -267,8 +263,8 @@ fn extract_frontmatter_tags(content: &str) -> Option<Vec<String>> {
         }
 
         if in_tags {
-            if trimmed.starts_with("- ") {
-                let tag = trimmed[2..].trim().trim_matches('"').trim_matches('\'');
+            if let Some(stripped) = trimmed.strip_prefix("- ") {
+                let tag = stripped.trim().trim_matches('"').trim_matches('\'');
                 if !tag.is_empty() {
                     tags.push(tag.to_string());
                 }

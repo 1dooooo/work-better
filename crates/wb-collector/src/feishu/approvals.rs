@@ -45,7 +45,7 @@ impl FeishuApprovalsCollector {
 
         let events: Vec<Event> = items
             .into_iter()
-            .filter_map(|approval| Self::convert_approval(approval))
+            .filter_map(Self::convert_approval)
             .collect();
 
         Ok(events)

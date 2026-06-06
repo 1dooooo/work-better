@@ -108,6 +108,7 @@ fn group_by_week(records: &[WorkRecord], done_only: bool) -> Vec<(String, usize)
     map.into_iter().collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_monthly_markdown(
     year: i32,
     month: u32,
