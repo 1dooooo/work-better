@@ -1,5 +1,6 @@
 import MainWindow from "./components/MainWindow";
 import CaptureWindow from "./capture/CaptureWindow";
+import MenuBar from "./components/MenuBar";
 import "./styles/main-window.css";
 
 function App() {
@@ -8,6 +9,9 @@ function App() {
 
   if (view === "capture") {
     return <CaptureWindow />;
+  }
+  if (view === "tray") {
+    return <MenuBar />;
   }
 
   return <MainWindow />;

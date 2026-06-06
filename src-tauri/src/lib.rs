@@ -40,9 +40,26 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             } = event
             {
                 let app = tray.app_handle();
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
+                if let Some(window) = app.get_webview_window("tray") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        // 定位到菜单栏下方
+                        if let Some(tray_rect) = tray.rect().ok().flatten() {
+                            if let (tauri::Position::Physical(pos), tauri::Size::Physical(size)) =
+                                (tray_rect.position, tray_rect.size)
+                            {
+                                let _ = window.set_position(tauri::Position::Physical(
+                                    tauri::PhysicalPosition {
+                                        x: pos.x + (size.width as i32 / 2) - 180,
+                                        y: pos.y + size.height as i32 + 4,
+                                    },
+                                ));
+                            }
+                        }
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
                 }
             }
         })
