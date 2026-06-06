@@ -12,7 +12,7 @@ pub mod reviewer;
 pub mod sla;
 pub mod task;
 
-pub use audit_pipeline::{AuditFilter, AuditPipeline};
+pub use audit_pipeline::{AuditFilter, AuditPipeline, OptimizationSuggestion};
 pub use report::{Report, ReportGenerator, ReportType};
 pub use classifier::{Classifier, ProcessingRoute};
 pub use extraction::{EntityExtractor, ExtractedData};

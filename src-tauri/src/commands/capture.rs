@@ -20,3 +20,27 @@ pub async fn hide_capture_window(app: AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// 截图捕获（macOS screencapture）
+///
+/// 调用系统截图工具，截图后显示捕获窗口。
+/// `-i` 交互模式，`-c` 写入剪贴板。
+#[tauri::command]
+pub async fn take_screenshot(app: AppHandle) -> Result<(), String> {
+    use std::process::Command;
+
+    let status = Command::new("screencapture")
+        .args(["-i", "-c"])
+        .status()
+        .map_err(|e| format!("screencapture 执行失败: {e}"))?;
+
+    if status.success() {
+        if let Some(window) = app.get_webview_window("capture") {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    } else {
+        Err("截图已取消".to_string())
+    }
+}

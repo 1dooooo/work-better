@@ -11,6 +11,7 @@ interface CollectorStatus {
 export default function CollectorSettings() {
   const [collectors, setCollectors] = useState<CollectorStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feishuMode, setFeishuMode] = useState<"api" | "cli">("api");
 
   const refresh = useCallback(async () => {
     try {
@@ -85,6 +86,32 @@ export default function CollectorSettings() {
           </li>
         ))}
       </ul>
+
+      <div className="settings__feishu-mode">
+        <h4>飞书接入方式</h4>
+        <div className="settings__radio-group">
+          <label className="settings__radio">
+            <input
+              type="radio"
+              name="feishu-mode"
+              checked={feishuMode === "api"}
+              onChange={() => setFeishuMode("api")}
+            />
+            <span>API 直连</span>
+            <small>通过飞书开放平台 API 采集，稳定但需配置应用凭证</small>
+          </label>
+          <label className="settings__radio">
+            <input
+              type="radio"
+              name="feishu-mode"
+              checked={feishuMode === "cli"}
+              onChange={() => setFeishuMode("cli")}
+            />
+            <span>lark-cli</span>
+            <small>通过 lark-cli 命令行工具采集，适合快速验证</small>
+          </label>
+        </div>
+      </div>
     </section>
   );
 }

@@ -10,6 +10,7 @@ pub mod export;
 pub mod monthly;
 pub mod quarterly;
 pub mod semi_annual;
+pub mod sync_feishu;
 pub mod template;
 pub mod weekly;
 
