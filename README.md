@@ -1,3 +1,12 @@
+---
+title: Work Better
+type: structural
+domain: product
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # Work Better
 
 以 Obsidian 为中心的 AI 工作观察者。被动采集工作信息，智能处理与分析，自动维护任务与报告。

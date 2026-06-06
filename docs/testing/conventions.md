@@ -1,3 +1,12 @@
+---
+title: 测试规范
+type: structural
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 测试规范与约束
 
 ## 文件命名规范

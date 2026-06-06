@@ -1,3 +1,12 @@
+---
+title: 集成测试指南
+type: guide
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 集成测试指南
 
 ## 定义

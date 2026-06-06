@@ -1,3 +1,12 @@
+---
+title: 采集层
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 采集层架构
 
 > **维护说明**：当新增/移除采集器、修改采集策略或事件格式时更新本文档。

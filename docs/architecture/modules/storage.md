@@ -1,3 +1,12 @@
+---
+title: 存储层
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 存储层架构
 
 > **维护说明**：当存储结构、目录组织、保鲜策略或同步机制变更时更新本文档。

@@ -1,3 +1,12 @@
+---
+title: 产品文档
+type: structural
+domain: product
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # Work Better - 产品文档
 
 > **维护说明**：当产品方向、核心功能、用户场景发生变化时更新本文档。

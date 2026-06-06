@@ -1,3 +1,12 @@
+---
+title: CI 集成
+type: guide
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # CI/CD 集成
 
 ## 测试流水线阶段

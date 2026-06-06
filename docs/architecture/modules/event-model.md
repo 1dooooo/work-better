@@ -1,3 +1,12 @@
+---
+title: 事件模型
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 事件模型
 
 > **维护说明**：当数据结构字段变更时更新本文档。事件模型是所有模块的基础，变更影响面大，需同步更新相关模块文档。

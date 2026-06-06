@@ -1,3 +1,12 @@
+---
+title: 贡献指南
+type: guide
+domain: development
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 贡献指南
 
 ## 快速开始

@@ -1,3 +1,12 @@
+---
+title: 架构总览
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # Work Better - 架构总览
 
 > **维护说明**：当系统架构、模块划分、层间关系发生变化时更新本文档。

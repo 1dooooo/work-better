@@ -1,3 +1,12 @@
+---
+title: 功能索引
+type: structural
+domain: features
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # Work Better - 功能索引
 
 > **维护说明**：当新增、移除或修改功能时更新本文档。

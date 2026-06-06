@@ -1,3 +1,12 @@
+---
+title: Mock 系统
+type: structural
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # Mock 系统设计
 
 ## Mock 策略总览

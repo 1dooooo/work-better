@@ -1,3 +1,12 @@
+---
+title: 定时任务
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 定时任务系统架构
 
 > **维护说明**：当新增/移除定时任务、修改调度策略或依赖关系时更新本文档。

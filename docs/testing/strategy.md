@@ -1,3 +1,12 @@
+---
+title: 测试策略
+type: structural
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 测试策略总览
 
 ## 核心理念

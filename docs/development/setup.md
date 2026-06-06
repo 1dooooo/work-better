@@ -1,3 +1,12 @@
+---
+title: 开发环境搭建
+type: guide
+domain: development
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 开发环境搭建指南
 
 本文档帮助新加入的协作者快速搭建 Work Better 项目的开发环境。

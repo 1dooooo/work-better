@@ -1,3 +1,12 @@
+---
+title: 测试夹具
+type: structural
+domain: testing
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 测试 Harness 设计
 
 ## 什么是 Harness

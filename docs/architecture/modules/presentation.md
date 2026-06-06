@@ -1,3 +1,12 @@
+---
+title: 呈现层
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 呈现层架构
 
 > **维护说明**：当 UI 组件、交互流程或系统级快捷键变更时更新本文档。

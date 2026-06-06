@@ -1,3 +1,12 @@
+---
+title: 处理层
+type: structural
+domain: architecture
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 处理层架构
 
 > **维护说明**：当处理路径、模型策略、审核规则或 SLA 配置变更时更新本文档。
