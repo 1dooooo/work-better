@@ -1,0 +1,17 @@
+# === ECC 插件产物（开发者需自行安装 ECC） ===
+settings.json
+settings.local.json
+hooks/
+skills/
+commands/
+agents/
+mcp-configs/
+
+# === scripts/：忽略 ECC 脚本，保留项目自有脚本 ===
+scripts/*
+!scripts/setup-dev.sh
+!scripts/check-setup.js
+
+# === 运行时产物 ===
+sessions/
+.setup-done

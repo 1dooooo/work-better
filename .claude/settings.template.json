@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_PLUGIN_ROOT": "<你的项目路径>/.claude"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node <你的项目路径>/.claude/scripts/check-setup.js"
+          }
+        ],
+        "description": "检查 setup 是否已完成，未完成则阻止工作"
+      }
+    ],
+    "PreToolUse": [],
+    "PostToolUse": [],
+    "Stop": []
+  }
+}

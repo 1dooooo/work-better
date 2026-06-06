@@ -31,6 +31,7 @@
 | 呈现层 | [docs/architecture/modules/presentation.md](docs/architecture/modules/presentation.md) | 呈现层架构细节 |
 | 定时任务 | [docs/architecture/modules/scheduler.md](docs/architecture/modules/scheduler.md) | 定时任务系统架构 |
 | 事件模型 | [docs/architecture/modules/event-model.md](docs/architecture/modules/event-model.md) | 事件与数据模型定义 |
+| 开发指引 | [docs/development/setup.md](docs/development/setup.md) | 开发环境搭建与工作流指引 |
 
 ## 文档自维护规范
 
