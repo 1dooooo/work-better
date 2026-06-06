@@ -31,4 +31,5 @@ bash .claude/scripts/setup-dev.sh
 | [docs/product/overview.md](docs/product/overview.md) | 产品理念与功能方向 |
 | [docs/architecture/overview.md](docs/architecture/overview.md) | 架构设计 |
 | [docs/development/setup.md](docs/development/setup.md) | 开发环境搭建指南 |
+| [docs/conventions.md](docs/conventions.md) | 导航规则、维护约束、生命周期 |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |

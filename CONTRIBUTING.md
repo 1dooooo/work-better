@@ -137,6 +137,14 @@ work-better/
 
 详见 `agent.md` 中的「文档自维护规范」。
 
+## 文档规范
+
+所有文档遵循 [文档规范](docs/conventions.md)：
+- 必须有 frontmatter
+- 新增文档需更新对应 `_index.md`
+- 单文件不超过 300 行
+- 文档与代码变更同 PR
+
 ## 常见问题
 
 ### Q: Claude Code 没有加载项目配置？
