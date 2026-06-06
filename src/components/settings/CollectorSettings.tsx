@@ -1,24 +1,34 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-
-interface CollectorStatus {
-  id: string;
-  name: string;
-  enabled: boolean;
-  healthy: boolean;
-}
+import {
+  getFeishuMode,
+  saveFeishuMode,
+  getFeishuChatId,
+  saveFeishuChatId,
+  getCollectorStatuses,
+  enableCollector,
+  disableCollector,
+  type CollectorStatus,
+} from "../../lib/tauri";
 
 export default function CollectorSettings() {
   const [collectors, setCollectors] = useState<CollectorStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [feishuMode, setFeishuMode] = useState<"api" | "cli">("api");
+  const [feishuMode, setFeishuMode] = useState<"api" | "cli">("cli");
+  const [chatId, setChatId] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const list = await invoke<CollectorStatus[]>("get_collector_statuses");
+      const [list, mode, cid] = await Promise.all([
+        getCollectorStatuses(),
+        getFeishuMode(),
+        getFeishuChatId(),
+      ]);
       setCollectors(list);
+      setFeishuMode(mode as "api" | "cli");
+      setChatId(cid);
     } catch (err) {
-      console.error("Failed to load collector statuses:", err);
+      console.error("Failed to load collector settings:", err);
     } finally {
       setLoading(false);
     }
@@ -32,11 +42,10 @@ export default function CollectorSettings() {
     async (id: string, enabled: boolean) => {
       try {
         if (enabled) {
-          await invoke("enable_collector", { id });
+          await enableCollector(id);
         } else {
-          await invoke("disable_collector", { id });
+          await disableCollector(id);
         }
-        // Optimistic update
         setCollectors((prev) =>
           prev.map((c) => (c.id === id ? { ...c, enabled } : c)),
         );
@@ -47,6 +56,27 @@ export default function CollectorSettings() {
     },
     [refresh],
   );
+
+  const handleModeChange = useCallback(async (mode: "api" | "cli") => {
+    setFeishuMode(mode);
+    try {
+      await saveFeishuMode(mode);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save feishu mode:", err);
+    }
+  }, []);
+
+  const handleChatIdSave = useCallback(async () => {
+    try {
+      await saveFeishuChatId(chatId);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save chat id:", err);
+    }
+  }, [chatId]);
 
   if (loading) {
     return <div className="settings__loading">加载中...</div>;
@@ -87,31 +117,50 @@ export default function CollectorSettings() {
         ))}
       </ul>
 
-      <div className="settings__feishu-mode">
-        <h4>飞书接入方式</h4>
+      <div className="settings__field">
+        <span className="settings__label">飞书接入方式</span>
         <div className="settings__radio-group">
           <label className="settings__radio">
             <input
               type="radio"
               name="feishu-mode"
               checked={feishuMode === "api"}
-              onChange={() => setFeishuMode("api")}
+              onChange={() => handleModeChange("api")}
             />
             <span>API 直连</span>
-            <small>通过飞书开放平台 API 采集，稳定但需配置应用凭证</small>
           </label>
           <label className="settings__radio">
             <input
               type="radio"
               name="feishu-mode"
               checked={feishuMode === "cli"}
-              onChange={() => setFeishuMode("cli")}
+              onChange={() => handleModeChange("cli")}
             />
             <span>lark-cli</span>
-            <small>通过 lark-cli 命令行工具采集，适合快速验证</small>
           </label>
         </div>
+        <span className="settings__hint">
+          {feishuMode === "cli"
+            ? "通过 lark-cli 命令行工具采集，适合快速验证"
+            : "通过飞书开放平台 API 采集，需配置应用凭证"}
+        </span>
       </div>
+
+      <div className="settings__field">
+        <span className="settings__label">飞书会话 ID</span>
+        <input
+          className="settings__input"
+          value={chatId}
+          onChange={(e) => setChatId(e.target.value)}
+          onBlur={handleChatIdSave}
+          placeholder="输入飞书会话 ID"
+        />
+        <span className="settings__hint">
+          采集时使用的飞书会话标识
+        </span>
+      </div>
+
+      {saved && <span className="settings__saved">已保存</span>}
     </section>
   );
 }

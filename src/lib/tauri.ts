@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 export interface Event {
   id: string;
@@ -31,21 +32,32 @@ export async function triggerManualCapture(text: string): Promise<Event> {
 }
 
 export async function triggerFeishuCollect(
-  chatId: string,
+  chatId?: string,
   limit?: number,
 ): Promise<number> {
   return invoke<number>("trigger_feishu_collect", {
-    chatId,
+    chatId: chatId ?? null,
     limit: limit ?? null,
   });
 }
 
 // ─── Collector Management ───────────────────────────────────────────
 
+export interface CollectorStatus {
+  id: string;
+  name: string;
+  enabled: boolean;
+  healthy: boolean;
+}
+
 export interface CollectorHealth {
   level: string;
   message: string | null;
   error_count: number;
+}
+
+export async function getCollectorStatuses(): Promise<CollectorStatus[]> {
+  return invoke<CollectorStatus[]>("get_collector_statuses");
 }
 
 export async function listCollectors(): Promise<string[]> {
@@ -64,6 +76,52 @@ export async function checkCollectorHealth(
   id: string,
 ): Promise<CollectorHealth> {
   return invoke<CollectorHealth>("check_collector_health", { id });
+}
+
+// ─── Feishu Configuration ───────────────────────────────────────────
+
+/**
+ * 获取飞书采集模式（"cli" | "api"）
+ */
+export async function getFeishuMode(): Promise<string> {
+  return invoke<string>("get_feishu_mode");
+}
+
+/**
+ * 保存飞书采集模式
+ */
+export async function saveFeishuMode(mode: string): Promise<void> {
+  return invoke("save_feishu_mode", { mode });
+}
+
+/**
+ * 获取飞书会话 ID
+ */
+export async function getFeishuChatId(): Promise<string> {
+  return invoke<string>("get_feishu_chat_id");
+}
+
+/**
+ * 保存飞书会话 ID
+ */
+export async function saveFeishuChatId(chatId: string): Promise<void> {
+  return invoke("save_feishu_chat_id", { chatId });
+}
+
+// ─── Feishu Events ──────────────────────────────────────────────────
+
+/**
+ * 监听飞书采集完成事件
+ *
+ * @param callback 采集完成时的回调，count 为本次采集的事件数
+ * @returns 取消监听函数
+ */
+export async function onFeishuCollectComplete(
+  callback: (count: number) => void,
+): Promise<() => void> {
+  return listen<number>("feishu:collect-complete", (event) => {
+    callback(event.payload);
+  });
 }
 
 // ─── Scheduler Management ───────────────────────────────────────────

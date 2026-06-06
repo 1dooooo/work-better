@@ -5,7 +5,7 @@ import TasksView from "./views/TasksView";
 import TimelineView from "./views/TimelineView";
 import ReportsView from "./views/ReportsView";
 import SettingsView from "./views/SettingsView";
-import { getUnprocessedCount } from "../lib/tauri";
+import { getUnprocessedCount, onFeishuCollectComplete } from "../lib/tauri";
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   events: EventsView,
@@ -31,7 +31,14 @@ export default function MainWindow() {
   useEffect(() => {
     refreshCount();
     const interval = setInterval(refreshCount, 30_000);
-    return () => clearInterval(interval);
+    // 飞书采集完成后立即刷新计数
+    const unlisten = onFeishuCollectComplete(() => {
+      refreshCount();
+    });
+    return () => {
+      clearInterval(interval);
+      unlisten.then((fn) => fn());
+    };
   }, [refreshCount]);
 
   const ActiveComponent = VIEW_COMPONENTS[activeView];

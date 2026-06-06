@@ -3,6 +3,8 @@ import {
   getEvents,
   markEventProcessed,
   triggerFeishuCollect,
+  getFeishuChatId,
+  onFeishuCollectComplete,
   type Event,
 } from "../../lib/tauri";
 
@@ -13,6 +15,7 @@ export default function EventsView() {
   const [filter, setFilter] = useState<FilterSource>("all");
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -28,15 +31,25 @@ export default function EventsView() {
 
   useEffect(() => {
     refresh();
+    const unlisten = onFeishuCollectComplete(() => {
+      refresh();
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, [refresh]);
 
   const handleCollect = async () => {
     setCollecting(true);
+    setError(null);
     try {
-      await triggerFeishuCollect("default", 20);
+      const chatId = await getFeishuChatId();
+      await triggerFeishuCollect(chatId || undefined, 20);
       await refresh();
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error("Collect failed:", err);
+      setError(`采集失败: ${msg}`);
     } finally {
       setCollecting(false);
     }
@@ -89,6 +102,19 @@ export default function EventsView() {
           </button>
         </div>
       </header>
+
+      {error && (
+        <div className="events-view__error">
+          {error}
+          <button
+            className="events-view__action-btn"
+            onClick={() => setError(null)}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {loading && events.length === 0 ? (
         <div className="view__loading">加载中...</div>
