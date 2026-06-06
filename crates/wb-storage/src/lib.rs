@@ -3,4 +3,5 @@
 pub mod obsidian;
 pub mod sqlite;
 
+pub use obsidian::ObsidianWriter;
 pub use sqlite::SqliteEventLog;
