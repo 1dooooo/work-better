@@ -190,12 +190,16 @@ impl VectorStore for InMemoryVectorStore {
 }
 
 impl InMemoryVectorStore {
-    /// 截断内容到指定长度
+    /// 截断内容到指定长度（安全处理多字节字符）
     fn truncate_content(content: &str, max_len: usize) -> String {
         if content.len() <= max_len {
             content.to_string()
         } else {
-            format!("{}...", &content[..max_len])
+            let safe = content.char_indices()
+                .find(|(i, _)| *i >= max_len)
+                .map(|(i, _)| i)
+                .unwrap_or(content.len());
+            format!("{}...", &content[..safe])
         }
     }
 }
