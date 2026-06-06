@@ -69,8 +69,10 @@ export default function CollectorSettings() {
   }, []);
 
   const handleChatIdSave = useCallback(async () => {
+    const cleaned = chatId.trim().replace(/，/g, ",");
+    setChatId(cleaned);
     try {
-      await saveFeishuChatId(chatId);
+      await saveFeishuChatId(cleaned);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {

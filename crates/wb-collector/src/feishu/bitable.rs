@@ -75,9 +75,9 @@ impl Collector for FeishuBitableCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
-        // base +base-block-list 需要 --app-token，使用默认空值
+        // base +base-block-list 需要 --base-token，使用默认空值
         let default_token = "";
-        let args = vec!["base", "+base-block-list", "--app-token", default_token, "--format", "json"];
+        let args = vec!["base", "+base-block-list", "--base-token", default_token, "--format", "json"];
 
         let response: LarkBitableResponse = runner::execute_json("lark-cli", &args)?;
 

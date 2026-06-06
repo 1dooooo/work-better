@@ -166,7 +166,7 @@ pub async fn get_feishu_chat_id() -> Result<String, String> {
 #[tauri::command]
 pub async fn save_feishu_chat_id(chat_id: String) -> Result<(), String> {
     let mut app_config = load_config()?;
-    app_config.collectors.feishu_chat_id = Some(chat_id);
+    app_config.collectors.feishu_chat_id = Some(chat_id.trim().to_string());
     save_config(&app_config)
 }
 

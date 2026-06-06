@@ -78,9 +78,12 @@ impl Collector for FeishuMeetingCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
-        // vc +search 需要时间范围参数，使用默认空值（搜全部）
-        let default_time = "";
-        let args = vec!["vc", "+search", "--start", default_time, "--end", default_time, "--format", "json"];
+        // vc +search 至少需要一个过滤条件，使用最近 30 天作为默认时间范围
+        let now = chrono::Utc::now();
+        let thirty_days_ago = now - chrono::Duration::days(30);
+        let start = thirty_days_ago.format("%Y-%m-%d").to_string();
+        let end = now.format("%Y-%m-%d").to_string();
+        let args = vec!["vc", "+search", "--start", &start, "--end", &end, "--format", "json"];
 
         let response: LarkMeetingsResponse = runner::execute_json("lark-cli", &args)?;
 

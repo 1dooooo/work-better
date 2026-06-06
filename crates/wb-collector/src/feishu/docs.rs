@@ -30,7 +30,7 @@ struct LarkDocResult {
 struct LarkDocResultMeta {
     token: Option<String>,
     owner_name: Option<String>,
-    edit_time_iso: Option<String>,
+    update_time_iso: Option<String>,
 }
 
 /// 用于序列化的扁平文档结构
@@ -77,7 +77,7 @@ impl FeishuDocsCollector {
             entity_type: result.entity_type.clone(),
             title: result.title_highlighted.clone(),
             owner: meta.owner_name.clone(),
-            edit_time: meta.edit_time_iso.clone(),
+            edit_time: meta.update_time_iso.clone(),
         };
 
         let raw_payload = serde_json::to_string(&doc).ok()?;
@@ -116,7 +116,7 @@ mod tests {
             result_meta: Some(LarkDocResultMeta {
                 token: Some("doc-001".to_string()),
                 owner_name: Some("user-001".to_string()),
-                edit_time_iso: Some("2024-06-06T12:00:00Z".to_string()),
+                update_time_iso: Some("2024-06-06T12:00:00Z".to_string()),
             }),
             title_highlighted: Some("设计文档".to_string()),
         };
@@ -141,7 +141,7 @@ mod tests {
             result_meta: Some(LarkDocResultMeta {
                 token: None,
                 owner_name: None,
-                edit_time_iso: None,
+                update_time_iso: None,
             }),
             title_highlighted: Some("无 token 文档".to_string()),
         };
@@ -169,7 +169,7 @@ mod tests {
             result_meta: Some(LarkDocResultMeta {
                 token: Some("doc-002".to_string()),
                 owner_name: None,
-                edit_time_iso: None,
+                update_time_iso: None,
             }),
             title_highlighted: None,
         };

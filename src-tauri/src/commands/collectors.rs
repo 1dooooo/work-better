@@ -23,6 +23,7 @@ pub async fn register_builtin_collectors() {
     let chat_id = super::settings::load_config_for_collect()
         .ok()
         .and_then(|c| c.collectors.feishu_chat_id)
+        .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "oc_default".to_string());
 

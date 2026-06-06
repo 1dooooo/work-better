@@ -57,6 +57,7 @@ pub async fn trigger_feishu_collect(
                 let cid = config
                     .collectors
                     .feishu_chat_id
+                    .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty())
                     .ok_or_else(|| {
                         "未配置飞书会话 ID，请在设置中配置或传入 chat_id 参数".to_string()

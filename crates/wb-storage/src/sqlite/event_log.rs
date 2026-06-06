@@ -82,7 +82,7 @@ impl EventLog for SqliteEventLog {
         let attachments = serde_json::to_string(&event.attachments)?;
 
         conn.execute(
-            "INSERT INTO events (id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments)
+            "INSERT OR IGNORE INTO events (id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 event.id,
@@ -167,8 +167,7 @@ impl EventLog for SqliteEventLog {
         if let Some(ref until) = filter.until {
             sql.push_str(&format!(" AND timestamp <= ?{}", param_idx));
             param_values.push(Box::new(until.to_rfc3339()));
-            #[allow(unused_assignments)]
-            let _ = param_idx + 1;
+            param_idx += 1;
         }
 
         sql.push_str(" ORDER BY timestamp DESC");
