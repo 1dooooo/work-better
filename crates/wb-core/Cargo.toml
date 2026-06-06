@@ -10,4 +10,4 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 async-trait = "0.1"
-ts-rs = "10"
+ts-rs = { version = "10", features = ["chrono-impl", "serde-json-impl"] }
