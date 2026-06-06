@@ -5,6 +5,7 @@ import {
   triggerManualCapture,
   type Event,
 } from "../lib/tauri";
+import "../styles/menu-bar.css";
 
 export default function MenuBar() {
   const [unprocessedCount, setUnprocessedCount] = useState(0);

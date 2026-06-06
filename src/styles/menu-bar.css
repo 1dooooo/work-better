@@ -1,0 +1,201 @@
+/* Menu Bar — 菜单栏托盘面板样式 */
+
+.menu-bar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: var(--font-size-base);
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Header */
+.menu-bar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.menu-bar__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.menu-bar__badge {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.menu-bar__badge[data-count="0"] {
+  background: oklch(92% 0.04 145);
+  color: oklch(45% 0.12 145);
+}
+
+/* Capture */
+.menu-bar__capture {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.menu-bar__input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+  box-sizing: border-box;
+}
+
+.menu-bar__input:focus {
+  border-color: var(--color-accent);
+}
+
+.menu-bar__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.menu-bar__submit {
+  margin-top: var(--space-sm);
+  width: 100%;
+  padding: var(--space-xs) var(--space-md);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: oklch(99% 0 0);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.menu-bar__submit:hover {
+  opacity: 0.9;
+}
+
+.menu-bar__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Events */
+.menu-bar__events {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.menu-bar__section-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.menu-bar__empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-xl) 0;
+}
+
+.menu-bar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-bar__event {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.menu-bar__event:last-child {
+  border-bottom: none;
+}
+
+.menu-bar__event-type {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.menu-bar__event-source {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.menu-bar__event-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Footer */
+.menu-bar__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+.menu-bar__status {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.menu-bar__status--loading {
+  color: var(--color-accent);
+}
+
+.menu-bar__status--success {
+  color: oklch(55% 0.12 145);
+}
+
+.menu-bar__status--error {
+  color: oklch(55% 0.18 25);
+}
+
+.menu-bar__refresh {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.menu-bar__refresh:hover {
+  background: var(--color-surface-hover);
+}
