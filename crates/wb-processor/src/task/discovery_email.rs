@@ -46,7 +46,7 @@ pub fn discover_from_email(text: &str) -> Vec<PendingTask> {
             if let Some(pos) = trimmed.find(keyword) {
                 let after = trimmed[pos + keyword.len()..].trim();
                 let task_text = after
-                    .trim_start_matches(|c: char| c == ':' || c == '：' || c == ',' || c == '，' || c == '。' || c == ' ')
+                    .trim_start_matches(|c: char| [':', '：', ',', '，', '。', ' '].contains(&c))
                     .trim();
 
                 if !task_text.is_empty() && task_text.chars().count() >= 1 {

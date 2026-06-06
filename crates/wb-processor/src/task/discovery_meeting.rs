@@ -32,7 +32,7 @@ pub fn discover_from_meeting(text: &str) -> Vec<PendingTask> {
                 let after = trimmed[pos + keyword.len()..].trim();
                 // 去掉常见的分隔符前缀
                 let task_text = after
-                    .trim_start_matches(|c: char| c == ':' || c == '：' || c == ',' || c == '，' || c == '。' || c == ' ')
+                    .trim_start_matches(|c: char| [':', '：', ',', '，', '。', ' '].contains(&c))
                     .trim();
 
                 if !task_text.is_empty() && task_text.chars().count() >= 1 {

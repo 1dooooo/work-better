@@ -48,7 +48,7 @@ pub fn discover_from_message(text: &str) -> Vec<PendingTask> {
                 // 取关键词之后的文本作为任务内容
                 let after = trimmed[pos + keyword.len()..].trim();
                 let task_text = after
-                    .trim_start_matches(|c: char| c == ':' || c == '：' || c == ',' || c == '，' || c == '。' || c == ' ')
+                    .trim_start_matches(|c: char| [':', '：', ',', '，', '。', ' '].contains(&c))
                     .trim();
 
                 if !task_text.is_empty() && task_text.chars().count() >= 1 {

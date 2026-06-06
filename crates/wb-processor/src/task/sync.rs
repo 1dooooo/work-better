@@ -319,11 +319,11 @@ impl TaskSync {
             Resolution::KeepLocal => SyncAction::ConflictResolved,
             Resolution::KeepRemote => SyncAction::ConflictResolved,
             Resolution::TimestampPriority => {
-                // 时间戳优先：比较 updated_at
+                // 时间戳优先：保留较新的一方
                 if local.updated_at >= remote.updated_at {
-                    SyncAction::ConflictResolved
+                    SyncAction::Updated // 保留本地
                 } else {
-                    SyncAction::ConflictResolved
+                    SyncAction::ConflictResolved // 保留远端
                 }
             }
         };
