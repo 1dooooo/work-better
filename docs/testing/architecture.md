@@ -3,13 +3,13 @@ title: 测试体系总体架构
 type: structural
 domain: testing
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 status: active
 ---
 
 # 测试体系总体架构
 
-> **维护说明**：本文档是测试重设计方案的顶层架构文档。当测试层级划分、框架选型、Agent 可解析性策略发生变更时更新本文档。各层级的详细实现见 `layers/overview.md`。
+> **维护说明**：本文档是测试体系的顶层架构文档。当测试层级划分、框架选型、Agent 可解析性策略、多 Agent 协作模式发生变更时更新本文档。
 
 ## 设计目标
 
@@ -19,11 +19,24 @@ status: active
 
 测试通过 = 产品可用。这不是覆盖率数字，而是行为覆盖的完备性：
 
-- 所有关键路径（Classifier 路由、Task 状态机、SLA 判定、模型升级阈值、ReviewAgent verdict）必须 100% 分支覆盖
-- 所有 Source × EventType 组合的路由结果必须有对应测试
+- 所有关键路径必须 100% 分支覆盖
 - 所有非法状态转换必须被拦截验证
 - 测试失败必须意味着真实的产品缺陷，而非环境问题或测试脆弱性
 - 182 个产品级场景全部有可执行的验收测试
+- 20 个安全测试场景覆盖依赖漏洞、注入攻击、权限越界
+
+### 多 Agent 协作
+
+开发流程采用多 Agent 协作模式，每个 Agent 职责单一：
+
+| Agent | 职责 | 负责的测试层 |
+|-------|------|------------|
+| dev-agent | 功能开发 | L1-L2（单元/集成） |
+| test-agent | 测试执行与生成 | L4-L5（E2E/验收）+ H1-H2（安全扫描） |
+| review-agent | 代码审查 | H3-H5（安全测试生成） |
+| workflow-runner | 流程编排 | 无（只负责调度和报告） |
+
+> 详见 [多 Agent 协作开发规范](../development/multi-agent-collaboration.md)
 
 ### 分级触发
 
@@ -31,9 +44,9 @@ status: active
 
 | 门禁级别 | 触发条件 | 耗时目标 | 覆盖范围 |
 |---------|---------|---------|---------|
-| L1 快速门 | 任何代码变更 | <2min | 受影响的纯单元测试 |
-| L2 PR 门 | Pull Request | <10min | L1 + 集成 + E2E + 受影响的验收场景 |
-| L3 发布门 | Release / merge to main | <15min | 全量 A-G 层 (432 场景) |
+| L1 快速门 | 任何代码变更 | <2min | 受影响的纯单元测试 + H1-H2 安全扫描 |
+| L2 PR 门 | Pull Request | <10min | L1 + 集成 + H3-H5 + E2E + 受影响的验收场景 |
+| L3 发布门 | Release / merge to main | <15min | 全量 A-G + H 层 |
 | L4 夜间门 | 每日定时 (cron) | <60min | 全量 + 契约回归 + 真实集成 |
 
 ### 并行执行
@@ -42,6 +55,7 @@ status: active
 - Rust 侧：cargo-nextest 进程级隔离并行
 - TypeScript 侧：Vitest 线程池并行
 - G 层验收：按 product domain 分 7 组并行
+- L2 通过后：review-agent 与 test-agent (L4/L5) 并行执行
 
 ### 变更关联
 
@@ -69,20 +83,23 @@ status: active
             ┌─┴─────────────────────────────────┴─┐
             │  L1: 纯单元测试                      │  ~158 tests · 毫秒级
             │  (A+D: Pure Unit)                    │
+            ├─────────────────────────────────────┤
+            │  H:  安全测试                        │  ~20 tests · 秒级（与 L1 并行）
             └─────────────────────────────────────┘
 ```
 
 ### 各层概览
 
-| 层级 | 标识 | 测试数量 | 执行速度 | 外部依赖 |
-|------|------|---------|---------|---------|
-| L1 纯单元测试 | A (Rust) + D (TS) | ~158 | 毫秒级 | 无 |
-| L2 集成测试 | B (Rust) + E (TS) | ~63 | 秒级 | Mock 外部，真实内部 |
-| L3 契约测试 | C | ~9 | 秒级 | 录制/回放的外部 API |
-| L4 跨层 E2E | F | ~20 | 十秒级 | Mock 飞书/AI，真实 FS |
-| L5 黑盒验收 | G | 182 | 分钟级 | 真实或沙箱环境 |
+| 层级 | 标识 | 测试数量 | 执行速度 | 外部依赖 | 生成方 |
+|------|------|---------|---------|---------|--------|
+| L1 纯单元测试 | A (Rust) + D (TS) | ~158 | 毫秒级 | 无 | dev-agent |
+| L2 集成测试 | B (Rust) + E (TS) | ~63 | 秒级 | Mock 外部，真实内部 | dev-agent |
+| L3 契约测试 | C | ~9 | 秒级 | 录制/回放的外部 API | 手动/工具 |
+| L4 跨层 E2E | F | ~20 | 十秒级 | Mock 飞书/AI，真实 FS | test-agent |
+| L5 黑盒验收 | G | 182 | 分钟级 | 真实或沙箱环境 | test-agent |
+| H 安全测试 | H | ~20 | 秒级 | 无 (H1-H2) / Mock (H3-H5) | test-agent (H1-H2) / review-agent (H3-H5) |
 
-> 各层详细定义见 [layers/overview.md](layers/overview.md)。
+> 各层详细定义见 [layers/overview.md](layers/overview.md) 和 [layers/security.md](layers/security.md)
 
 ## 框架选型
 
@@ -90,12 +107,13 @@ status: active
 
 | 用途 | 框架 | 选择理由 |
 |------|------|----------|
-| 参数化测试 | rstest (90M+ downloads) | fixtures、`#[context]` Agent 可解析、`#[trace]` 失败输出变量 |
-| 快照/契约测试 | insta (70M+ downloads) | `assert_json_snapshot!`、redaction 处理动态字段、`.snap` 版本控制 |
-| HTTP Mock (契约) | httpmock (23M downloads) | record/replay、standalone Docker、YAML 配置 |
-| HTTP Mock (通用) | wiremock (55M downloads) | 最佳 async 支持、最活跃社区 |
-| 测试运行器 | cargo-nextest (3k stars) | NDJSON 输出、进程级隔离、filtersets 标签过滤、profiles |
-| BDD 验收 | cucumber-rs (15M downloads) | 纯 Rust API (无需 .feature)、World 状态管理、Agent 可 AST 解析 |
+| 参数化测试 | rstest | fixtures、`#[context]` Agent 可解析、`#[trace]` 失败输出变量 |
+| 快照/契约测试 | insta | `assert_json_snapshot!`、redaction 处理动态字段 |
+| HTTP Mock (契约) | httpmock | record/replay、standalone Docker、YAML 配置 |
+| HTTP Mock (通用) | wiremock | 最佳 async 支持、最活跃社区 |
+| 测试运行器 | cargo-nextest | NDJSON 输出、进程级隔离、filtersets 标签过滤 |
+| BDD 验收 | cucumber-rs | 纯 Rust API、World 状态管理、Agent 可 AST 解析 |
+| 依赖审计 | cargo-audit | Rust 依赖漏洞扫描 (H1) |
 
 ### TypeScript 侧技术栈
 
@@ -105,13 +123,6 @@ status: active
 | 组件测试 | @testing-library/react | 用户行为驱动、不依赖实现细节 |
 | E2E 测试 | Playwright | 跨浏览器、Tauri app 支持、trace 录制 |
 | API Mock | MSW 2.x | Service Worker 级拦截、类型安全 handlers |
-
-### 选型原则
-
-1. 社区活跃度优先：下载量、更新频率、issue 响应
-2. Agent 可解析性优先：输出格式结构化
-3. 进程隔离优先：测试间零共享状态
-4. 快照测试优先：结构变更自动暴露
 
 ## Agent 可解析性设计
 
@@ -124,44 +135,17 @@ status: active
 {"type":"suite","event":"ok","passed":156,"failed":1,"ignored":1}
 ```
 
-Agent 提取：失败用例名 + stderr、慢测试 (duration)、crate/module 定位。
-
 ### insta 快照文件
 
-`.snap` 文件纯文本，unified diff 格式：
-
-```text
----
-source: crates/wb-processor/src/classifier.rs
-expression: classify(&event)
----
-{ "route": "immediate", "priority": "P0" }
-```
-
-Agent 解析：source 定位、expression 理解断言意图、diff 自动 review。
+`.snap` 文件纯文本，unified diff 格式，Agent 解析 source 定位和 expression 理解断言意图。
 
 ### cucumber-rs 纯 Rust API
 
-```rust
-#[given(regex = r"^一个 (.+) 类型的事件$")]
-fn given_event(world: &mut TestWorld, event_type: String) { ... }
-
-#[when("该事件被分类器处理")]
-fn when_classify(world: &mut TestWorld) { ... }
-
-#[then(regex = r"^路由结果应为 (.+)$")]
-fn then_route(world: &mut TestWorld, expected: String) { ... }
-```
-
-Agent 解析：given/when/then 字符串是自然语言、World 字段变更可追踪。
+given/when/then 字符串是自然语言，World 字段变更可追踪。
 
 ### Playwright JSON Reporter
 
-```json
-{ "suites": [{ "specs": [{ "title": "飞书消息写入 Obsidian", "ok": true }] }] }
-```
-
-Agent 解析：status 判断、trace 附件回放、duration 性能基线。
+status 判断、trace 附件回放、duration 性能基线。
 
 ## 数据流与测试锚点
 
@@ -179,68 +163,70 @@ EventLog 是系统核心锚点，所有测试围绕数据链路展开：
 | Event 构造 | 字段完整性、类型正确性 | L1 |
 | EventLog 写入 | 顺序性、不可变性、查询正确性 | L1 |
 | Classifier 输出 | 路由决策表每条规则 | L1 |
-| ModelRouter 决策 | 升级阈值、Token 预算 | L1 |
 | Task 状态机 | 合法/非法转换 | L1 |
 | Event → EventLog → 处理层 | 事件流转路径 | L2 |
 | 处理层 → 存储层 | WorkRecord 三层写入 | L2 |
 | 飞书 API 请求/响应 | 格式、解析、错误处理 | L3 |
 | 飞书消息 → Obsidian | 完整业务管道 | L4 |
 | 用户场景端到端 | 信息输入到最终产出 | L5 |
+| Tauri command 输入 | 注入攻击、路径遍历 | H3 |
+| Tauri command 权限 | 权限越界 | H4 |
+| 文件系统操作 | 符号链接逃逸、沙箱突破 | H5 |
 
-## 目录结构
+## 多 Agent 协作与 Workflow
 
-### Rust 侧
-
-```
-crates/
-├── wb-core/src/              # A 层: inline #[cfg(test)]
-├── wb-processor/
-│   ├── src/                  # A 层: inline tests (rstest)
-│   ├── tests/                # B 层: 集成测试
-│   │   ├── contract/         # C 层: insta/httpmock 契约测试
-│   │   └── acceptance/       # G 层: cucumber-rs 验收测试
-├── wb-collector/src/         # A 层 + 契约快照
-├── wb-storage/
-│   ├── src/                  # A 层
-│   └── tests/                # B 层: SQLite/Obsidian/Vector 集成
-├── wb-ai/src/                # A 层
-└── wb-scheduler/
-    ├── src/                  # A 层
-    └── tests/                # B 层: scheduler_tests.rs
-```
-
-### TypeScript 侧
+### 协作流程
 
 ```
-src/                          # D 层: 组件/工具单元测试 (Vitest)
-test/
-├── integration/              # E 层: invoke() 集成测试
-└── e2e/                      # F 层: Playwright 跨层 E2E
+dev-agent 写代码 → 写入 dev-output.json
+        │
+        ▼
+workflow-runner 读取 dev-output → 推断 gate level
+        │
+        ├── Gate 1: test-agent 运行 L1 + H1-H2
+        ├── Gate 2: test-agent 运行 L2
+        └── L2 通过后并行:
+            ├── review-agent: 代码审查 + H3-H5
+            └── test-agent: L4 + L5
 ```
 
-### 配置文件
+### A2A 通信
 
-```
-.config/nextest.toml          # nextest profiles + filtersets
-vitest.config.ts              # Vitest 主配置
-vitest.config.int.ts          # Vitest 集成测试配置
-playwright.config.ts          # Playwright E2E 配置
-```
+Agent 之间通过 `.workflow/artifacts/{task_id}/` 下的文件通信：
+
+| 文件 | 写入方 | 读取方 |
+|------|--------|--------|
+| dev-output.json | dev-agent | workflow, test, review |
+| test-report.json | test-agent | workflow, dev |
+| review-report.json | review-agent | workflow |
+| final-report.json | workflow-runner | 用户 |
+
+> 详见 [多 Agent 协作开发规范](../development/multi-agent-collaboration.md)
+
+### 重试策略
+
+| 层级 | 最大重试 | 趋势停止 | 失败处理 |
+|------|---------|---------|---------|
+| L1 | 3 次 | 同一 source_location 连续 2 次 | dev-agent 判定 failure_type 后修复 |
+| L2 | 2 次 | 同一测试用例连续 2 次 | 同上 |
+| L4 | 1 次 | 同一测试连续 1 次 | 同上 |
+| L5 | 0 次 | 首次失败即上报 | 回到产品设计层面 |
 
 ## 测试数量总览
 
-| 层级 | Rust 侧 | TypeScript 侧 | 合计 | 依据 |
-|------|---------|---------------|------|------|
-| L1 纯单元 | 136 (A) | 22 (D) | 158 | 6 crate 核心逻辑 + 前端组件 |
-| L2 集成 | 46 (B) | 17 (E) | 63 | 层间接口 + 存储操作 |
-| L3 契约 | 9 (C) | 0 | 9 | lark-cli + 飞书 API + FS 行为 |
-| L4 E2E | 0 | 20 (F) | 20 | 完整业务管道 |
-| L5 验收 | 182 (G) | 0 | 182 | 产品级 Given/When/Then |
-| **合计** | **373** | **59** | **432** | |
+| 层级 | Rust 侧 | TypeScript 侧 | 合计 | 生成方 |
+|------|---------|---------------|------|--------|
+| L1 纯单元 | 136 (A) | 22 (D) | 158 | dev-agent |
+| L2 集成 | 46 (B) | 17 (E) | 63 | dev-agent |
+| L3 契约 | 9 (C) | 0 | 9 | 手动/工具 |
+| L4 E2E | 0 | 20 (F) | 20 | test-agent |
+| L5 验收 | 182 (G) | 0 | 182 | test-agent |
+| H 安全 | 13 (H1-H2) | 7 (H3-H5) | 20 | test-agent + review-agent |
+| **合计** | **386** | **66** | **452** | |
 
 ## 当前状态
 
-**实现完成度**: 98.8% (427/432 场景)
+**实现完成度**: 94.7% (427/452 场景)
 
 | 层级 | 场景数 | 已实现 | 通过 | 状态 |
 |------|--------|--------|------|------|
@@ -251,12 +237,7 @@ playwright.config.ts          # Playwright E2E 配置
 | E (TS 集成) | 17 | 17 | 17 | 完成 |
 | F (E2E) | 20 | 15 | 15 | 5 skipped (待环境配置) |
 | G (验收) | 182 | 182 | 182 | 完成 |
-
-**执行时间达标**: Fast <2min, Deep <8min, Full <12min, Nightly <15min
-
-**CI/CD**: GitHub Actions pipeline 已配置，支持分级触发
-
-> 详细执行记录见 [runbook](../../.claude/plans/testing-redesign.md)
+| H (安全) | 20 | 0 | 0 | 设计完成，待实现 |
 
 ## 文档索引
 
@@ -265,7 +246,9 @@ playwright.config.ts          # Playwright E2E 配置
 | [architecture.md](architecture.md) | 本文档：总体架构、框架选型、设计目标 |
 | [conventions.md](conventions.md) | 命名、组织、编写规范 |
 | [layers/overview.md](layers/overview.md) | 层级定义与边界划分 |
-| [scenarios/catalog.md](scenarios/catalog.md) | 432 个测试场景完整目录 |
-| [execution/triggering.md](execution/triggering.md) | 分级触发、变更影响分析、并行执行、CI 配置 |
+| [layers/security.md](layers/security.md) | H 层安全测试定义 |
+| [scenarios/catalog.md](scenarios/catalog.md) | 测试场景完整目录 |
+| [execution/triggering.md](execution/triggering.md) | 分级触发、变更影响分析、并行执行 |
 | [execution/migration.md](execution/migration.md) | 文档迁移、实施路线图、验收标准 |
+| [../development/multi-agent-collaboration.md](../development/multi-agent-collaboration.md) | 多 Agent 协作开发规范 |
 | [CODEMAPS/testing.codemap.md](CODEMAPS/testing.codemap.md) | 测试系统导航地图 |

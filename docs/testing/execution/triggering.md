@@ -4,7 +4,7 @@ type: structural
 domain: testing
 created: 2026-06-06
 updated: 2026-06-06
-status: draft
+status: active
 ---
 
 # 分级触发与执行策略

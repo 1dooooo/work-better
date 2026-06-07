@@ -3,7 +3,7 @@ title: 测试文档索引
 type: index
 domain: testing
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-07
 status: active
 ---
 
@@ -28,6 +28,7 @@ status: active
 | [layers/contract.md](layers/contract.md) | 契约测试 |
 | [layers/e2e.md](layers/e2e.md) | E2E 测试 |
 | [layers/acceptance.md](layers/acceptance.md) | 验收测试 |
+| [layers/security.md](layers/security.md) | 安全测试 (H 层) |
 
 ## 场景与执行
 
@@ -37,6 +38,13 @@ status: active
 | [execution/triggering.md](execution/triggering.md) | 分级触发与执行策略 |
 | [execution/parallelization.md](execution/parallelization.md) | 并行执行策略 |
 | [execution/migration.md](execution/migration.md) | 迁移与实施路线图 |
+
+## 多 Agent 协作
+
+| 文档 | 说明 |
+|------|------|
+| [../development/multi-agent-collaboration.md](../development/multi-agent-collaboration.md) | 多 Agent 协作开发规范 |
+| [../../.workflow/specs/dev-test-review.yaml](../../.workflow/specs/dev-test-review.yaml) | Workflow spec 定义 |
 
 ## 测试运行指南
 
@@ -54,13 +62,16 @@ status: active
 | 测试 Codemap | [CODEMAPS/testing.codemap.md](CODEMAPS/testing.codemap.md) |
 | CI 配置 | `.github/workflows/test.yml` |
 | Runbook | `.claude/plans/testing-redesign.md` |
+| Workflow Spec | `.workflow/specs/dev-test-review.yaml` |
+| Artifact Schemas | `.workflow/templates/` |
 
 ## 当前状态
 
-- 总场景数: 432
-- 已实现: 427 (98.8%)
+- 总场景数: 432 (A-G) + 20 (H) = 452
+- 已实现: 427 (98.8% A-G)
 - 通过: 427
 - E2E skipped: 5 (待环境配置)
+- H 层: 设计完成，待实现
 
 ## 废弃文档
 

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevOutput",
+  "description": "dev-agent 写入，workflow-agent / test-agent / review-agent 读取",
+  "type": "object",
+  "required": ["task_id", "task_type", "changed_files", "affected_modules", "timestamp"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务唯一标识，如 feat-001、fix-042"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": ["feature", "fix", "refactor", "security", "docs"],
+      "description": "任务类型，用于推断 gate level"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "change_type"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "相对于项目根目录的文件路径"
+          },
+          "change_type": {
+            "type": "string",
+            "enum": ["added", "modified", "deleted"]
+          },
+          "diff_summary": {
+            "type": "string",
+            "description": "变更内容的人类可读摘要"
+          }
+        }
+      }
+    },
+    "affected_modules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "受影响的 crate/module 名称，用于测试影响分析"
+    },
+    "new_tests": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "dev-agent 新增的 L1-L2 测试文件路径"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "产品验收条件（如有），test-agent 用于生成 L4-L5 测试"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

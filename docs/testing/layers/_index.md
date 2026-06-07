@@ -19,6 +19,7 @@ status: active
 | [contract.md](contract.md) | 契约测试指南 |
 | [e2e.md](e2e.md) | E2E 测试指南 |
 | [acceptance.md](acceptance.md) | 验收测试指南 |
+| [security.md](security.md) | 安全测试指南 (H 层) |
 
 ## 废弃文档
 

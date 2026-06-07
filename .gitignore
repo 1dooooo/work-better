@@ -67,3 +67,6 @@ test-results/vitest-results.json
 
 # === Brainstorming ===
 .brainstorming/
+
+# === Workflow artifacts (runtime, not committed) ===
+.workflow/artifacts/

@@ -1,0 +1,300 @@
+# ============================================================
+# dev-test-review workflow spec
+# ============================================================
+# Tool-agnostic workflow definition.
+# Per-tool adapters read this spec and enforce via their native
+# mechanism (hooks, rules, or user prompt).
+#
+# Agents communicate exclusively through artifact files in
+# .workflow/artifacts/{task_id}/. No shared conversation context.
+# ============================================================
+
+name: dev-test-review
+version: "1.0"
+description: >
+  开发-测试-审查 workflow。当开发任务启动时触发，
+  编排 dev-agent → test-agent → review-agent 的协作，
+  实现软件交付的自闭环。
+
+# ----------------------------------------------------------
+# Agent registry
+# ----------------------------------------------------------
+agents:
+  workflow-runner:
+    role: orchestrator
+    description: 轻量编排 agent，读取 artifacts 决定下一步调度
+    session: independent          # 独立会话，通过文件同步
+    config: .claude/agents/workflow-runner.md
+
+  dev-agent:
+    role: developer
+    description: 写代码 + 写 L1-L2 测试
+    outputs:
+      - .workflow/artifacts/{task_id}/dev-output.json
+
+  test-agent:
+    role: tester
+    description: 运行测试 + 从产品文档生成 L4-L5 测试
+    inputs:
+      - .workflow/artifacts/{task_id}/dev-output.json
+    outputs:
+      - .workflow/artifacts/{task_id}/test-report.json
+
+  review-agent:
+    role: reviewer
+    description: 代码审查 + 生成 H3-H5 安全测试
+    inputs:
+      - .workflow/artifacts/{task_id}/dev-output.json
+    outputs:
+      - .workflow/artifacts/{task_id}/review-report.json
+
+# ----------------------------------------------------------
+# Trigger rules (三级触发，按优先级)
+# ----------------------------------------------------------
+triggers:
+  - priority: 1
+    method: llm_recognition
+    description: >
+      LLM 主动识别到需要子 agent 协作时，启动 workflow-runner。
+      所有工具通用，最高优先级。
+
+  - priority: 2
+    method: hook
+    description: >
+      工具层 hook 检测到 dev-output.json 写入后自动启动。
+      Claude Code: PostToolUse hook
+      Codex: hook mechanism
+      Cursor: 不支持，降级到 priority 3
+
+  - priority: 3
+    method: user_manual
+    description: 用户手动触发 workflow-runner（兜底）
+
+# ----------------------------------------------------------
+# Gate level inference
+# ----------------------------------------------------------
+gate_inference:
+  input: dev-output.json
+  rules:
+    - condition: "any changed_file in core_modules"
+      gate: L2
+      core_modules:
+        - "crates/wb-core/"
+        - "crates/wb-processor/"
+        - "crates/wb-ai/"
+    - condition: "any changed_file in storage_modules"
+      gate: L2
+      storage_modules:
+        - "crates/wb-storage/"
+    - condition: "any changed_file in tauri_commands"
+      gate: L2
+      tauri_commands:
+        - "src-tauri/src/commands/"
+    - condition: "any changed_file in frontend_only"
+      gate: L1
+      frontend_only:
+        - "src/"
+    - condition: "any changed_file in docs_or_config"
+      gate: L1
+      docs_or_config:
+        - "docs/"
+        - ".config/"
+        - "scripts/"
+    - condition: default
+      gate: L2
+
+# ----------------------------------------------------------
+# Execution flow
+# ----------------------------------------------------------
+flow:
+  start:
+    - step: read_dev_output
+      description: 读取 .workflow/artifacts/{task_id}/dev-output.json
+
+    - step: infer_gate
+      description: 根据 changed_files 推断 gate level
+
+    - step: run_L1_H
+      description: 触发 test-agent 运行 L1 单元测试 + H1-H2 安全扫描
+      agent: test-agent
+      parallel: true              # L1 和 H 并行
+      timeout: 2m
+      outputs: test-report.json
+
+  check_L1_H:
+    - condition: all_passed
+      goto: run_L2
+    - condition: has_failures
+      goto: handle_failure
+      with:
+        gate: L1
+        max_retries: 3
+        trend_stop: 2              # 同一 source_location 连续失败 2 次停止
+
+  run_L2:
+    - step: run_L2_tests
+      description: 触发 test-agent 运行 L2 集成测试
+      agent: test-agent
+      timeout: 30s
+      outputs: test-report.json
+
+  check_L2:
+    - condition: all_passed
+      goto: parallel_review_e2e    # L2 过了，review 和 L4/L5 并行
+    - condition: has_failures
+      goto: handle_failure
+      with:
+        gate: L2
+        max_retries: 2
+        trend_stop: 2
+
+  parallel_review_e2e:
+    - step: run_review
+      description: 触发 review-agent 代码审查 + 生成 H3-H5 安全测试
+      agent: review-agent
+      parallel_with: [run_L4_L5]
+      outputs: review-report.json
+
+    - step: run_L4_L5
+      description: 触发 test-agent 运行 L4 E2E + L5 验收（并行）
+      agent: test-agent
+      parallel_with: [run_review]
+      outputs: test-report.json
+
+  check_L4:
+    - condition: all_passed
+      goto: check_L5
+    - condition: has_failures
+      goto: handle_failure
+      with:
+        gate: L4
+        max_retries: 1
+        trend_stop: 1
+
+  check_L5:
+    - condition: all_passed
+      goto: check_review
+    - condition: has_failures
+      goto: escalate                # L5 失败直接上报，不重试
+      with:
+        reason: "验收测试失败，需要回到产品设计层面讨论"
+
+  check_review:
+    - condition: verdict_is [approve, approve_with_comments]
+      goto: done
+    - condition: verdict_is [request_changes, block]
+      goto: handle_review_failure
+
+  # ----------------------------------------------------------
+  # Failure handling
+  # ----------------------------------------------------------
+  handle_failure:
+    - step: read_failure_location
+      description: 从 test-report.json 读取 source_location
+    - step: check_trend
+      description: >
+        对比历史 test-report，检查同一 source_location 是否连续失败。
+        超过 trend_stop 次 → escalate。
+    - step: trigger_dev_fix
+      description: >
+        触发 dev-agent 修复代码。dev-agent 读取 test-report.json，
+        判定 failure_type（code_bug / test_bug / env_issue），
+        修复后写入新的 dev-output.json。
+      agent: dev-agent
+    - step: re_run_gate
+      description: 回到对应 gate 重新运行测试
+      goto: start (with updated dev-output.json)
+
+  handle_review_failure:
+    - step: trigger_dev_fix
+      description: >
+        触发 dev-agent 读取 review-report.json，修复审查发现的问题。
+      agent: dev-agent
+    - step: re_run_from_L1
+      description: 修复后从 L1 开始重新运行
+      goto: start
+
+  escalate:
+    - step: write_final_report
+      description: >
+        写入 final-report.json，status=blocked 或 escalated，
+        包含 escalation_reason 和 uncovered_paths。
+        用户下次打开项目时会看到。
+
+  done:
+    - step: archive_artifacts
+      description: 将 artifacts 目录归档（保留，可清理）
+    - step: write_final_report
+      description: 写入 final-report.json，status=done
+
+# ----------------------------------------------------------
+# Retry strategy
+# ----------------------------------------------------------
+retry:
+  L1:
+    max_retries: 3
+    trend_stop: 2                 # 同一 source_location 连续失败 2 次 → 停止
+    description: "单元测试修复成本低，多给机会"
+  L2:
+    max_retries: 2
+    trend_stop: 2                 # 同一测试用例连续失败 2 次 → 停止
+    description: "集成测试修复涉及模块间协调"
+  L4:
+    max_retries: 1
+    trend_stop: 1                 # 同一测试连续失败 1 次 → 停止
+    description: "E2E 修复成本高，一次修不好就上报"
+  L5:
+    max_retries: 0
+    trend_stop: 0                 # 首次失败即上报
+    description: "验收测试失败意味着产品需求不达标"
+
+# ----------------------------------------------------------
+# Artifact contracts (file paths)
+# ----------------------------------------------------------
+artifacts:
+  base_dir: .workflow/artifacts/{task_id}/
+  files:
+    dev_output:
+      path: dev-output.json
+      writer: dev-agent
+      readers: [workflow-runner, test-agent, review-agent]
+      schema: .workflow/templates/dev-output.schema.json
+    test_report:
+      path: test-report.json
+      writer: test-agent
+      readers: [workflow-runner, dev-agent]
+      schema: .workflow/templates/test-report.schema.json
+    review_report:
+      path: review-report.json
+      writer: review-agent
+      readers: [workflow-runner]
+      schema: .workflow/templates/review-report.schema.json
+    final_report:
+      path: final-report.json
+      writer: workflow-runner
+      readers: [user]
+      schema: .workflow/templates/final-report.schema.json
+
+# ----------------------------------------------------------
+# Uncovered paths detection (P2)
+# ----------------------------------------------------------
+uncovered_paths_detection:
+  description: >
+    检测变更路径是否被测试覆盖。采用两阶段策略：
+    脚本粗筛（文件级）+ LLM 细检（函数级）。
+  stage_1_script:
+    description: "文件级粗筛：对比 changed_files 与测试文件映射"
+    tool: scripts/test-impact.sh
+    method: >
+      运行 scripts/test-impact.sh 获取受影响的测试组，
+      对比 dev-output.json 中的 changed_files，
+      标记无对应测试文件的路径。
+    detection_method: script
+  stage_2_llm:
+    description: "函数级细检：LLM 分析变更函数是否有对应测试用例"
+    method: >
+      test-agent 读取 changed_files 的 diff，
+      识别新增/修改的函数签名，
+      检查是否有对应的测试函数覆盖。
+    detection_method: llm
+    output: 写入 test-report.json 的 uncovered_paths 字段

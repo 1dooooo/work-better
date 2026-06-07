@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FinalReport",
+  "description": "workflow-agent 写入，用户读取",
+  "type": "object",
+  "required": ["task_id", "status", "timestamp"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["done", "blocked", "escalated"],
+      "description": "任务最终状态"
+    },
+    "test_summary": {
+      "type": "object",
+      "properties": {
+        "total_tests_run": { "type": "integer" },
+        "all_passed": { "type": "boolean" },
+        "retry_count": { "type": "integer" },
+        "gate_levels_executed": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "review_summary": {
+      "type": "object",
+      "properties": {
+        "verdict": { "type": "string" },
+        "findings_count": { "type": "integer" }
+      }
+    },
+    "security_summary": {
+      "type": "object",
+      "properties": {
+        "h_layer_passed": { "type": "boolean" },
+        "vulnerabilities_found": { "type": "integer" },
+        "security_tests_generated": { "type": "integer" }
+      }
+    },
+    "uncovered_paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "最终仍未覆盖的变更路径"
+    },
+    "escalation_reason": {
+      "type": ["string", "null"],
+      "description": "上报原因（status=blocked 或 escalated 时）"
+    },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}

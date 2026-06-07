@@ -92,6 +92,7 @@ draft → active → deprecated
 | 新增/移除模块 | 架构总览 + docs/index.md |
 | 产品方向调整 | 产品文档 + agent.md 核心思想（如涉及原则变化） |
 | 数据模型变更 | 事件模型文档 + 对应模块文档 |
+| 多 Agent 协作流程变更 | workflow spec + multi-agent-collaboration.md + agent 定义文件 |
 
 ## 健康检查
 

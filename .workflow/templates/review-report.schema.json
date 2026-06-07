@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReviewReport",
+  "description": "review-agent 写入，workflow-agent 读取",
+  "type": "object",
+  "required": ["task_id", "verdict", "timestamp"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "verdict": {
+      "type": "string",
+      "enum": ["approve", "approve_with_comments", "request_changes", "block"],
+      "description": "审查结论"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "file"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "title": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "security_tests_generated": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "review-agent 生成的 H3-H5 安全测试文件路径"
+    },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}

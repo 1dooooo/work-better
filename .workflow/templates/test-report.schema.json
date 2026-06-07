@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestReport",
+  "description": "test-agent 写入，workflow-agent / dev-agent 读取",
+  "type": "object",
+  "required": ["task_id", "gate_level", "result", "summary", "timestamp"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "gate_level": {
+      "type": "string",
+      "enum": ["L1", "L2", "L4", "L5"],
+      "description": "本次执行的门禁级别"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "partial_pass", "fail"],
+      "description": "测试结果"
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "skipped"],
+      "properties": {
+        "total": { "type": "integer" },
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "skipped": { "type": "integer" }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["test_id", "name", "layer", "error", "failure_type"],
+        "properties": {
+          "test_id": { "type": "string", "description": "测试用例标识，如 A1-03" },
+          "name": { "type": "string", "description": "测试函数名" },
+          "layer": { "type": "string", "enum": ["A","B","C","D","E","F","G","H"] },
+          "error": { "type": "string" },
+          "source_location": { "type": "string", "description": "源码位置" },
+          "failure_type": {
+            "type": "string",
+            "enum": ["code_bug", "test_bug", "env_issue", "unknown"],
+            "description": "初始 unknown，由 dev-agent 判定后更新"
+          }
+        }
+      }
+    },
+    "uncovered_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "detection_method"],
+        "properties": {
+          "path": { "type": "string" },
+          "detection_method": { "type": "string", "enum": ["script", "llm"] }
+        }
+      }
+    },
+    "security_scan": {
+      "type": ["object", "null"],
+      "description": "H 层安全扫描结果，无则 null",
+      "properties": {
+        "h1_dependency_audit": {
+          "type": "object",
+          "properties": {
+            "vulnerabilities_found": { "type": "integer" },
+            "critical": { "type": "integer" },
+            "high": { "type": "integer" },
+            "details": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "h2_secret_scan": {
+          "type": "object",
+          "properties": {
+            "secrets_found": { "type": "integer" },
+            "details": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}
