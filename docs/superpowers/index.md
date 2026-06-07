@@ -20,5 +20,5 @@ updated: 2026-06-06
 | Spec | Purpose |
 |------|---------|
 | [Product Overview](../product/overview.md) | Feature list and module breakdown |
-| [Tech Architecture](../tech/architecture.md) | Layered architecture design |
-| [Tech Selection](../tech/tech-spec.md) | Technology choices and rationale |
+| [Architecture Overview](../architecture/overview.md) | Layered architecture design |
+| [Tech Selection](specs/2026-06-06-tech-selection-design.md) | Technology choices and rationale |

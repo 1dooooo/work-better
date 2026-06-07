@@ -4,7 +4,7 @@ type: guide
 domain: testing
 created: 2026-06-06
 updated: 2026-06-06
-status: active
+status: deprecated
 ---
 
 # 单元测试指南

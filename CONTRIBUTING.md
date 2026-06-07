@@ -77,9 +77,22 @@ bash .claude/scripts/setup-dev.sh
 
 ```
 work-better/
+├── src-tauri/             # Tauri 桌面应用（Rust 后端）
+│   └── src/               #   Tauri 入口、commands、窗口管理
+├── crates/                # Rust 业务逻辑 crate
+│   ├── wb-core/           #   核心数据结构（Event、WorkRecord、Task）
+│   ├── wb-collector/      #   采集层（飞书、系统、手动）
+│   ├── wb-processor/      #   处理层（分类、审核、报告）
+│   ├── wb-storage/        #   存储层（Obsidian、向量DB、SQLite）
+│   ├── wb-scheduler/      #   定时任务调度
+│   └── wb-ai/             #   AI 模型路由与预算
+├── src/                   # React 19 前端（TypeScript）
+├── test/                  # 前端集成与 E2E 测试
 ├── CLAUDE.md              # Claude Code 入口
 ├── agent.md               # Agent 指南（核心思想、文档索引）
 ├── CONTRIBUTING.md         # 本文档
+├── Cargo.toml             # Rust workspace 配置
+├── package.json           # Node.js 项目配置
 ├── docs/                  # 产品与架构文档
 └── .claude/               # Claude Code 配置
     ├── rules/             # 编码规范（✅ 纳入 Git）

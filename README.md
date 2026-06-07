@@ -19,7 +19,7 @@ cd work-better
 bash .claude/scripts/setup-dev.sh
 ```
 
-前置条件：[Claude Code](https://docs.anthropic.com/en/docs/claude-code) + Node.js ≥ 18 + [ECC 插件](https://github.com/anthropics/ecc)
+前置条件：[Claude Code](https://docs.anthropic.com/en/docs/claude-code) + Node.js ≥ 18 + Rust toolchain + [ECC 插件](https://github.com/anthropics/ecc)
 
 详细指引见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

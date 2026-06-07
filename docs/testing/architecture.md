@@ -9,7 +9,7 @@ status: active
 
 # 测试体系总体架构
 
-> **维护说明**：本文档是测试重设计方案的顶层架构文档。当测试层级划分、框架选型、Agent 可解析性策略发生变更时更新本文档。各层级的详细实现见 `02-test-layers.md`。
+> **维护说明**：本文档是测试重设计方案的顶层架构文档。当测试层级划分、框架选型、Agent 可解析性策略发生变更时更新本文档。各层级的详细实现见 `layers/overview.md`。
 
 ## 设计目标
 
@@ -82,7 +82,7 @@ status: active
 | L4 跨层 E2E | F | ~20 | 十秒级 | Mock 飞书/AI，真实 FS |
 | L5 黑盒验收 | G | 182 | 分钟级 | 真实或沙箱环境 |
 
-> 各层详细定义见 [02-test-layers.md](02-test-layers.md)。
+> 各层详细定义见 [layers/overview.md](layers/overview.md)。
 
 ## 框架选型
 

@@ -16,7 +16,7 @@ status: active
 | 决策 | [decisions/index.md](decisions/index.md) | ADR 决策记录 |
 | 功能 | [features/index.md](features/index.md) | 功能清单与状态 |
 | 开发 | [development/setup.md](development/setup.md) | 环境搭建与工作流 |
-| 测试 | [testing/strategy.md](testing/strategy.md) | 测试策略与规范 |
+| 测试 | [testing/_index.md](testing/_index.md) | 测试策略与规范 |
 | 设计规格 | [superpowers/specs/](superpowers/specs/) | 设计规格文档 |
 | 实现计划 | [superpowers/plans/](superpowers/plans/) | 实现计划 |
 | 规范 | [conventions.md](conventions.md) | 文档规范（本文档） |

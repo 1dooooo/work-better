@@ -62,9 +62,21 @@ Claude Code 启动后会自动加载：
 
 ```
 work-better/
+├── src-tauri/             # Tauri 桌面应用（Rust 后端）
+│   └── src/               #   Tauri 入口、commands、窗口管理
+├── crates/                # Rust 业务逻辑 crate
+│   ├── wb-core/           #   核心数据结构（Event、WorkRecord、Task）
+│   ├── wb-collector/      #   采集层（飞书、系统、手动）
+│   ├── wb-processor/      #   处理层（分类、审核、报告）
+│   ├── wb-storage/        #   存储层（Obsidian、向量DB、SQLite）
+│   ├── wb-scheduler/      #   定时任务调度
+│   └── wb-ai/             #   AI 模型路由与预算
+├── src/                   # React 19 前端（TypeScript）
+├── test/                  # 前端集成与 E2E 测试
 ├── CLAUDE.md              # Claude Code 入口（指向 agent.md）
 ├── agent.md               # Agent 指南：核心思想、文档索引、自维护规范
 ├── CONTRIBUTING.md         # 贡献指南（入口文档）
+├── Cargo.toml             # Rust workspace 配置
 ├── package.json           # Node.js 项目配置
 ├── docs/                  # 产品与架构文档
 │   ├── product/           # 产品文档
@@ -242,5 +254,6 @@ export ECC_HOOK_PROFILE=minimal
 
 ### Q: settings.json 和 settings.local.json 的区别？
 
-- `settings.json` — 项目级配置，**所有人共享，纳入 Git**
+- `settings.template.json` — 项目级配置模板，**纳入 Git，所有人共享**
+- `settings.json` — 从模板生成的个人配置，**已 gitignore，每人不同**（由 `setup-dev.sh` 自动生成）
 - `settings.local.json` — 个人覆盖，**已 gitignore，不影响他人**

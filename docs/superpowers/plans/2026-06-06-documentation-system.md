@@ -1,3 +1,12 @@
+---
+title: 文档体系规范实施计划
+type: implementation
+domain: conventions
+created: 2026-06-06
+updated: 2026-06-06
+status: active
+---
+
 # 文档体系规范实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
