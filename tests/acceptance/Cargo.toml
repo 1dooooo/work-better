@@ -1,0 +1,17 @@
+[package]
+name = "wb-acceptance"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "wb-acceptance"
+path = "src/main.rs"
+
+[dependencies]
+cucumber = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tempfile = { workspace = true }

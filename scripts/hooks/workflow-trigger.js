@@ -15,20 +15,50 @@ process.stdin.on('end', () => {
   try {
     const data = JSON.parse(input);
     const toolName = data.tool_name || '';
+    const toolInput = data.tool_input || {};
 
-    // 只关心 Write / Edit 工具
-    if (toolName !== 'Write' && toolName !== 'Edit') {
+    let shouldTrigger = false;
+    let taskId = null;
+
+    // Case 1: Write/Edit 工具写入 dev-output.json
+    if (toolName === 'Write' || toolName === 'Edit') {
+      const filePath = toolInput.file_path || '';
+      const match = filePath.match(/\.workflow\/artifacts\/([^/]+)\/dev-output\.json$/);
+      if (match) {
+        shouldTrigger = true;
+        taskId = match[1];
+      }
+    }
+
+    // Case 2: Bash 工具执行 git commit（开发任务完成信号）
+    if (toolName === 'Bash') {
+      const command = toolInput.command || '';
+      if (/^git\s+commit\b/.test(command.trim())) {
+        // 检查是否有活跃的 workflow artifacts
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        const artifactsDir = path.join(projectRoot, '.workflow', 'artifacts');
+        if (fs.existsSync(artifactsDir)) {
+          const tasks = fs.readdirSync(artifactsDir).filter(d => {
+            const devOutput = path.join(artifactsDir, d, 'dev-output.json');
+            return fs.existsSync(devOutput);
+          });
+          // 找到最新有 dev-output 但没有 final-report 的任务
+          for (const t of tasks.sort().reverse()) {
+            const finalReport = path.join(artifactsDir, t, 'final-report.json');
+            if (!fs.existsSync(finalReport)) {
+              shouldTrigger = true;
+              taskId = t;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!shouldTrigger || !taskId) {
       process.exit(0);
     }
 
-    const filePath = data.tool_input?.file_path || '';
-    // 匹配 .workflow/artifacts/{task_id}/dev-output.json
-    const match = filePath.match(/\.workflow\/artifacts\/([^/]+)\/dev-output\.json$/);
-    if (!match) {
-      process.exit(0);
-    }
-
-    const taskId = match[1];
     const projectRoot = path.resolve(__dirname, '..', '..');
     const runWorkflow = path.join(projectRoot, 'scripts', 'run-workflow.sh');
 
@@ -37,7 +67,7 @@ process.stdin.on('end', () => {
       process.exit(0);
     }
 
-    console.error(`[workflow-trigger] dev-output.json detected for task ${taskId}, triggering workflow...`);
+    console.error(`[workflow-trigger] Triggering workflow for task ${taskId} (tool: ${toolName})`);
 
     const result = spawnSync('bash', [runWorkflow, taskId], {
       cwd: projectRoot,
@@ -54,10 +84,8 @@ process.stdin.on('end', () => {
       console.error(`[workflow-trigger] Workflow completed successfully for task ${taskId}`);
     }
 
-    // Hook 不阻塞 agent，输出到 stderr 让 agent 看到结果
     process.exit(0);
   } catch (e) {
-    // 解析失败不阻塞
     console.error(`[workflow-trigger] Error: ${e.message}`);
     process.exit(0);
   }

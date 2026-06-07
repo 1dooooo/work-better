@@ -8,6 +8,7 @@ members = [
     "crates/wb-storage",
     "crates/wb-ai",
     "crates/wb-scheduler",
+    "tests/acceptance",
 ]
 
 [workspace.dependencies]
@@ -23,3 +24,4 @@ rstest = "0.26"
 insta = { version = "1", features = ["json", "redactions"] }
 tempfile = "3"
 httpmock = "0.7"
+cucumber = "0.21"

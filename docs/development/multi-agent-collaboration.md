@@ -147,7 +147,7 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
 
 ### Codex
 
-- Agents: `.codex/` 下的 agent 定义
+- Instructions: `.codex/instructions.md`
 - Hooks: Codex hook mechanism
 - Skills: workflow 相关 skill
 
@@ -156,7 +156,7 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
 - Rules: `.cursor/rules/` 中注入 workflow 提示
 - 无原生 hook，依赖 LLM 主动识别或用户手动触发
 
-> **适配状态**：Claude Code 适配已实现（`.claude/agents/workflow-runner.md`）。Codex 和 Cursor 适配待实现——当前依赖 LLM 主动识别触发（优先级 1）。
+> **适配状态**：Claude Code、Codex、Cursor 适配均已实现。
 
 ## 文件结构
 
