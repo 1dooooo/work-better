@@ -65,13 +65,15 @@ status: active
 | Workflow Spec | `.workflow/specs/dev-test-review.yaml` |
 | Artifact Schemas | `.workflow/templates/` |
 
-## 当前状态
+## 当前状态（2026-06-07 验证）
 
-- 总场景数: 432 (A-G) + 20 (H) = 452
-- 已实现: 427 (98.8% A-G)
-- 通过: 427
-- E2E skipped: 5 (待环境配置)
-- H 层: 设计完成，待实现
+- 总测试函数数: 1383 通过 / 0 失败 / 11 跳过
+- Rust 侧: 1204 个测试函数（wb-ai:122, wb-collector:73, wb-core:48, wb-processor:387, wb-scheduler:71, wb-storage:131, 集成测试:~372）
+- TypeScript 侧: 164 个测试函数（vitest 18 个测试文件）
+- E2E (Playwright): 15 通过 / 11 跳过（F3 处理管线 UI + F5 调度器接入未实现）
+- H1-H2 安全扫描: 通过（npm audit 零漏洞，无敏感数据泄露）
+- H3-H5 安全测试: 设计完成，待实现
+- G 层验收场景: 182 个场景已定义（scenarios/catalog.md），待 cucumber-rs 实现
 
 ## 废弃文档
 
