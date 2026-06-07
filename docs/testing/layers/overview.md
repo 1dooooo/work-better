@@ -19,7 +19,7 @@ status: active
 | 集成测试 | B+E | 63 | <30s | rstest / Vitest | 每次代码变更 |
 | 契约测试 | C | 9 | <10s | insta / httpmock | 外部依赖变更 / 夜间 |
 | 跨层 E2E | F | 20 | <2min | Playwright + cargo test | PR / 发布 |
-| 黑盒验收 | G | 182 | <10min (并行) | cucumber-rs | PR / 发布 |
+| 黑盒验收 | G | 182 (已定义) | — | cucumber-rs (待修复) | PR / 发布 |
 
 ---
 
@@ -373,7 +373,7 @@ test('快捷记录写入 EventLog', async ({ page }) => {
 
 ---
 
-## G 层：黑盒验收测试 (182 scenarios)
+## G 层：黑盒验收测试 (182 scenarios — 待 cucumber-rs 实现)
 
 ### 边界定义
 

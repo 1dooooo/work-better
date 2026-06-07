@@ -22,7 +22,7 @@ status: active
 - 所有关键路径必须 100% 分支覆盖
 - 所有非法状态转换必须被拦截验证
 - 测试失败必须意味着真实的产品缺陷，而非环境问题或测试脆弱性
-- 182 个产品级场景全部有可执行的验收测试
+- 182 个产品级场景已定义（验收测试 cucumber-rs 实现待修复 regex 冲突后重新引入）
 - 20 个安全测试场景覆盖依赖漏洞、注入攻击、权限越界
 
 ### 多 Agent 协作
@@ -96,7 +96,7 @@ status: active
 | L2 集成测试 | B (Rust) + E (TS) | ~63 | 秒级 | Mock 外部，真实内部 | dev-agent |
 | L3 契约测试 | C | ~9 | 秒级 | 录制/回放的外部 API | 手动/工具 |
 | L4 跨层 E2E | F | ~20 | 十秒级 | Mock 飞书/AI，真实 FS | test-agent |
-| L5 黑盒验收 | G | 182 | 分钟级 | 真实或沙箱环境 | test-agent |
+| L5 黑盒验收 | G | 182 (已定义) | — | cucumber-rs (待修复) | test-agent |
 | H 安全测试 | H | ~20 | 秒级 | 无 (H1-H2) / Mock (H3-H5) | test-agent (H1-H2) / review-agent (H3-H5) |
 
 > 各层详细定义见 [layers/overview.md](layers/overview.md) 和 [layers/security.md](layers/security.md)
@@ -220,7 +220,7 @@ Agent 之间通过 `.workflow/artifacts/{task_id}/` 下的文件通信：
 | L2 集成 | 46 (B) | 17 (E) | 63 | dev-agent |
 | L3 契约 | 9 (C) | 0 | 9 | 手动/工具 |
 | L4 E2E | 0 | 20 (F) | 20 | test-agent |
-| L5 验收 | 182 (G) | 0 | 182 | test-agent |
+| L5 验收 | 182 (G) | 0 | 182 (待实现) | test-agent |
 | H 安全 | 13 (H1-H2) | 7 (H3-H5) | 20 | test-agent + review-agent |
 | **合计** | **386** | **66** | **452** | |
 

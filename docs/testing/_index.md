@@ -73,7 +73,7 @@ status: active
 - E2E (Playwright): 15 通过 / 11 跳过（F3 处理管线 UI + F5 调度器接入未实现）
 - H1-H2 安全扫描: 通过（npm audit 零漏洞，无敏感数据泄露）
 - H3-H5 安全测试: 设计完成，待实现
-- G 层验收场景: 182 个场景已定义（scenarios/catalog.md），待 cucumber-rs 实现
+- G 层验收场景: 182 个场景已定义（scenarios/catalog.md），cucumber-rs 实现有 regex 冲突待修复，详见 #fix-cucumber-regex
 
 ## 废弃文档
 
