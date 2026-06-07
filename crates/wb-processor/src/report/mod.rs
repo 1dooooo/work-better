@@ -42,7 +42,11 @@ pub(crate) fn count_by_status(records: &[WorkRecord], statuses: &[&str]) -> usiz
         .filter(|r| {
             r.task_status
                 .as_ref()
-                .map(|s| statuses.iter().any(|status| s.to_lowercase().contains(status)))
+                .map(|s| {
+                    statuses
+                        .iter()
+                        .any(|status| s.to_lowercase().contains(status))
+                })
                 .unwrap_or(false)
         })
         .count()

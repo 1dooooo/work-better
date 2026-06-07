@@ -180,7 +180,11 @@ mod tests {
             TaskStatus::Archived,
         ] {
             let task = make_task_with_status(status.clone());
-            assert!(archive(&task).is_err(), "archive should fail from {:?}", status);
+            assert!(
+                archive(&task).is_err(),
+                "archive should fail from {:?}",
+                status
+            );
         }
     }
 

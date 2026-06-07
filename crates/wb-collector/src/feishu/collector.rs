@@ -7,8 +7,8 @@ use async_trait::async_trait;
 use wb_core::error::Result;
 use wb_core::event::Event;
 
-use crate::traits::{Collector, HealthStatus};
 use crate::runner;
+use crate::traits::{Collector, HealthStatus};
 
 use super::messages::FeishuMessageCollector;
 
@@ -66,10 +66,7 @@ impl Collector for FeishuCollector {
         if runner::check_tool_available(LARK_CLI) {
             HealthStatus::healthy()
         } else {
-            HealthStatus::unhealthy(format!(
-                "lark-cli 不可用，请确认已安装: {}",
-                LARK_CLI
-            ))
+            HealthStatus::unhealthy(format!("lark-cli 不可用，请确认已安装: {}", LARK_CLI))
         }
     }
 }

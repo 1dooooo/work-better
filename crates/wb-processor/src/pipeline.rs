@@ -54,10 +54,7 @@ pub struct ProcessingPipeline {
 
 impl ProcessingPipeline {
     /// 创建新的处理流水线
-    pub fn new(
-        task_runner: TaskRunner,
-        persistor: PersistStep,
-    ) -> Self {
+    pub fn new(task_runner: TaskRunner, persistor: PersistStep) -> Self {
         Self {
             classifier: Classifier,
             task_runner,
@@ -94,8 +91,7 @@ impl ProcessingPipeline {
                 let data = ExtractedData {
                     title: Self::extract_title_from_event(event),
                     summary: "Auto-archived event".to_string(),
-                    detail: serde_json::to_string(&event.content)
-                        .unwrap_or_default(),
+                    detail: serde_json::to_string(&event.content).unwrap_or_default(),
                     category: Self::map_event_to_category(event),
                     project: None,
                     people: vec![],
@@ -152,14 +148,13 @@ impl ProcessingPipeline {
     /// 从事件内容中提取标题（Archive 路由使用）
     fn extract_title_from_event(event: &Event) -> String {
         match &event.content {
-            serde_json::Value::Object(obj) => {
-                obj.get("text")
-                    .or_else(|| obj.get("title"))
-                    .or_else(|| obj.get("subject"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Untitled")
-                    .to_string()
-            }
+            serde_json::Value::Object(obj) => obj
+                .get("text")
+                .or_else(|| obj.get("title"))
+                .or_else(|| obj.get("subject"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Untitled")
+                .to_string(),
             serde_json::Value::String(s) => s.clone(),
             _ => "Untitled".to_string(),
         }
@@ -172,7 +167,9 @@ impl ProcessingPipeline {
             EventType::TaskUpdate => wb_core::record::Category::Task,
             EventType::Meeting | EventType::CalendarEvent => wb_core::record::Category::Meeting,
             EventType::Message | EventType::Email => wb_core::record::Category::Communication,
-            EventType::DocumentChange | EventType::ManualNote => wb_core::record::Category::Document,
+            EventType::DocumentChange | EventType::ManualNote => {
+                wb_core::record::Category::Document
+            }
             EventType::Approval => wb_core::record::Category::Decision,
             EventType::OkrUpdate | EventType::Browsing => wb_core::record::Category::Planning,
             EventType::AppActivity => wb_core::record::Category::Research,
@@ -192,14 +189,16 @@ impl ProcessingPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use std::collections::HashMap;
     use tempfile::tempdir;
     use wb_ai::{
-        budget::TokenBudget, router::ModelRouter, task_runner::{ModelSize, TaskRunner},
+        budget::TokenBudget,
+        router::ModelRouter,
+        task_runner::{ModelSize, TaskRunner},
         MockAdapter, ModelAdapter,
     };
     use wb_core::event::{Confidence, EventType, Source};
-    use serde_json::json;
 
     fn make_event(
         source: Source,
@@ -340,7 +339,10 @@ mod tests {
 
         let result = pipeline.process(&event).await.unwrap();
         // 空标题 → NeedsFix → 不应持久化
-        assert!(matches!(result.review_result.verdict, ReviewVerdict::NeedsFix(_)));
+        assert!(matches!(
+            result.review_result.verdict,
+            ReviewVerdict::NeedsFix(_)
+        ));
         assert_eq!(result.step_timings.persist_ms, 0);
     }
 
@@ -357,7 +359,10 @@ mod tests {
         );
 
         let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.work_record.category, wb_core::record::Category::Meeting);
+        assert_eq!(
+            result.work_record.category,
+            wb_core::record::Category::Meeting
+        );
     }
 
     #[tokio::test]

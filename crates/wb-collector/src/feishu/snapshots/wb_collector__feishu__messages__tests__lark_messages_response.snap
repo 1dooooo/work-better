@@ -1,0 +1,32 @@
+---
+source: crates/wb-collector/src/feishu/messages.rs
+expression: messages
+---
+[
+  {
+    "message_id": "om_msg_001",
+    "msg_type": "text",
+    "content": "{\"text\":\"Hello from Lark!\"}",
+    "sender": {
+      "id": "ou_user_001",
+      "name": "Alice",
+      "sender_type": "user",
+      "tenant_key": "tenant_abc"
+    },
+    "create_time": "1717689600",
+    "chat_id": "oc_chat_001"
+  },
+  {
+    "message_id": "om_msg_002",
+    "msg_type": "post",
+    "content": "{\"title\":\"Update\",\"content\":[[{\"tag\":\"text\",\"text\":\"Project status: green\"}]]}",
+    "sender": {
+      "id": "ou_user_002",
+      "name": "Bob",
+      "sender_type": "user",
+      "tenant_key": "tenant_abc"
+    },
+    "create_time": "1717689700",
+    "chat_id": "oc_chat_001"
+  }
+]

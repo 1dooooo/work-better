@@ -82,10 +82,7 @@ impl SmallModelReview {
                 return Some(Issue {
                     issue_type: "contradiction".to_string(),
                     severity: "high".to_string(),
-                    description: format!(
-                        "内容中同时包含矛盾表述「{}」和「{}」",
-                        a, b
-                    ),
+                    description: format!("内容中同时包含矛盾表述「{}」和「{}」", a, b),
                     suggestion: "请检查输出是否自相矛盾，并修正不一致的描述".to_string(),
                 });
             }
@@ -147,7 +144,9 @@ impl ReviewModel for SmallModelReview {
             issues.push(issue);
         }
 
-        let has_high = issues.iter().any(|i| i.severity == "high" || i.severity == "critical");
+        let has_high = issues
+            .iter()
+            .any(|i| i.severity == "high" || i.severity == "critical");
         let has_medium = issues.iter().any(|i| i.severity == "medium");
 
         let verdict = if has_high {
@@ -283,7 +282,9 @@ impl ReviewModel for LargeModelReview {
             issues.push(issue);
         }
 
-        let has_high = issues.iter().any(|i| i.severity == "high" || i.severity == "critical");
+        let has_high = issues
+            .iter()
+            .any(|i| i.severity == "high" || i.severity == "critical");
 
         let verdict = if has_high {
             let summary = issues
@@ -350,12 +351,8 @@ impl TieredReview {
     /// 根据输出类型选择审核策略并执行
     pub fn review(&self, output: &ProcessorOutput) -> ReviewResult {
         match output.output_type {
-            OutputType::Summary | OutputType::Extraction => {
-                self.small_reviewer.review(output)
-            }
-            OutputType::Analysis | OutputType::Report => {
-                self.large_reviewer.review(output)
-            }
+            OutputType::Summary | OutputType::Extraction => self.small_reviewer.review(output),
+            OutputType::Analysis | OutputType::Report => self.large_reviewer.review(output),
         }
     }
 }
@@ -496,13 +493,13 @@ mod tests {
     #[test]
     fn test_small_model_contradiction_detected() {
         let reviewer = SmallModelReview::new();
-        let output = make_output(
-            OutputType::Summary,
-            "该项目已批准实施，但预算已拒绝",
-        );
+        let output = make_output(OutputType::Summary, "该项目已批准实施，但预算已拒绝");
         let result = reviewer.review(&output);
         assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
-        assert!(result.issues.iter().any(|i| i.issue_type == "contradiction"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "contradiction"));
     }
 
     #[test]
@@ -574,8 +571,14 @@ mod tests {
         let output = make_output(OutputType::Analysis, "太短了");
         let result = reviewer.review(&output);
         // shallow + no dimensions
-        assert!(result.issues.iter().any(|i| i.issue_type == "shallow_analysis"));
-        assert!(result.issues.iter().any(|i| i.issue_type == "missing_dimensions"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "shallow_analysis"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "missing_dimensions"));
     }
 
     #[test]
@@ -586,7 +589,10 @@ mod tests {
             "这是一段足够长的报告内容，但没有覆盖任何标准分析维度，只是在描述一些事实而已",
         );
         let result = reviewer.review(&output);
-        assert!(result.issues.iter().any(|i| i.issue_type == "missing_dimensions"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "missing_dimensions"));
         assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
     }
 
@@ -599,7 +605,10 @@ mod tests {
         );
         let result = reviewer.review(&output);
         // 有维度覆盖但长度不够 → medium severity → NeedsReview
-        assert!(result.issues.iter().any(|i| i.issue_type == "shallow_analysis"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "shallow_analysis"));
         assert!(matches!(result.verdict, ReviewVerdict::NeedsReview(_)));
     }
 
@@ -646,10 +655,7 @@ mod tests {
     #[test]
     fn test_tiered_review_summary_contradiction() {
         let tiered = TieredReview::default_config();
-        let output = make_output(
-            OutputType::Summary,
-            "该项目已批准实施，但预算已拒绝",
-        );
+        let output = make_output(OutputType::Summary, "该项目已批准实施，但预算已拒绝");
         let result = tiered.review(&output);
         assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
         assert_eq!(result.reviewer, "small_model");

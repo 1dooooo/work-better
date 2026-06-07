@@ -21,8 +21,8 @@ pub fn next_fire_time_from(
     cron_expr: &str,
     after: DateTime<Utc>,
 ) -> Result<DateTime<Utc>, CronError> {
-    let schedule = Schedule::from_str(cron_expr)
-        .map_err(|e| CronError::InvalidExpression(e.to_string()))?;
+    let schedule =
+        Schedule::from_str(cron_expr).map_err(|e| CronError::InvalidExpression(e.to_string()))?;
     schedule
         .after(&after)
         .next()

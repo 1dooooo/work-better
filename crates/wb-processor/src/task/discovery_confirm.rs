@@ -49,7 +49,10 @@ impl ConfirmationFlow {
             self.rejected_ids.push(pending_id.to_string());
             Ok(())
         } else {
-            Err(WbError::NotFound(format!("待确认任务不存在: {}", pending_id)))
+            Err(WbError::NotFound(format!(
+                "待确认任务不存在: {}",
+                pending_id
+            )))
         }
     }
 
@@ -107,11 +110,7 @@ mod tests {
     #[test]
     fn test_add_batch() {
         let mut flow = ConfirmationFlow::new();
-        let tasks = vec![
-            make_pending("A"),
-            make_pending("B"),
-            make_pending("C"),
-        ];
+        let tasks = vec![make_pending("A"), make_pending("B"), make_pending("C")];
         let ids = flow.add_batch(tasks);
         assert_eq!(ids.len(), 3);
         assert_eq!(flow.pending_count(), 3);

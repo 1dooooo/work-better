@@ -53,7 +53,16 @@ impl FeishuDocsCollector {
     /// * `limit` - 最大采集数量
     pub fn collect(limit: u32) -> Result<Vec<Event>> {
         let limit_str = limit.to_string();
-        let args = vec!["docs", "+search", "--query", "", "--page-size", &limit_str, "--format", "json"];
+        let args = vec![
+            "docs",
+            "+search",
+            "--query",
+            "",
+            "--page-size",
+            &limit_str,
+            "--format",
+            "json",
+        ];
 
         let response: LarkDocsResponse = runner::execute_json("lark-cli", &args)?;
 

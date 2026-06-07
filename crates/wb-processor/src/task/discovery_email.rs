@@ -23,14 +23,7 @@ const EMAIL_KEYWORDS: &[&str] = &[
 ];
 
 /// 截止日期关键词 —— 匹配时标记紧急
-const DEADLINE_KEYWORDS: &[&str] = &[
-    "截止",
-    "deadline",
-    "Deadline",
-    "DDL",
-    "ddl",
-    "务必",
-];
+const DEADLINE_KEYWORDS: &[&str] = &["截止", "deadline", "Deadline", "DDL", "ddl", "务必"];
 
 /// 从邮件文本中发现候选任务
 pub fn discover_from_email(text: &str) -> Vec<PendingTask> {
@@ -171,8 +164,14 @@ mod tests {
 
     #[test]
     fn test_extract_due_date_yyyy_mm_dd() {
-        assert_eq!(extract_due_date("截止 2026-06-15"), Some("2026-06-15".to_string()));
-        assert_eq!(extract_due_date("deadline 2026/12/31"), Some("2026/12/31".to_string()));
+        assert_eq!(
+            extract_due_date("截止 2026-06-15"),
+            Some("2026-06-15".to_string())
+        );
+        assert_eq!(
+            extract_due_date("deadline 2026/12/31"),
+            Some("2026/12/31".to_string())
+        );
     }
 
     #[test]

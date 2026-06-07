@@ -37,16 +37,20 @@ impl FeishuProjectsCollector {
     /// * `limit` - 最大采集数量
     pub fn collect(limit: u32) -> Result<Vec<Event>> {
         let limit_str = limit.to_string();
-        let args = vec!["task", "+get-my-tasks", "--page-size", &limit_str, "--format", "json"];
+        let args = vec![
+            "task",
+            "+get-my-tasks",
+            "--page-size",
+            &limit_str,
+            "--format",
+            "json",
+        ];
 
         let response: LarkTasksResponse = runner::execute_json("lark-cli", &args)?;
 
         let items = response.data.and_then(|d| d.items).unwrap_or_default();
 
-        let events: Vec<Event> = items
-            .into_iter()
-            .filter_map(Self::convert_task)
-            .collect();
+        let events: Vec<Event> = items.into_iter().filter_map(Self::convert_task).collect();
 
         Ok(events)
     }

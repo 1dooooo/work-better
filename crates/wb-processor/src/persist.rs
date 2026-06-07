@@ -111,10 +111,7 @@ mod tests {
 
     #[test]
     fn test_sanitize_filename_spaces() {
-        assert_eq!(
-            PersistStep::sanitize_filename("hello world"),
-            "hello-world"
-        );
+        assert_eq!(PersistStep::sanitize_filename("hello world"), "hello-world");
     }
 
     #[test]

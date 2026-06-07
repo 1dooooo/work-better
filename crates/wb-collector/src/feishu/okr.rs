@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli okr +cycle-list 响应
 #[derive(Debug, Deserialize)]
@@ -79,16 +79,20 @@ impl Collector for FeishuOkrCollector {
     async fn collect(&self) -> Result<Vec<Event>> {
         // okr +cycle-list 需要 --user-id，使用默认空值
         let default_user_id = "";
-        let args = vec!["okr", "+cycle-list", "--user-id", default_user_id, "--format", "json"];
+        let args = vec![
+            "okr",
+            "+cycle-list",
+            "--user-id",
+            default_user_id,
+            "--format",
+            "json",
+        ];
 
         let response: LarkOkrResponse = runner::execute_json("lark-cli", &args)?;
 
         let items = response.data.and_then(|d| d.items).unwrap_or_default();
 
-        let events: Vec<Event> = items
-            .into_iter()
-            .filter_map(Self::convert_okr)
-            .collect();
+        let events: Vec<Event> = items.into_iter().filter_map(Self::convert_okr).collect();
 
         Ok(events)
     }

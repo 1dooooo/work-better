@@ -76,8 +76,7 @@ impl AppSwitchCollector {
 
     /// 将 AppInfo 转换为 Event
     fn convert_app_info(info: AppInfo) -> Event {
-        let raw_payload =
-            serde_json::to_string(&info).unwrap_or_else(|_| format!("{:?}", info));
+        let raw_payload = serde_json::to_string(&info).unwrap_or_else(|_| format!("{:?}", info));
 
         let content = serde_json::json!({
             "app_name": info.name,

@@ -139,8 +139,8 @@ impl TaskSync {
                         }
                         None => {
                             // 无冲突，检查是否需要更新
-                            let needs_update =
-                                local_task.title != ft.title || local_task.updated_at < ft.updated_at;
+                            let needs_update = local_task.title != ft.title
+                                || local_task.updated_at < ft.updated_at;
                             if needs_update {
                                 let result = SyncResult {
                                     task_id: local_task.id.clone(),
@@ -293,8 +293,8 @@ impl TaskSync {
 
         let title_changed = local.title != remote.title;
         let status_mismatch = local_status_str != remote_status;
-        let both_modified = local.updated_at != remote.updated_at
-            && (title_changed || status_mismatch);
+        let both_modified =
+            local.updated_at != remote.updated_at && (title_changed || status_mismatch);
 
         if both_modified {
             Some(ConflictType::BothModified)
@@ -382,11 +382,17 @@ fn map_task_status(status: &super::model::TaskStatus) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::model::{TaskPriority, TaskSource, TaskStatus};
+    use super::*;
 
     fn make_task(id: &str, title: &str, status: TaskStatus, updated_at: &str) -> Task {
-        make_task_with_feishu(id, title, status, updated_at, Some(format!("feishu-{}", id)))
+        make_task_with_feishu(
+            id,
+            title,
+            status,
+            updated_at,
+            Some(format!("feishu-{}", id)),
+        )
     }
 
     fn make_task_with_feishu(
@@ -437,7 +443,12 @@ mod tests {
     #[test]
     fn test_sync_from_feishu_creates_new_task() {
         let mut sync = TaskSync::new();
-        let feishu_tasks = vec![make_feishu_task("f1", "New Task", "todo", "2026-01-02T00:00:00Z")];
+        let feishu_tasks = vec![make_feishu_task(
+            "f1",
+            "New Task",
+            "todo",
+            "2026-01-02T00:00:00Z",
+        )];
         let local_tasks: Vec<Task> = vec![];
 
         let results = sync.sync_from_feishu(&feishu_tasks, &local_tasks);
@@ -454,8 +465,19 @@ mod tests {
     #[test]
     fn test_sync_from_feishu_skips_unchanged() {
         let mut sync = TaskSync::new();
-        let feishu_tasks = vec![make_feishu_task("f1", "Same Task", "todo", "2026-01-01T00:00:00Z")];
-        let local_tasks = vec![make_task_with_feishu("t1", "Same Task", TaskStatus::Open, "2026-01-01T00:00:00Z", Some("f1".into()))];
+        let feishu_tasks = vec![make_feishu_task(
+            "f1",
+            "Same Task",
+            "todo",
+            "2026-01-01T00:00:00Z",
+        )];
+        let local_tasks = vec![make_task_with_feishu(
+            "t1",
+            "Same Task",
+            TaskStatus::Open,
+            "2026-01-01T00:00:00Z",
+            Some("f1".into()),
+        )];
 
         let results = sync.sync_from_feishu(&feishu_tasks, &local_tasks);
 
@@ -469,8 +491,19 @@ mod tests {
     fn test_sync_from_feishu_updates_changed_task() {
         let mut sync = TaskSync::new();
         // Same title & status, only updated_at differs → no conflict, just update
-        let feishu_tasks = vec![make_feishu_task("f1", "Same Title", "todo", "2026-01-02T00:00:00Z")];
-        let local_tasks = vec![make_task_with_feishu("t1", "Same Title", TaskStatus::Open, "2026-01-01T00:00:00Z", Some("f1".into()))];
+        let feishu_tasks = vec![make_feishu_task(
+            "f1",
+            "Same Title",
+            "todo",
+            "2026-01-02T00:00:00Z",
+        )];
+        let local_tasks = vec![make_task_with_feishu(
+            "t1",
+            "Same Title",
+            TaskStatus::Open,
+            "2026-01-01T00:00:00Z",
+            Some("f1".into()),
+        )];
 
         let results = sync.sync_from_feishu(&feishu_tasks, &local_tasks);
 
@@ -484,8 +517,19 @@ mod tests {
     fn test_sync_from_feishu_detects_conflict() {
         let mut sync = TaskSync::new();
         // 双方都修改了：标题不同 + 时间戳不同
-        let feishu_tasks = vec![make_feishu_task("f1", "Remote Changed", "in_progress", "2026-01-03T00:00:00Z")];
-        let local_tasks = vec![make_task_with_feishu("t1", "Local Changed", TaskStatus::Open, "2026-01-02T00:00:00Z", Some("f1".into()))];
+        let feishu_tasks = vec![make_feishu_task(
+            "f1",
+            "Remote Changed",
+            "in_progress",
+            "2026-01-03T00:00:00Z",
+        )];
+        let local_tasks = vec![make_task_with_feishu(
+            "t1",
+            "Local Changed",
+            TaskStatus::Open,
+            "2026-01-02T00:00:00Z",
+            Some("f1".into()),
+        )];
 
         let results = sync.sync_from_feishu(&feishu_tasks, &local_tasks);
 
@@ -515,7 +559,12 @@ mod tests {
     #[test]
     fn test_sync_to_feishu_detects_remote_deleted() {
         let mut sync = TaskSync::new();
-        let local_tasks = vec![make_task("t1", "Task", TaskStatus::Open, "2026-01-01T00:00:00Z")];
+        let local_tasks = vec![make_task(
+            "t1",
+            "Task",
+            TaskStatus::Open,
+            "2026-01-01T00:00:00Z",
+        )];
         let feishu_tasks: Vec<FeishuTask> = vec![]; // 飞书端无此任务
 
         let results = sync.sync_to_feishu(&local_tasks, &feishu_tasks);
@@ -529,8 +578,18 @@ mod tests {
     #[test]
     fn test_sync_to_feishu_marks_for_sync() {
         let mut sync = TaskSync::new();
-        let local_tasks = vec![make_task("t1", "Task", TaskStatus::Open, "2026-01-02T00:00:00Z")];
-        let feishu_tasks = vec![make_feishu_task("feishu-t1", "Task", "todo", "2026-01-01T00:00:00Z")];
+        let local_tasks = vec![make_task(
+            "t1",
+            "Task",
+            TaskStatus::Open,
+            "2026-01-02T00:00:00Z",
+        )];
+        let feishu_tasks = vec![make_feishu_task(
+            "feishu-t1",
+            "Task",
+            "todo",
+            "2026-01-01T00:00:00Z",
+        )];
 
         let results = sync.sync_to_feishu(&local_tasks, &feishu_tasks);
 
@@ -544,8 +603,18 @@ mod tests {
     #[test]
     fn test_sync_to_feishu_skips_unchanged() {
         let mut sync = TaskSync::new();
-        let local_tasks = vec![make_task("t1", "Task", TaskStatus::Open, "2026-01-01T00:00:00Z")];
-        let feishu_tasks = vec![make_feishu_task("feishu-t1", "Task", "todo", "2026-01-01T00:00:00Z")];
+        let local_tasks = vec![make_task(
+            "t1",
+            "Task",
+            TaskStatus::Open,
+            "2026-01-01T00:00:00Z",
+        )];
+        let feishu_tasks = vec![make_feishu_task(
+            "feishu-t1",
+            "Task",
+            "todo",
+            "2026-01-01T00:00:00Z",
+        )];
 
         let results = sync.sync_to_feishu(&local_tasks, &feishu_tasks);
 
@@ -558,7 +627,12 @@ mod tests {
     #[test]
     fn test_detect_conflicts_both_modified() {
         let sync = TaskSync::new();
-        let local = make_task("t1", "Local Title", TaskStatus::Open, "2026-01-02T00:00:00Z");
+        let local = make_task(
+            "t1",
+            "Local Title",
+            TaskStatus::Open,
+            "2026-01-02T00:00:00Z",
+        );
         let remote = make_feishu_task("f1", "Remote Title", "in_progress", "2026-01-03T00:00:00Z");
 
         let conflict = sync.detect_conflicts(&local, &remote);
@@ -644,7 +718,12 @@ mod tests {
     #[test]
     fn test_sync_log_has_timestamp() {
         let mut sync = TaskSync::new();
-        let feishu_tasks = vec![make_feishu_task("f1", "Task", "todo", "2026-01-01T00:00:00Z")];
+        let feishu_tasks = vec![make_feishu_task(
+            "f1",
+            "Task",
+            "todo",
+            "2026-01-01T00:00:00Z",
+        )];
         let local_tasks: Vec<Task> = vec![];
 
         sync.sync_from_feishu(&feishu_tasks, &local_tasks);
@@ -661,11 +740,26 @@ mod tests {
         let feishu_tasks = vec![
             make_feishu_task("f-new", "New Task", "todo", "2026-01-01T00:00:00Z"),
             make_feishu_task("feishu-t-same", "Same Task", "todo", "2026-01-01T00:00:00Z"),
-            make_feishu_task("feishu-t-conflict", "Remote Changed", "in_progress", "2026-01-03T00:00:00Z"),
+            make_feishu_task(
+                "feishu-t-conflict",
+                "Remote Changed",
+                "in_progress",
+                "2026-01-03T00:00:00Z",
+            ),
         ];
         let local_tasks = vec![
-            make_task("t-same", "Same Task", TaskStatus::Open, "2026-01-01T00:00:00Z"),
-            make_task("t-conflict", "Local Changed", TaskStatus::Open, "2026-01-02T00:00:00Z"),
+            make_task(
+                "t-same",
+                "Same Task",
+                TaskStatus::Open,
+                "2026-01-01T00:00:00Z",
+            ),
+            make_task(
+                "t-conflict",
+                "Local Changed",
+                TaskStatus::Open,
+                "2026-01-02T00:00:00Z",
+            ),
         ];
 
         let results = sync.sync_from_feishu(&feishu_tasks, &local_tasks);

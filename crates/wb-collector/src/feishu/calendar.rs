@@ -9,6 +9,7 @@ use crate::runner;
 /// lark-cli 日历事件列表响应（calendar +agenda 格式）
 #[derive(Debug, Deserialize)]
 struct LarkCalendarResponse {
+    #[allow(dead_code)]
     ok: Option<bool>,
     data: Option<Vec<LarkCalendarEvent>>,
 }
@@ -37,10 +38,7 @@ impl FeishuCalendarCollector {
 
         let items = response.data.unwrap_or_default();
 
-        let events: Vec<Event> = items
-            .into_iter()
-            .filter_map(Self::convert_event)
-            .collect();
+        let events: Vec<Event> = items.into_iter().filter_map(Self::convert_event).collect();
 
         Ok(events)
     }

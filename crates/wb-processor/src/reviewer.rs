@@ -151,7 +151,10 @@ mod tests {
         let result = agent.review(&record);
         assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
         assert!(!result.issues.is_empty());
-        assert!(result.issues.iter().any(|i| i.issue_type == "missing_field"));
+        assert!(result
+            .issues
+            .iter()
+            .any(|i| i.issue_type == "missing_field"));
     }
 
     #[test]
@@ -179,10 +182,7 @@ mod tests {
         let result = agent.review(&record);
         // Only medium severity issue → NeedsReview
         assert!(matches!(result.verdict, ReviewVerdict::NeedsReview(_)));
-        assert!(result
-            .issues
-            .iter()
-            .any(|i| i.issue_type == "format_error"));
+        assert!(result.issues.iter().any(|i| i.issue_type == "format_error"));
     }
 
     #[test]
@@ -256,5 +256,133 @@ mod tests {
         let result = agent.review(&record);
         // 3 out of 4 rules fail → confidence = 1/4 = 0.25
         assert!(result.confidence < 0.5);
+    }
+
+    // ─── A6-15~22: ReviewAgent verdict combinations ────────────────
+
+    // A6-15: All rules pass → Approved
+    #[test]
+    fn test_verdict_all_rules_pass() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.task_status = Some("in_progress".to_string());
+        let result = agent.review(&record);
+        assert_eq!(result.verdict, ReviewVerdict::Approved);
+        assert!(result.issues.is_empty());
+    }
+
+    // A6-16: Only critical (missing title) → NeedsFix
+    #[test]
+    fn test_verdict_only_critical_issue() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.title = String::new();
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
+    }
+
+    // A6-17: Only high (low confidence) → NeedsFix
+    #[test]
+    fn test_verdict_only_high_issue() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.3);
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
+    }
+
+    // A6-18: Only medium (short detail) → NeedsReview
+    #[test]
+    fn test_verdict_only_medium_issue() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.detail = "short".to_string();
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert!(matches!(result.verdict, ReviewVerdict::NeedsReview(_)));
+    }
+
+    // A6-19: Only low (non-task with task_status) → Approved
+    #[test]
+    fn test_verdict_only_low_issue() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.category = Category::Meeting;
+        record.task_status = Some("done".to_string());
+        record.detail = "A sufficiently long detail for length check".to_string();
+        let result = agent.review(&record);
+        // "low" severity is not critical/high/medium → Approved
+        assert_eq!(result.verdict, ReviewVerdict::Approved);
+        assert!(result.issues.iter().any(|i| i.severity == "low"));
+    }
+
+    // A6-20: Critical + medium → NeedsFix (critical dominates)
+    #[test]
+    fn test_verdict_critical_plus_medium() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.title = String::new(); // critical
+        record.detail = "short".to_string(); // medium (format_error)
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
+    }
+
+    // A6-21: High + medium → NeedsFix (high dominates)
+    #[test]
+    fn test_verdict_high_plus_medium() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.3); // high (low_confidence)
+        record.detail = "short".to_string(); // medium (format_error)
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert!(matches!(result.verdict, ReviewVerdict::NeedsFix(_)));
+    }
+
+    // A6-22: Skip review for archive record (no sources + high confidence)
+    #[test]
+    fn test_verdict_skip_archive_record() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.95);
+        record.source_event_ids = Vec::new();
+        record.task_status = Some("done".to_string());
+        // Even if title/detail would fail, should_review returns false
+        record.title = String::new();
+        let result = agent.review(&record);
+        assert_eq!(result.verdict, ReviewVerdict::Approved);
+        assert!(result.issues.is_empty());
+    }
+
+    // ─── Additional edge cases ─────────────────────────────────────
+
+    #[test]
+    fn test_reviewer_name_is_rule() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.task_status = Some("done".to_string());
+        let result = agent.review(&record);
+        assert_eq!(result.reviewer, "rule");
+    }
+
+    #[test]
+    fn test_confidence_score_reflects_pass_rate() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.9);
+        record.task_status = Some("done".to_string());
+        // All 4 rules pass → confidence = 4/4 = 1.0
+        let result = agent.review(&record);
+        assert_eq!(result.confidence, 1.0);
+    }
+
+    #[test]
+    fn test_confidence_score_partial_pass() {
+        let agent = ReviewAgent::new();
+        let mut record = make_record(0.3); // fails confidence rule
+        record.task_status = Some("done".to_string());
+        record.detail = "short".to_string(); // fails content_length
+                                             // 2 of 4 fail → confidence = 2/4 = 0.5
+        let result = agent.review(&record);
+        assert!((result.confidence - 0.5).abs() < f64::EPSILON);
     }
 }

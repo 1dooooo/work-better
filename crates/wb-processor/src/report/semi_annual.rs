@@ -55,7 +55,8 @@ pub fn generate_semi_annual(year: i32, half: u32, records: &[WorkRecord]) -> Rep
     }
 
     // 构建阶段总结
-    let stage_summary = build_stage_summary(&period, total, done_count, blocked_count, &category_counts);
+    let stage_summary =
+        build_stage_summary(&period, total, done_count, blocked_count, &category_counts);
 
     // 构建目标调整（基于阻塞和高频 category 推断）
     let goal_adjustments = build_goal_adjustments(records, &category_counts);
@@ -143,7 +144,10 @@ fn build_goal_adjustments(
     if total > 0 && blocked_count as f64 / total as f64 > 0.15 {
         adjustments.push(GoalAdjustment {
             goal: "降低阻塞率".to_string(),
-            reason: format!("当前阻塞率 {:.0}%", blocked_count as f64 / total as f64 * 100.0),
+            reason: format!(
+                "当前阻塞率 {:.0}%",
+                blocked_count as f64 / total as f64 * 100.0
+            ),
             new_direction: "加强风险预判，提前识别依赖关系".to_string(),
         });
     }
@@ -154,7 +158,10 @@ fn build_goal_adjustments(
     if total > 0 && comm_count as f64 / total as f64 > 0.4 {
         adjustments.push(GoalAdjustment {
             goal: "优化沟通效率".to_string(),
-            reason: format!("沟通/会议类占比 {:.0}%", comm_count as f64 / total as f64 * 100.0),
+            reason: format!(
+                "沟通/会议类占比 {:.0}%",
+                comm_count as f64 / total as f64 * 100.0
+            ),
             new_direction: "减少低效会议，提升异步沟通比例".to_string(),
         });
     }
@@ -166,7 +173,12 @@ fn build_goal_adjustments(
 fn build_key_achievements(records: &[WorkRecord]) -> Vec<String> {
     let done_records: Vec<&WorkRecord> = records
         .iter()
-        .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
+        .filter(|r| {
+            r.task_status
+                .as_ref()
+                .map(|s| is_done_status(s))
+                .unwrap_or(false)
+        })
         .collect();
 
     if done_records.is_empty() {

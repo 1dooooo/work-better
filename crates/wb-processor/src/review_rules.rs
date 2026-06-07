@@ -40,10 +40,7 @@ impl ReviewRule for RequiredFieldsRule {
                 issue_type: "missing_field".to_string(),
                 severity: "critical".to_string(),
                 description: format!("Required fields are empty: {}", missing.join(", ")),
-                suggestion: format!(
-                    "Ensure the AI extraction populates: {}",
-                    missing.join(", ")
-                ),
+                suggestion: format!("Ensure the AI extraction populates: {}", missing.join(", ")),
             })
         }
     }
@@ -145,10 +142,7 @@ impl ReviewRule for CategoryConsistencyRule {
             return Some(Issue {
                 issue_type: "invalid_state".to_string(),
                 severity: "low".to_string(),
-                description: format!(
-                    "Category is {:?} but task_status is set",
-                    record.category
-                ),
+                description: format!("Category is {:?} but task_status is set", record.category),
                 suggestion: "Consider if category should be Task, or remove task_status"
                     .to_string(),
             });
@@ -248,7 +242,10 @@ mod tests {
     fn test_confidence_threshold_at_boundary() {
         let rule = ConfidenceThresholdRule::default();
         let record = make_record(0.6);
-        assert!(rule.check(&record).is_none(), "0.6 should not trigger (threshold is < 0.6)");
+        assert!(
+            rule.check(&record).is_none(),
+            "0.6 should not trigger (threshold is < 0.6)"
+        );
     }
 
     // --- ContentLengthRule ---
@@ -306,5 +303,108 @@ mod tests {
         let mut record = make_record(0.9);
         record.category = Category::Meeting;
         assert!(rule.check(&record).is_none());
+    }
+
+    // ─── A6-01~05: RequiredFields parametrized ─────────────────────
+    use rstest::rstest;
+
+    // (field_to_empty, expected_in_description)
+    #[rstest]
+    #[case("title", "title")]
+    #[case("summary", "summary")]
+    #[case("detail", "detail")]
+    fn test_required_fields_parametrized_single_missing(
+        #[case] field: &str,
+        #[case] expected_token: &str,
+    ) {
+        let rule = RequiredFieldsRule;
+        let mut record = make_record(0.9);
+        match field {
+            "title" => record.title = String::new(),
+            "summary" => record.summary = String::new(),
+            "detail" => record.detail = String::new(),
+            _ => unreachable!(),
+        }
+        let issue = rule.check(&record).unwrap();
+        assert_eq!(issue.issue_type, "missing_field");
+        assert_eq!(issue.severity, "critical");
+        assert!(issue.description.contains(expected_token));
+    }
+
+    // ─── A6-05: All fields present → pass ──────────────────────────
+
+    #[test]
+    fn test_required_fields_whitespace_only_title_fails() {
+        let rule = RequiredFieldsRule;
+        let mut record = make_record(0.9);
+        record.title = "   ".to_string();
+        assert!(rule.check(&record).is_some());
+    }
+
+    // ─── A6-06~08: ConfidenceThreshold boundary parametrized ───────
+
+    #[rstest]
+    #[case(0.9, false)] // A6-06: well above threshold
+    #[case(0.6, false)] // A6-07: at boundary (not strictly less than)
+    #[case(0.59, true)] // A6-08: just below boundary
+    #[case(0.0, true)] // edge: zero confidence
+    fn test_confidence_threshold_parametrized(#[case] confidence: f64, #[case] should_flag: bool) {
+        let rule = ConfidenceThresholdRule::default();
+        let record = make_record(confidence);
+        let result = rule.check(&record);
+        assert_eq!(result.is_some(), should_flag);
+    }
+
+    // ─── A6-09~10: ContentLength parametrized ──────────────────────
+
+    #[rstest]
+    #[case("a sufficient detail content here", false)] // A6-09: pass
+    #[case("short", true)] // A6-10: fail
+    #[case("", true)] // edge: empty
+    fn test_content_length_parametrized(#[case] detail: &str, #[case] should_flag: bool) {
+        let rule = ContentLengthRule::default();
+        let mut record = make_record(0.9);
+        record.detail = detail.to_string();
+        assert_eq!(rule.check(&record).is_some(), should_flag);
+    }
+
+    // ─── A6-11~14: CategoryConsistency parametrized ────────────────
+
+    #[rstest]
+    #[case(Category::Task, Some("in_progress"), false)] // A6-11: Task + status → OK
+    #[case(Category::Task, None, true)] // A6-12: Task + no status → fail
+    #[case(Category::Meeting, Some("done"), true)] // A6-13: Non-task + status → fail
+    #[case(Category::Meeting, None, false)] // A6-14: Non-task + no status → OK
+    fn test_category_consistency_parametrized(
+        #[case] category: Category,
+        #[case] task_status: Option<&str>,
+        #[case] should_flag: bool,
+    ) {
+        let rule = CategoryConsistencyRule;
+        let mut record = make_record(0.9);
+        record.category = category;
+        record.task_status = task_status.map(String::from);
+        let result = rule.check(&record);
+        assert_eq!(result.is_some(), should_flag);
+    }
+
+    #[test]
+    fn test_category_consistency_task_without_status_severity() {
+        let rule = CategoryConsistencyRule;
+        let mut record = make_record(0.9);
+        record.category = Category::Task;
+        record.task_status = None;
+        let issue = rule.check(&record).unwrap();
+        assert_eq!(issue.severity, "medium");
+    }
+
+    #[test]
+    fn test_category_consistency_non_task_with_status_severity() {
+        let rule = CategoryConsistencyRule;
+        let mut record = make_record(0.9);
+        record.category = Category::Research;
+        record.task_status = Some("done".to_string());
+        let issue = rule.check(&record).unwrap();
+        assert_eq!(issue.severity, "low");
     }
 }

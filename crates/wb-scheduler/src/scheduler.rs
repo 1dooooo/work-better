@@ -117,7 +117,8 @@ impl Scheduler {
             let mut graph = self.state.dependency_graph.write().await;
             graph.add_task(&id, depends_on);
         }
-        self.register_with_priority(task, interval_secs, priority).await;
+        self.register_with_priority(task, interval_secs, priority)
+            .await;
     }
 
     /// Set the resource budget (controls whether low-priority tasks are deferred).
@@ -178,12 +179,18 @@ impl Scheduler {
                                         true
                                     } else {
                                         // Cron-based check (falls back to false on parse error)
-                                        cron::is_due(ts.task.cron_expression(), last).unwrap_or(false)
+                                        cron::is_due(ts.task.cron_expression(), last)
+                                            .unwrap_or(false)
                                     }
                                 }
                             };
                             if due {
-                                Some((id.clone(), ts.task.sla_ms(), ts.task.retry_limit(), ts.priority.clone()))
+                                Some((
+                                    id.clone(),
+                                    ts.task.sla_ms(),
+                                    ts.task.retry_limit(),
+                                    ts.priority.clone(),
+                                ))
                             } else {
                                 None
                             }
@@ -205,7 +212,8 @@ impl Scheduler {
                         })
                         .collect()
                 };
-                let completed_refs: HashSet<&str> = completed_ids.iter().map(|s| s.as_str()).collect();
+                let completed_refs: HashSet<&str> =
+                    completed_ids.iter().map(|s| s.as_str()).collect();
 
                 // Snapshot dependency graph and budget (drop guards before loop body)
                 let can_run_map: HashMap<String, bool> = {
@@ -366,11 +374,7 @@ async fn execute_with_retry(
 }
 
 /// Execute a single attempt with timeout.
-async fn execute_once(
-    task: &Arc<dyn ScheduledTask>,
-    sla_ms: u64,
-    retry_count: u32,
-) -> TaskResult {
+async fn execute_once(task: &Arc<dyn ScheduledTask>, sla_ms: u64, retry_count: u32) -> TaskResult {
     let started_at = Utc::now();
     let timeout_duration = Duration::from_millis(sla_ms);
 
@@ -394,5 +398,327 @@ async fn execute_once(
                 retry_count,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::task::{ScheduledTask, TaskLayer, TaskResult, TaskStatus};
+    use async_trait::async_trait;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::time::Duration;
+
+    /// A mock task that fails the first N attempts then succeeds.
+    struct FlakeyTask {
+        id: String,
+        fail_count: AtomicU32,
+        max_failures: u32,
+    }
+
+    impl FlakeyTask {
+        fn new(id: &str, max_failures: u32) -> Self {
+            Self {
+                id: id.to_string(),
+                fail_count: AtomicU32::new(0),
+                max_failures,
+            }
+        }
+    }
+
+    #[async_trait]
+    impl ScheduledTask for FlakeyTask {
+        fn id(&self) -> &str {
+            &self.id
+        }
+        fn name(&self) -> &str {
+            "flakey"
+        }
+        fn layer(&self) -> TaskLayer {
+            TaskLayer::Collection
+        }
+        fn cron_expression(&self) -> &str {
+            "* * * * * *"
+        }
+        fn sla_ms(&self) -> u64 {
+            5000
+        }
+        fn retry_limit(&self) -> u32 {
+            3
+        }
+
+        async fn execute(&self) -> TaskResult {
+            let attempt = self.fail_count.fetch_add(1, Ordering::SeqCst);
+            let now = Utc::now();
+            if attempt < self.max_failures {
+                TaskResult {
+                    task_id: self.id.clone(),
+                    status: TaskStatus::Failed,
+                    started_at: now,
+                    finished_at: now,
+                    duration_ms: 0,
+                    summary: "deliberate failure".to_string(),
+                    error: Some(format!("attempt {attempt} failed")),
+                    retry_count: 0,
+                }
+            } else {
+                TaskResult {
+                    task_id: self.id.clone(),
+                    status: TaskStatus::Success,
+                    started_at: now,
+                    finished_at: now,
+                    duration_ms: 0,
+                    summary: "success".to_string(),
+                    error: None,
+                    retry_count: 0,
+                }
+            }
+        }
+    }
+
+    /// A mock task that always succeeds immediately.
+    struct SuccessTask {
+        id: String,
+    }
+
+    #[async_trait]
+    impl ScheduledTask for SuccessTask {
+        fn id(&self) -> &str {
+            &self.id
+        }
+        fn name(&self) -> &str {
+            "success"
+        }
+        fn layer(&self) -> TaskLayer {
+            TaskLayer::Collection
+        }
+        fn cron_expression(&self) -> &str {
+            "* * * * * *"
+        }
+        fn sla_ms(&self) -> u64 {
+            5000
+        }
+        fn retry_limit(&self) -> u32 {
+            3
+        }
+
+        async fn execute(&self) -> TaskResult {
+            let now = Utc::now();
+            TaskResult {
+                task_id: self.id.clone(),
+                status: TaskStatus::Success,
+                started_at: now,
+                finished_at: now,
+                duration_ms: 0,
+                summary: "ok".to_string(),
+                error: None,
+                retry_count: 0,
+            }
+        }
+    }
+
+    /// A mock task that always fails.
+    struct AlwaysFailTask {
+        id: String,
+    }
+
+    #[async_trait]
+    impl ScheduledTask for AlwaysFailTask {
+        fn id(&self) -> &str {
+            &self.id
+        }
+        fn name(&self) -> &str {
+            "always_fail"
+        }
+        fn layer(&self) -> TaskLayer {
+            TaskLayer::Collection
+        }
+        fn cron_expression(&self) -> &str {
+            "* * * * * *"
+        }
+        fn sla_ms(&self) -> u64 {
+            5000
+        }
+        fn retry_limit(&self) -> u32 {
+            3
+        }
+
+        async fn execute(&self) -> TaskResult {
+            let now = Utc::now();
+            TaskResult {
+                task_id: self.id.clone(),
+                status: TaskStatus::Failed,
+                started_at: now,
+                finished_at: now,
+                duration_ms: 0,
+                summary: "always fails".to_string(),
+                error: Some("permanent failure".to_string()),
+                retry_count: 0,
+            }
+        }
+    }
+
+    /// A mock task that exceeds its SLA timeout.
+    struct SlowTask {
+        id: String,
+    }
+
+    #[async_trait]
+    impl ScheduledTask for SlowTask {
+        fn id(&self) -> &str {
+            &self.id
+        }
+        fn name(&self) -> &str {
+            "slow"
+        }
+        fn layer(&self) -> TaskLayer {
+            TaskLayer::Collection
+        }
+        fn cron_expression(&self) -> &str {
+            "* * * * * *"
+        }
+        fn sla_ms(&self) -> u64 {
+            50 // very short SLA
+        }
+        fn retry_limit(&self) -> u32 {
+            2
+        }
+
+        async fn execute(&self) -> TaskResult {
+            // Sleep longer than SLA to trigger timeout
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            let now = Utc::now();
+            TaskResult {
+                task_id: self.id.clone(),
+                status: TaskStatus::Success,
+                started_at: now,
+                finished_at: now,
+                duration_ms: 200,
+                summary: "should not reach here".to_string(),
+                error: None,
+                retry_count: 0,
+            }
+        }
+    }
+
+    // ── A9-01: Success on first try ───────────────────────────────────
+    #[tokio::test]
+    async fn a9_01_success_on_first_try() {
+        let task: Arc<dyn ScheduledTask> = Arc::new(SuccessTask {
+            id: "ok-task".to_string(),
+        });
+        let result = execute_with_retry(&task, 5000, 3).await;
+        assert_eq!(result.status, TaskStatus::Success);
+        assert_eq!(result.retry_count, 0);
+    }
+
+    // ── A9-02: Retry until limit ──────────────────────────────────────
+    // Task fails 3 times, succeeds on 4th attempt (retry_limit=3 means 4 total attempts)
+    #[tokio::test]
+    async fn a9_02_retry_until_success() {
+        let task: Arc<dyn ScheduledTask> = Arc::new(FlakeyTask::new("flakey", 3));
+        let result = execute_with_retry(&task, 5000, 3).await;
+        assert_eq!(result.status, TaskStatus::Success);
+    }
+
+    // Task always fails -- exhausts all retries
+    #[tokio::test]
+    async fn a9_02_retry_exhausted_still_fails() {
+        let task: Arc<dyn ScheduledTask> = Arc::new(AlwaysFailTask {
+            id: "always-fail".to_string(),
+        });
+        let result = execute_with_retry(&task, 5000, 3).await;
+        assert_eq!(result.status, TaskStatus::Failed);
+        // 4 attempts total (0, 1, 2, 3)
+        assert_eq!(result.retry_count, 3);
+    }
+
+    // ── A9-03: Timeout ────────────────────────────────────────────────
+    #[tokio::test]
+    async fn a9_03_timeout_triggers() {
+        let task: Arc<dyn ScheduledTask> = Arc::new(SlowTask {
+            id: "slow-task".to_string(),
+        });
+        // SLA is 50ms, task sleeps 200ms -> timeout on every attempt
+        let result = execute_with_retry(&task, 50, 2).await;
+        assert_eq!(result.status, TaskStatus::Timeout);
+        assert!(result.error.as_deref().unwrap().contains("exceeded SLA"));
+    }
+
+    // ── A9-04: Increasing backoff interval ────────────────────────────
+    // Verify that retries take progressively longer (backoff).
+    // We measure wall-clock time: retry_limit=3, backoff=100ms*(attempt+1)
+    // Expected total backoff: 100+200+300 = 600ms minimum.
+    #[tokio::test]
+    async fn a9_04_increasing_backoff() {
+        let task: Arc<dyn ScheduledTask> = Arc::new(AlwaysFailTask {
+            id: "backoff-task".to_string(),
+        });
+        let start = std::time::Instant::now();
+        let result = execute_with_retry(&task, 5000, 3).await;
+        let elapsed = start.elapsed();
+
+        assert_eq!(result.status, TaskStatus::Failed);
+
+        // Backoff: 100ms*(0+1) + 100ms*(1+1) + 100ms*(2+1) = 100+200+300 = 600ms
+        // Allow some tolerance for scheduling jitter
+        assert!(
+            elapsed >= Duration::from_millis(500),
+            "Expected at least 500ms for backoff, got {:?}",
+            elapsed
+        );
+    }
+
+    // ── Additional: Scheduler basic operations ────────────────────────
+    #[tokio::test]
+    async fn scheduler_register_and_list() {
+        let scheduler = Scheduler::new();
+        let task: Arc<dyn ScheduledTask> = Arc::new(SuccessTask {
+            id: "t1".to_string(),
+        });
+        scheduler.register(task).await;
+        let list = scheduler.list_tasks().await;
+        assert_eq!(list.len(), 1);
+        assert!(list.contains(&"t1".to_string()));
+    }
+
+    #[tokio::test]
+    async fn scheduler_run_now() {
+        let scheduler = Scheduler::new();
+        let task: Arc<dyn ScheduledTask> = Arc::new(SuccessTask {
+            id: "t1".to_string(),
+        });
+        scheduler.register(task).await;
+        let result = scheduler.run_now("t1").await;
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().status, TaskStatus::Success);
+    }
+
+    #[tokio::test]
+    async fn scheduler_run_now_nonexistent() {
+        let scheduler = Scheduler::new();
+        let result = scheduler.run_now("nope").await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn scheduler_pause_resume() {
+        let scheduler = Scheduler::new();
+        assert!(!scheduler.is_paused().await);
+
+        scheduler.pause_all().await;
+        assert!(scheduler.is_paused().await);
+
+        scheduler.resume_all().await;
+        assert!(!scheduler.is_paused().await);
+    }
+
+    #[tokio::test]
+    async fn scheduler_budget() {
+        let scheduler = Scheduler::new();
+        assert_eq!(scheduler.budget().await, 100);
+
+        scheduler.set_budget(42).await;
+        assert_eq!(scheduler.budget().await, 42);
     }
 }

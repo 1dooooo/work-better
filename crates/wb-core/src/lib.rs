@@ -5,3 +5,6 @@ pub mod error;
 pub mod event;
 pub mod record;
 pub mod task;
+
+#[cfg(test)]
+pub mod test_helpers;

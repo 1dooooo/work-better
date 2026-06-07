@@ -117,10 +117,7 @@ impl BrowserHistoryCollector {
                 // 转换 Chrome 时间戳为 Unix 时间戳（微秒）
                 let unix_micros = chrome_time - epoch_diff;
                 let unix_secs = unix_micros / 1_000_000;
-                let visit_time = Utc
-                    .timestamp_opt(unix_secs, 0)
-                    .single()
-                    .unwrap_or_default();
+                let visit_time = Utc.timestamp_opt(unix_secs, 0).single().unwrap_or_default();
 
                 Ok(BrowserVisit {
                     url,
@@ -161,8 +158,7 @@ impl BrowserHistoryCollector {
 
     /// 将 BrowserVisit 转换为 Event
     fn convert_visit(visit: BrowserVisit) -> Event {
-        let raw_payload =
-            serde_json::to_string(&visit).unwrap_or_else(|_| format!("{:?}", visit));
+        let raw_payload = serde_json::to_string(&visit).unwrap_or_else(|_| format!("{:?}", visit));
 
         let content = serde_json::json!({
             "url": visit.url,

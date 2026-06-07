@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli sheets +workbook-info 响应
 #[derive(Debug, Deserialize)]
@@ -77,7 +77,14 @@ impl Collector for FeishuSpreadsheetCollector {
     async fn collect(&self) -> Result<Vec<Event>> {
         // sheets +workbook-info 需要 --url，使用默认空值
         let default_url = "";
-        let args = vec!["sheets", "+workbook-info", "--url", default_url, "--format", "json"];
+        let args = vec![
+            "sheets",
+            "+workbook-info",
+            "--url",
+            default_url,
+            "--format",
+            "json",
+        ];
 
         let response: LarkSpreadsheetsResponse = runner::execute_json("lark-cli", &args)?;
 

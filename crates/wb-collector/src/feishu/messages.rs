@@ -9,6 +9,7 @@ use crate::runner;
 /// lark-cli 消息响应（+chat-messages-list 格式）
 #[derive(Debug, Deserialize)]
 struct LarkMessagesResponse {
+    #[allow(dead_code)]
     ok: Option<bool>,
     data: Option<LarkMessagesData>,
 }
@@ -158,5 +159,56 @@ mod tests {
             event.content,
             serde_json::Value::String("not-json".to_string())
         );
+    }
+
+    // ============================================================
+    // C1: Lark API Response Contracts (snapshot tests)
+    // ============================================================
+
+    #[test]
+    fn c1_01_lark_messages_response_deserialize() {
+        let json = include_str!("../../fixtures/lark_messages_response.json");
+        let response: LarkMessagesResponse = serde_json::from_str(json).unwrap();
+        assert!(response.ok.unwrap());
+        let messages = response.data.unwrap().messages.unwrap();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].message_id.as_deref(), Some("om_msg_001"));
+        assert_eq!(messages[1].message_id.as_deref(), Some("om_msg_002"));
+        insta::assert_json_snapshot!("lark_messages_response", messages);
+    }
+
+    #[test]
+    fn c1_02_lark_message_field_matching() {
+        let json = include_str!("../../fixtures/lark_message.json");
+        let msg: LarkMessage = serde_json::from_str(json).unwrap();
+        assert_eq!(msg.message_id.as_deref(), Some("om_msg_single"));
+        assert_eq!(msg.msg_type.as_deref(), Some("text"));
+        assert!(msg.content.is_some());
+        assert!(msg.sender.is_some());
+        assert_eq!(msg.create_time.as_deref(), Some("1717776000"));
+        assert_eq!(msg.chat_id.as_deref(), Some("oc_chat_002"));
+        insta::assert_json_snapshot!("lark_message", msg);
+    }
+
+    #[test]
+    fn c1_03_lark_sender_field_matching() {
+        let json = include_str!("../../fixtures/lark_sender.json");
+        let sender: LarkSender = serde_json::from_str(json).unwrap();
+        assert_eq!(sender.id.as_deref(), Some("ou_sender_001"));
+        assert_eq!(sender.name.as_deref(), Some("Diana"));
+        assert_eq!(sender.sender_type.as_deref(), Some("app"));
+        assert_eq!(sender.tenant_key.as_deref(), Some("tenant_app"));
+        insta::assert_json_snapshot!("lark_sender", sender);
+    }
+
+    #[test]
+    fn c1_04_empty_data_messages_fallback() {
+        let json = include_str!("../../fixtures/lark_messages_empty.json");
+        let response: LarkMessagesResponse = serde_json::from_str(json).unwrap();
+        assert!(response.ok.unwrap());
+        // Verify fallback: unwrap_or_default produces empty vec when data.messages is empty
+        let messages = response.data.and_then(|d| d.messages).unwrap_or_default();
+        assert!(messages.is_empty());
+        insta::assert_json_snapshot!("lark_messages_empty", messages);
     }
 }

@@ -69,15 +69,13 @@ impl AnthropicAdapter {
 
         if !response.status().is_success() {
             let status = response.status();
-            return Err(wb_core::error::WbError::Ai(format!(
-                "API error {}",
-                status
-            )));
+            return Err(wb_core::error::WbError::Ai(format!("API error {}", status)));
         }
 
-        let result: MessagesResponse = response.json().await.map_err(|e| {
-            wb_core::error::WbError::Ai(format!("Failed to parse response: {}", e))
-        })?;
+        let result: MessagesResponse = response
+            .json()
+            .await
+            .map_err(|e| wb_core::error::WbError::Ai(format!("Failed to parse response: {}", e)))?;
 
         result
             .content
@@ -89,7 +87,10 @@ impl AnthropicAdapter {
 
 #[async_trait::async_trait]
 impl ModelAdapter for AnthropicAdapter {
-    async fn classify(&self, event: &wb_core::event::Event) -> wb_core::error::Result<Classification> {
+    async fn classify(
+        &self,
+        event: &wb_core::event::Event,
+    ) -> wb_core::error::Result<Classification> {
         let prompt = format!(
             r#"你是一个工作事件分类器。请对以下事件进行分类。
 
@@ -101,9 +102,7 @@ impl ModelAdapter for AnthropicAdapter {
 {{"category": "task|meeting|communication|research|review|planning|document|decision", "confidence": 0.0-1.0, "reasoning": "理由"}}
 
 只返回 JSON，不要其他内容。"#,
-            event.event_type,
-            event.source,
-            event.content
+            event.event_type, event.source, event.content
         );
 
         let text = self.call_messages(&prompt).await?;
@@ -142,9 +141,8 @@ impl ModelAdapter for AnthropicAdapter {
         let text = self.call_messages(&prompt).await?;
 
         let json_str = extract_json(&text);
-        serde_json::from_str::<Extraction>(json_str).map_err(|e| {
-            wb_core::error::WbError::Ai(format!("Failed to parse extraction: {}", e))
-        })
+        serde_json::from_str::<Extraction>(json_str)
+            .map_err(|e| wb_core::error::WbError::Ai(format!("Failed to parse extraction: {}", e)))
     }
 
     async fn summarize(&self, text: &str) -> wb_core::error::Result<String> {
@@ -222,7 +220,8 @@ mod tests {
         let config = ModelConfig::openai("test-key".to_string(), None);
         assert_eq!(config.model, "gpt-4o");
 
-        let config = ModelConfig::openai("key".to_string(), Some("http://localhost:8080".to_string()));
+        let config =
+            ModelConfig::openai("key".to_string(), Some("http://localhost:8080".to_string()));
         assert_eq!(config.base_url, "http://localhost:8080");
     }
 }

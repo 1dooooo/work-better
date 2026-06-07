@@ -1,5 +1,6 @@
 //! wb-collector: 数据采集层
 
+pub mod config;
 pub mod feishu;
 pub mod manager;
 pub mod runner;

@@ -24,10 +24,10 @@ pub struct SlaConfig {
 impl Default for SlaConfig {
     fn default() -> Self {
         Self {
-            p0_timeout_ms: 300_000,      // 5 min
-            p1_timeout_ms: 1_800_000,    // 30 min
-            p2_timeout_ms: 14_400_000,   // 4 hours
-            p3_timeout_ms: 86_400_000,   // 24 hours
+            p0_timeout_ms: 300_000,    // 5 min
+            p1_timeout_ms: 1_800_000,  // 30 min
+            p2_timeout_ms: 14_400_000, // 4 hours
+            p3_timeout_ms: 86_400_000, // 24 hours
         }
     }
 }
@@ -248,11 +248,8 @@ mod tests {
     fn test_daily_report_all_on_time() {
         let mgr = default_manager();
         let r1 = make_record(0.95, false); // P3, 24h limit
-        let r2 = make_record(0.9, false);  // P3
-        let records: Vec<(WorkRecord, u64)> = vec![
-            (r1, 1000),
-            (r2, 2000),
-        ];
+        let r2 = make_record(0.9, false); // P3
+        let records: Vec<(WorkRecord, u64)> = vec![(r1, 1000), (r2, 2000)];
         let report = mgr.daily_report(&records);
         assert_eq!(report.total_records, 2);
         assert_eq!(report.breached_count, 0);
@@ -263,11 +260,11 @@ mod tests {
     #[test]
     fn test_daily_report_some_breached() {
         let mgr = default_manager();
-        let r1 = make_record(0.5, true);  // P1, 30min limit
+        let r1 = make_record(0.5, true); // P1, 30min limit
         let r2 = make_record(0.95, false); // P3, 24h limit
         let records: Vec<(WorkRecord, u64)> = vec![
-            (r1, 3_600_000),  // 1 hour > 30min P1 limit → breached
-            (r2, 1000),       // 1s < 24h P3 limit → on time
+            (r1, 3_600_000), // 1 hour > 30min P1 limit → breached
+            (r2, 1000),      // 1s < 24h P3 limit → on time
         ];
         let report = mgr.daily_report(&records);
         assert_eq!(report.total_records, 2);
@@ -289,5 +286,112 @@ mod tests {
         assert!(mgr.check_timeout(&Priority::P0, 1500));
         // P3 with 1500ms elapsed → not breached (limit is 4000ms)
         assert!(!mgr.check_timeout(&Priority::P3, 1500));
+    }
+
+    // ─── A4-01~08: Parametrized P0-P3 within/over limit ───────────
+    use rstest::rstest;
+
+    // (priority, elapsed_ms, expected_breached)
+    #[rstest]
+    #[case(Priority::P0, 60_000, false)] // A4-01: P0 within limit (1min < 5min)
+    #[case(Priority::P0, 360_000, true)] // A4-02: P0 over limit (6min > 5min)
+    #[case(Priority::P1, 900_000, false)] // A4-03: P1 within limit (15min < 30min)
+    #[case(Priority::P1, 2_400_000, true)] // A4-04: P1 over limit (40min > 30min)
+    #[case(Priority::P2, 7_200_000, false)] // A4-05: P2 within limit (2h < 4h)
+    #[case(Priority::P2, 18_000_000, true)] // A4-06: P2 over limit (5h > 4h)
+    #[case(Priority::P3, 43_200_000, false)] // A4-07: P3 within limit (12h < 24h)
+    #[case(Priority::P3, 90_000_000, true)] // A4-08: P3 over limit (25h > 24h)
+    fn test_sla_timeout_boundary(
+        #[case] priority: Priority,
+        #[case] elapsed_ms: u64,
+        #[case] expected_breached: bool,
+    ) {
+        let mgr = default_manager();
+        assert_eq!(mgr.check_timeout(&priority, elapsed_ms), expected_breached);
+    }
+
+    // ─── A4-09: Full escalation chain P3→P2→P1→P0 ─────────────────
+    // (already covered by test_full_escalation_chain, adding rstest version)
+
+    #[rstest]
+    #[case(Priority::P3, Priority::P2)]
+    #[case(Priority::P2, Priority::P1)]
+    #[case(Priority::P1, Priority::P0)]
+    #[case(Priority::P0, Priority::P0)]
+    fn test_escalate_parametrized(#[case] input: Priority, #[case] expected: Priority) {
+        let mgr = default_manager();
+        assert_eq!(mgr.escalate_priority(&input), expected);
+    }
+
+    // ─── A4-10: Escalation ceiling — P0 does not escalate further ──
+
+    #[test]
+    fn test_escalation_ceiling_p0_never_exceeds() {
+        let mgr = default_manager();
+        let mut p = Priority::P0;
+        for _ in 0..10 {
+            p = mgr.escalate_priority(&p);
+        }
+        assert_eq!(p, Priority::P0);
+    }
+
+    // ─── A4-11~13: Priority estimation rules (parametrized) ────────
+
+    #[rstest]
+    #[case(0.5, true, Priority::P1)] // A4-11: needs_review → P1
+    #[case(0.95, false, Priority::P3)] // A4-12: high confidence, no review → P3
+    #[case(0.7, false, Priority::P2)] // A4-13: medium confidence, no review → P2
+    fn test_estimate_priority_parametrized(
+        #[case] confidence: f64,
+        #[case] needs_review: bool,
+        #[case] expected: Priority,
+    ) {
+        let r = make_record(confidence, needs_review);
+        assert_eq!(SlaManager::estimate_priority(&r), expected);
+    }
+
+    // ─── A4-14: Daily report — all breached ────────────────────────
+
+    #[test]
+    fn test_daily_report_all_breached() {
+        let mgr = default_manager();
+        let records: Vec<(WorkRecord, u64)> = vec![
+            (make_record(0.5, true), 3_600_000),     // P1, 1h > 30min
+            (make_record(0.95, false), 100_000_000), // P3, ~28h > 24h
+        ];
+        let report = mgr.daily_report(&records);
+        assert_eq!(report.total_records, 2);
+        assert_eq!(report.breached_count, 2);
+        assert_eq!(report.on_time_count, 0);
+        assert!((report.breach_rate - 1.0).abs() < f64::EPSILON);
+    }
+
+    // ─── A4-15: Daily report — single record ───────────────────────
+
+    #[test]
+    fn test_daily_report_single_record_on_time() {
+        let mgr = default_manager();
+        let records = vec![(make_record(0.7, false), 1000)]; // P2, 1s < 4h
+        let report = mgr.daily_report(&records);
+        assert_eq!(report.total_records, 1);
+        assert_eq!(report.breached_count, 0);
+        assert_eq!(report.on_time_count, 1);
+        assert_eq!(report.records.len(), 1);
+        assert!(!report.records[0].is_breached);
+    }
+
+    // ─── A4-16: Daily report — record_ids are preserved ────────────
+
+    #[test]
+    fn test_daily_report_preserves_record_ids() {
+        let mgr = default_manager();
+        let r1 = make_record(0.95, false);
+        let r2 = make_record(0.5, true);
+        let id1 = r1.id.clone();
+        let id2 = r2.id.clone();
+        let records = vec![(r1, 1000), (r2, 3_600_000)];
+        let report = mgr.daily_report(&records);
+        assert_eq!(report.records[0].record_id, id1);
+        assert_eq!(report.records[1].record_id, id2);
     }
 }

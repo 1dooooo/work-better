@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli vc +search 响应
 #[derive(Debug, Deserialize)]
@@ -83,7 +83,9 @@ impl Collector for FeishuMeetingCollector {
         let thirty_days_ago = now - chrono::Duration::days(30);
         let start = thirty_days_ago.format("%Y-%m-%d").to_string();
         let end = now.format("%Y-%m-%d").to_string();
-        let args = vec!["vc", "+search", "--start", &start, "--end", &end, "--format", "json"];
+        let args = vec![
+            "vc", "+search", "--start", &start, "--end", &end, "--format", "json",
+        ];
 
         let response: LarkMeetingsResponse = runner::execute_json("lark-cli", &args)?;
 

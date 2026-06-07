@@ -141,7 +141,10 @@ impl AuditPipeline {
 
     /// 按 trace_id 统计记录数
     pub fn trace_count(&self, trace_id: &str) -> usize {
-        self.records.iter().filter(|r| r.trace_id == trace_id).count()
+        self.records
+            .iter()
+            .filter(|r| r.trace_id == trace_id)
+            .count()
     }
 
     /// 基于审计数据生成优化建议
@@ -156,7 +159,10 @@ impl AuditPipeline {
         let mut step_durations: std::collections::HashMap<&AuditStep, Vec<u64>> =
             std::collections::HashMap::new();
         for r in &self.records {
-            step_durations.entry(&r.step).or_default().push(r.duration_ms);
+            step_durations
+                .entry(&r.step)
+                .or_default()
+                .push(r.duration_ms);
         }
         for (step, durations) in &step_durations {
             let total: u64 = durations.iter().sum();
@@ -252,8 +258,8 @@ impl AuditPipeline {
             suggestions.push(OptimizationSuggestion {
                 category: "reliability".into(),
                 title: "未使用模型升级路径".into(),
-                description: "所有记录使用同一模型，建议配置小模型->大模型的升级策略以平衡成本和质量"
-                    .into(),
+                description:
+                    "所有记录使用同一模型，建议配置小模型->大模型的升级策略以平衡成本和质量".into(),
                 priority: "low".into(),
             });
         }
@@ -565,12 +571,8 @@ mod tests {
     fn test_suggestions_needs_fix_high_rate() {
         let mut pipeline = AuditPipeline::new();
         for i in 0..20 {
-            let mut audit = make_audit_with_duration(
-                &format!("t{}", i),
-                AuditStep::Review,
-                0.8,
-                100,
-            );
+            let mut audit =
+                make_audit_with_duration(&format!("t{}", i), AuditStep::Review, 0.8, 100);
             if i < 5 {
                 audit.review_verdict = Some(ReviewVerdict::NeedsFix("issue".into()));
             }
@@ -603,12 +605,8 @@ mod tests {
     fn test_suggestions_no_issues_when_healthy() {
         let mut pipeline = AuditPipeline::new();
         for i in 0..10 {
-            let mut audit = make_audit_with_duration(
-                &format!("t{}", i),
-                AuditStep::Classifier,
-                0.95,
-                200,
-            );
+            let mut audit =
+                make_audit_with_duration(&format!("t{}", i), AuditStep::Classifier, 0.95, 200);
             audit.token_input = 50;
             audit.token_output = 30;
             pipeline.push(audit);

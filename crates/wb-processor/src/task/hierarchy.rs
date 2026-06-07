@@ -12,9 +12,7 @@ use super::model::Task;
 /// - 父任务不能是 Archived 状态
 pub fn add_subtask(parent: &Task, title: &str) -> Result<(Task, Task)> {
     if parent.status == super::model::TaskStatus::Archived {
-        return Err(WbError::Ai(
-            "不能为已归档的任务添加子任务".to_string(),
-        ));
+        return Err(WbError::Ai("不能为已归档的任务添加子任务".to_string()));
     }
 
     let child = create_subtask(parent, title);
@@ -44,7 +42,10 @@ pub fn add_subtask(parent: &Task, title: &str) -> Result<(Task, Task)> {
 }
 
 /// 获取任务的所有后代 ID（广度优先遍历）
-pub fn collect_descendant_ids(task_id: &str, all_tasks: &std::collections::HashMap<String, Task>) -> Vec<String> {
+pub fn collect_descendant_ids(
+    task_id: &str,
+    all_tasks: &std::collections::HashMap<String, Task>,
+) -> Vec<String> {
     let mut result = Vec::new();
     let mut queue = std::collections::VecDeque::new();
 

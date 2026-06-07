@@ -120,7 +120,12 @@ mod tests {
     use chrono::NaiveDate;
     use wb_core::record::Category;
 
-    fn make_record(title: &str, summary: &str, category: Category, status: Option<&str>) -> WorkRecord {
+    fn make_record(
+        title: &str,
+        summary: &str,
+        category: Category,
+        status: Option<&str>,
+    ) -> WorkRecord {
         let mut r = WorkRecord::new(
             title.to_string(),
             summary.to_string(),
@@ -195,7 +200,12 @@ mod tests {
     #[test]
     fn test_generate_daily_with_task_progress() {
         let date = NaiveDate::from_ymd_opt(2026, 6, 6).unwrap();
-        let mut record = make_record("Progress Task", "summary", Category::Task, Some("in_progress"));
+        let mut record = make_record(
+            "Progress Task",
+            "summary",
+            Category::Task,
+            Some("in_progress"),
+        );
         record.task_progress = Some("60%".to_string());
         let report = generate_daily(date, &[record]);
         assert!(report.content.contains("60%"));

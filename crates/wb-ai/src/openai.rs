@@ -75,15 +75,13 @@ impl OpenAIAdapter {
 
         if !response.status().is_success() {
             let status = response.status();
-            return Err(wb_core::error::WbError::Ai(format!(
-                "API error {}",
-                status
-            )));
+            return Err(wb_core::error::WbError::Ai(format!("API error {}", status)));
         }
 
-        let result: ChatResponse = response.json().await.map_err(|e| {
-            wb_core::error::WbError::Ai(format!("Failed to parse response: {}", e))
-        })?;
+        let result: ChatResponse = response
+            .json()
+            .await
+            .map_err(|e| wb_core::error::WbError::Ai(format!("Failed to parse response: {}", e)))?;
 
         result
             .choices
@@ -95,7 +93,10 @@ impl OpenAIAdapter {
 
 #[async_trait::async_trait]
 impl ModelAdapter for OpenAIAdapter {
-    async fn classify(&self, event: &wb_core::event::Event) -> wb_core::error::Result<Classification> {
+    async fn classify(
+        &self,
+        event: &wb_core::event::Event,
+    ) -> wb_core::error::Result<Classification> {
         let prompt = format!(
             r#"你是一个工作事件分类器。请对以下事件进行分类。
 
@@ -143,9 +144,8 @@ impl ModelAdapter for OpenAIAdapter {
 
         let text = self.call_chat(&prompt).await?;
         let json_str = crate::anthropic::extract_json(&text);
-        serde_json::from_str::<Extraction>(json_str).map_err(|e| {
-            wb_core::error::WbError::Ai(format!("Failed to parse extraction: {}", e))
-        })
+        serde_json::from_str::<Extraction>(json_str)
+            .map_err(|e| wb_core::error::WbError::Ai(format!("Failed to parse extraction: {}", e)))
     }
 
     async fn summarize(&self, text: &str) -> wb_core::error::Result<String> {

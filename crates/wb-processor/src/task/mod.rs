@@ -58,18 +58,12 @@ impl TaskManager {
 
         let updated = Task {
             title: update.title.unwrap_or(task.title),
-            description: update
-                .description
-                .unwrap_or(task.description),
+            description: update.description.unwrap_or(task.description),
             priority: update.priority.unwrap_or(task.priority),
             due_date: update.due_date.unwrap_or(task.due_date),
             tags: update.tags.unwrap_or(task.tags),
-            feishu_task_id: update
-                .feishu_task_id
-                .unwrap_or(task.feishu_task_id),
-            obsidian_path: update
-                .obsidian_path
-                .unwrap_or(task.obsidian_path),
+            feishu_task_id: update.feishu_task_id.unwrap_or(task.feishu_task_id),
+            obsidian_path: update.obsidian_path.unwrap_or(task.obsidian_path),
             updated_at: chrono::Utc::now().to_rfc3339(),
             ..task
         };
@@ -178,7 +172,10 @@ mod tests {
     #[tokio::test]
     async fn test_create_task() {
         let m = mgr();
-        let task = m.create("Test", TaskPriority::P1, TaskSource::Manual).await.unwrap();
+        let task = m
+            .create("Test", TaskPriority::P1, TaskSource::Manual)
+            .await
+            .unwrap();
         assert_eq!(task.title, "Test");
         assert_eq!(task.status, TaskStatus::Open);
     }
@@ -186,14 +183,20 @@ mod tests {
     #[tokio::test]
     async fn test_create_auto_discovered_is_pending() {
         let m = mgr();
-        let task = m.create("Auto", TaskPriority::P2, TaskSource::Meeting).await.unwrap();
+        let task = m
+            .create("Auto", TaskPriority::P2, TaskSource::Meeting)
+            .await
+            .unwrap();
         assert_eq!(task.status, TaskStatus::Pending);
     }
 
     #[tokio::test]
     async fn test_get_existing() {
         let m = mgr();
-        let created = m.create("T", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let created = m
+            .create("T", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         let fetched = m.get(&created.id).await.unwrap();
         assert!(fetched.is_some());
         assert_eq!(fetched.unwrap().title, "T");
@@ -211,7 +214,10 @@ mod tests {
     #[tokio::test]
     async fn test_update_title() {
         let m = mgr();
-        let task = m.create("Old", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let task = m
+            .create("Old", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         let updated = m
             .update(
                 &task.id,
@@ -229,7 +235,13 @@ mod tests {
     async fn test_update_nonexistent() {
         let m = mgr();
         let result = m
-            .update("bad", TaskUpdate { title: Some("X".into()), ..TaskUpdate::default() })
+            .update(
+                "bad",
+                TaskUpdate {
+                    title: Some("X".into()),
+                    ..TaskUpdate::default()
+                },
+            )
             .await;
         assert!(result.is_err());
     }
@@ -239,15 +251,24 @@ mod tests {
     #[tokio::test]
     async fn test_transition_open_to_in_progress() {
         let m = mgr();
-        let task = m.create("T", TaskPriority::P2, TaskSource::Manual).await.unwrap();
-        let t = m.transition(&task.id, TaskStatus::InProgress).await.unwrap();
+        let task = m
+            .create("T", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
+        let t = m
+            .transition(&task.id, TaskStatus::InProgress)
+            .await
+            .unwrap();
         assert_eq!(t.status, TaskStatus::InProgress);
     }
 
     #[tokio::test]
     async fn test_transition_rejected() {
         let m = mgr();
-        let task = m.create("T", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let task = m
+            .create("T", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         // Open → Done 是非法的
         let result = m.transition(&task.id, TaskStatus::Done).await;
         assert!(result.is_err());
@@ -265,7 +286,10 @@ mod tests {
     #[tokio::test]
     async fn test_archive_full_flow() {
         let m = mgr();
-        let task = m.create("T", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let task = m
+            .create("T", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         let id = task.id.clone();
         m.transition(&id, TaskStatus::InProgress).await.unwrap();
         m.transition(&id, TaskStatus::Done).await.unwrap();
@@ -276,7 +300,10 @@ mod tests {
     #[tokio::test]
     async fn test_archive_fails_from_open() {
         let m = mgr();
-        let task = m.create("T", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let task = m
+            .create("T", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         assert!(m.archive(&task.id).await.is_err());
     }
 
@@ -285,7 +312,10 @@ mod tests {
     #[tokio::test]
     async fn test_add_subtask() {
         let m = mgr();
-        let parent = m.create("Parent", TaskPriority::P1, TaskSource::Manual).await.unwrap();
+        let parent = m
+            .create("Parent", TaskPriority::P1, TaskSource::Manual)
+            .await
+            .unwrap();
         let child = m.add_subtask(&parent.id, "Child").await.unwrap();
 
         assert_eq!(child.parent_id, Some(parent.id.clone()));
@@ -307,9 +337,15 @@ mod tests {
     #[tokio::test]
     async fn test_list_by_status() {
         let m = mgr();
-        m.create("A", TaskPriority::P2, TaskSource::Manual).await.unwrap();
-        m.create("B", TaskPriority::P2, TaskSource::Manual).await.unwrap();
-        m.create("C", TaskPriority::P2, TaskSource::Meeting).await.unwrap(); // Pending
+        m.create("A", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("B", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("C", TaskPriority::P2, TaskSource::Meeting)
+            .await
+            .unwrap(); // Pending
 
         let open = m.list_by_status(TaskStatus::Open).await.unwrap();
         assert_eq!(open.len(), 2);
@@ -321,9 +357,15 @@ mod tests {
     #[tokio::test]
     async fn test_list_filter_by_priority() {
         let m = mgr();
-        m.create("A", TaskPriority::P0, TaskSource::Manual).await.unwrap();
-        m.create("B", TaskPriority::P1, TaskSource::Manual).await.unwrap();
-        m.create("C", TaskPriority::P0, TaskSource::Manual).await.unwrap();
+        m.create("A", TaskPriority::P0, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("B", TaskPriority::P1, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("C", TaskPriority::P0, TaskSource::Manual)
+            .await
+            .unwrap();
 
         let p0 = m
             .list(TaskFilter {
@@ -338,8 +380,12 @@ mod tests {
     #[tokio::test]
     async fn test_list_filter_by_source() {
         let m = mgr();
-        m.create("A", TaskPriority::P2, TaskSource::Manual).await.unwrap();
-        m.create("B", TaskPriority::P2, TaskSource::Feishu).await.unwrap();
+        m.create("A", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("B", TaskPriority::P2, TaskSource::Feishu)
+            .await
+            .unwrap();
 
         let manual = m
             .list(TaskFilter {
@@ -355,9 +401,14 @@ mod tests {
     #[tokio::test]
     async fn test_list_filter_by_parent_id() {
         let m = mgr();
-        let parent = m.create("Parent", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        let parent = m
+            .create("Parent", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
         m.add_subtask(&parent.id, "Child").await.unwrap();
-        m.create("Orphan", TaskPriority::P2, TaskSource::Manual).await.unwrap();
+        m.create("Orphan", TaskPriority::P2, TaskSource::Manual)
+            .await
+            .unwrap();
 
         let children = m
             .list(TaskFilter {
@@ -382,9 +433,15 @@ mod tests {
     #[tokio::test]
     async fn test_list_combined_filter() {
         let m = mgr();
-        m.create("A", TaskPriority::P0, TaskSource::Manual).await.unwrap();
-        m.create("B", TaskPriority::P0, TaskSource::Manual).await.unwrap();
-        m.create("C", TaskPriority::P1, TaskSource::Manual).await.unwrap();
+        m.create("A", TaskPriority::P0, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("B", TaskPriority::P0, TaskSource::Manual)
+            .await
+            .unwrap();
+        m.create("C", TaskPriority::P1, TaskSource::Manual)
+            .await
+            .unwrap();
 
         let result = m
             .list(TaskFilter {

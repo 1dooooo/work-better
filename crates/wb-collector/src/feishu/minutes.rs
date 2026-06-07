@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli minutes +search 响应
 #[derive(Debug, Deserialize)]
@@ -84,10 +84,7 @@ impl Collector for FeishuMinutesCollector {
 
         let items = response.data.and_then(|d| d.items).unwrap_or_default();
 
-        let events: Vec<Event> = items
-            .into_iter()
-            .filter_map(Self::convert_minute)
-            .collect();
+        let events: Vec<Event> = items.into_iter().filter_map(Self::convert_minute).collect();
 
         Ok(events)
     }

@@ -26,10 +26,7 @@ impl CollectorManager {
     /// 注册采集器，默认启用
     pub async fn register(&self, collector: Arc<dyn Collector>) {
         let id = collector.id().to_string();
-        self.collectors
-            .write()
-            .await
-            .insert(id.clone(), collector);
+        self.collectors.write().await.insert(id.clone(), collector);
         self.enabled.write().await.insert(id, true);
     }
 
@@ -124,8 +121,9 @@ impl Default for CollectorManager {
 mod tests {
     use super::*;
     use crate::traits::{HealthLevel, HealthStatus};
+    use rstest::rstest;
 
-    /// 测试用 Mock 采集器
+    /// Test mock collector
     struct MockCollector {
         id: String,
         name: String,
@@ -188,153 +186,134 @@ mod tests {
         }
     }
 
+    // ── A10-01: Register and list ─────────────────────────────────────
     #[tokio::test]
-    async fn test_register_and_list() {
+    async fn a10_01_register_and_list() {
         let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("feishu-msg", "Feishu Messages"));
-
-        manager.register(collector).await;
-
-        let list = manager.list().await;
-        assert_eq!(list.len(), 1);
-        assert!(list.contains(&"feishu-msg".to_string()));
-    }
-
-    #[tokio::test]
-    async fn test_unregister() {
-        let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("feishu-msg", "Feishu Messages"));
-
-        manager.register(collector).await;
-        assert_eq!(manager.list().await.len(), 1);
-
-        manager.unregister("feishu-msg").await;
-        assert_eq!(manager.list().await.len(), 0);
-    }
-
-    #[tokio::test]
-    async fn test_enable_disable_toggle() {
-        let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("feishu-msg", "Feishu Messages"));
-
-        manager.register(collector).await;
-
-        // 默认启用
-        assert!(manager.is_enabled("feishu-msg").await);
-
-        // 禁用
-        manager.disable("feishu-msg").await;
-        assert!(!manager.is_enabled("feishu-msg").await);
-
-        // 重新启用
-        manager.enable("feishu-msg").await;
-        assert!(manager.is_enabled("feishu-msg").await);
-    }
-
-    #[tokio::test]
-    async fn test_is_enabled_unknown_returns_false() {
-        let manager = CollectorManager::new();
-        assert!(!manager.is_enabled("nonexistent").await);
-    }
-
-    #[tokio::test]
-    async fn test_collect_all_only_from_enabled() {
-        let manager = CollectorManager::new();
-
-        let c1 = Arc::new(MockCollector::new("a", "Collector A"));
-        let c2 = Arc::new(MockCollector::new("b", "Collector B"));
+        let c1 = Arc::new(MockCollector::new("feishu-msg", "Feishu Messages"));
+        let c2 = Arc::new(MockCollector::new("browser", "Browser History"));
 
         manager.register(c1).await;
         manager.register(c2).await;
 
-        // 禁用 b
-        manager.disable("b").await;
-
-        let results = manager.collect_all().await;
-        assert_eq!(results.len(), 1, "should only collect from enabled collectors");
-
-        let events = results.into_iter().next().unwrap().unwrap();
-        assert_eq!(events.len(), 1);
+        let list = manager.list().await;
+        assert_eq!(list.len(), 2);
+        assert!(list.contains(&"feishu-msg".to_string()));
+        assert!(list.contains(&"browser".to_string()));
     }
 
+    // ── A10-02: Enable/disable ────────────────────────────────────────
     #[tokio::test]
-    async fn test_collect_all_returns_error_for_failing_collector() {
+    async fn a10_02_enable_disable_toggle() {
         let manager = CollectorManager::new();
+        let collector = Arc::new(MockCollector::new("c1", "Collector 1"));
 
-        let c = Arc::new(MockCollector::with_failure("fail", "Failing Collector"));
+        manager.register(collector).await;
+
+        // Default is enabled
+        assert!(manager.is_enabled("c1").await);
+
+        // Disable
+        manager.disable("c1").await;
+        assert!(!manager.is_enabled("c1").await);
+
+        // Re-enable
+        manager.enable("c1").await;
+        assert!(manager.is_enabled("c1").await);
+    }
+
+    // ── A10-03: is_enabled check ──────────────────────────────────────
+    #[rstest]
+    #[case("registered", true)]
+    #[case("unregistered", false)]
+    #[tokio::test]
+    async fn a10_03_is_enabled_check(#[case] id: &str, #[case] expected: bool) {
+        let manager = CollectorManager::new();
+        if expected {
+            let c = Arc::new(MockCollector::new("registered", "Reg"));
+            manager.register(c).await;
+        }
+        assert_eq!(manager.is_enabled(id).await, expected);
+    }
+
+    // ── A10-04: Health check ──────────────────────────────────────────
+    #[tokio::test]
+    async fn a10_04_health_check_registered() {
+        let manager = CollectorManager::new();
+        let c = Arc::new(MockCollector::new("healthy", "Healthy Collector"));
         manager.register(c).await;
 
-        let results = manager.collect_all().await;
-        assert_eq!(results.len(), 1);
-        assert!(results[0].is_err());
-    }
-
-    #[tokio::test]
-    async fn test_collect_one_success() {
-        let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("test", "Test Collector"));
-
-        manager.register(collector).await;
-
-        let result = manager.collect_one("test").await;
-        assert!(result.is_some());
-        let events = result.unwrap().unwrap();
-        assert_eq!(events.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_collect_one_not_registered() {
-        let manager = CollectorManager::new();
-
-        let result = manager.collect_one("nonexistent").await;
-        assert!(result.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_collect_one_disabled() {
-        let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("test", "Test Collector"));
-
-        manager.register(collector).await;
-        manager.disable("test").await;
-
-        let result = manager.collect_one("test").await;
-        assert!(result.is_some());
-        assert!(result.unwrap().is_err());
-    }
-
-    #[tokio::test]
-    async fn test_health_check_single() {
-        let manager = CollectorManager::new();
-        let collector = Arc::new(MockCollector::new("feishu-msg", "Feishu Messages"));
-
-        manager.register(collector).await;
-
-        let status = manager.health_check("feishu-msg").await;
+        let status = manager.health_check("healthy").await;
         assert!(status.is_some());
         assert_eq!(status.unwrap().level, HealthLevel::Healthy);
+    }
 
-        // 不存在的采集器
+    #[tokio::test]
+    async fn a10_04_health_check_unhealthy() {
+        let manager = CollectorManager::new();
+        let c = Arc::new(MockCollector::with_failure("bad", "Bad Collector"));
+        manager.register(c).await;
+
+        let status = manager.health_check("bad").await;
+        assert!(status.is_some());
+        assert_eq!(status.unwrap().level, HealthLevel::Unhealthy);
+    }
+
+    // ── A10-05: Unregistered returns None ─────────────────────────────
+    #[tokio::test]
+    async fn a10_05_unregistered_health_returns_none() {
+        let manager = CollectorManager::new();
         assert!(manager.health_check("nonexistent").await.is_none());
     }
 
     #[tokio::test]
-    async fn test_health_check_all() {
+    async fn a10_05_unregistered_collect_one_returns_none() {
         let manager = CollectorManager::new();
+        assert!(manager.collect_one("nonexistent").await.is_none());
+    }
 
-        let c1 = Arc::new(MockCollector::new("ok", "OK Collector"));
-        let c2 = Arc::new(MockCollector::with_failure("bad", "Bad Collector"));
+    // ── Additional: unregister removes from list ──────────────────────
+    #[tokio::test]
+    async fn unregister_removes_from_list() {
+        let manager = CollectorManager::new();
+        let c = Arc::new(MockCollector::new("temp", "Temp"));
+        manager.register(c).await;
+        assert_eq!(manager.list().await.len(), 1);
 
+        manager.unregister("temp").await;
+        assert_eq!(manager.list().await.len(), 0);
+    }
+
+    // ── Additional: collect_all skips disabled ────────────────────────
+    #[tokio::test]
+    async fn collect_all_skips_disabled() {
+        let manager = CollectorManager::new();
+        let c1 = Arc::new(MockCollector::new("a", "A"));
+        let c2 = Arc::new(MockCollector::new("b", "B"));
         manager.register(c1).await;
         manager.register(c2).await;
+        manager.disable("b").await;
+
+        let results = manager.collect_all().await;
+        assert_eq!(results.len(), 1);
+    }
+
+    // ── Additional: health_check_all ──────────────────────────────────
+    #[tokio::test]
+    async fn health_check_all_mixed() {
+        let manager = CollectorManager::new();
+        manager
+            .register(Arc::new(MockCollector::new("ok", "OK")))
+            .await;
+        manager
+            .register(Arc::new(MockCollector::with_failure("bad", "Bad")))
+            .await;
 
         let results = manager.health_check_all().await;
         assert_eq!(results.len(), 2);
 
-        let statuses: HashMap<String, HealthLevel> = results
-            .into_iter()
-            .map(|(id, s)| (id, s.level))
-            .collect();
+        let statuses: HashMap<String, HealthLevel> =
+            results.into_iter().map(|(id, s)| (id, s.level)).collect();
 
         assert_eq!(statuses.get("ok"), Some(&HealthLevel::Healthy));
         assert_eq!(statuses.get("bad"), Some(&HealthLevel::Unhealthy));

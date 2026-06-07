@@ -6,11 +6,7 @@ use uuid::Uuid;
 use super::model::{Task, TaskPriority, TaskSource, TaskStatus};
 
 /// 创建新任务
-pub fn create_task(
-    title: &str,
-    priority: TaskPriority,
-    source: TaskSource,
-) -> Task {
+pub fn create_task(title: &str, priority: TaskPriority, source: TaskSource) -> Task {
     let now = Utc::now().to_rfc3339();
     let status = match source {
         TaskSource::Manual => TaskStatus::Open,
@@ -85,7 +81,12 @@ mod tests {
             TaskSource::Feishu,
         ] {
             let task = create_task("Auto task", TaskPriority::P2, source.clone());
-            assert_eq!(task.status, TaskStatus::Pending, "source {:?} should yield Pending", source);
+            assert_eq!(
+                task.status,
+                TaskStatus::Pending,
+                "source {:?} should yield Pending",
+                source
+            );
         }
     }
 

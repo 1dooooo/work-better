@@ -71,9 +71,7 @@ impl ModelRouter {
 
     /// 获取指定任务类型的阈值配置
     pub fn get_threshold(&self, task_type: &TaskType) -> Option<&UpgradeThreshold> {
-        self.thresholds
-            .iter()
-            .find(|t| &t.task_type == task_type)
+        self.thresholds.iter().find(|t| &t.task_type == task_type)
     }
 
     /// 默认阈值配置
@@ -260,5 +258,155 @@ mod tests {
         let threshold = router.get_threshold(&TaskType::PatternRecognition);
         assert!(threshold.is_some());
         assert!(threshold.unwrap().force_large_model);
+    }
+}
+
+#[cfg(test)]
+mod a2_upgrade_threshold_tests {
+    //! A2: Model Upgrade Threshold — rstest parameterized scenarios
+    use super::*;
+    use rstest::rstest;
+
+    // ── A2-01 ~ A2-03: EntityExtraction threshold = 0.7 ────────────────
+
+    #[rstest]
+    #[case::below(0.5, true)] // A2-01: < 0.7 → upgrade
+    #[case::at(0.7, false)] // A2-02: = 0.7 → no upgrade
+    #[case::above(0.9, false)] // A2-03: > 0.7 → no upgrade
+    fn a2_entity_extraction(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::EntityExtraction, confidence),
+            expected,
+            "EntityExtraction confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-04 ~ A2-05: TaskIdentification threshold = 0.6 ──────────────
+
+    #[rstest]
+    #[case::below(0.3, true)] // A2-04: < 0.6 → upgrade
+    #[case::above(0.8, false)] // A2-05: > 0.6 → no upgrade
+    fn a2_task_identification(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::TaskIdentification, confidence),
+            expected,
+            "TaskIdentification confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-06 ~ A2-07: Summarization threshold = 0.6 ───────────────────
+
+    #[rstest]
+    #[case::below(0.4, true)] // A2-06: < 0.6 → upgrade
+    #[case::above(0.9, false)] // A2-07: > 0.6 → no upgrade
+    fn a2_summarization(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::Summarization, confidence),
+            expected,
+            "Summarization confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-08 ~ A2-09: SentimentAnalysis threshold = 0.8 ───────────────
+
+    #[rstest]
+    #[case::below(0.6, true)] // A2-08: < 0.8 → upgrade
+    #[case::above(0.9, false)] // A2-09: > 0.8 → no upgrade
+    fn a2_sentiment_analysis(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::SentimentAnalysis, confidence),
+            expected,
+            "SentimentAnalysis confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-10 ~ A2-11: RelationAnalysis threshold = 0.7 ────────────────
+
+    #[rstest]
+    #[case::below(0.5, true)] // A2-10: < 0.7 → upgrade
+    #[case::above(0.8, false)] // A2-11: > 0.7 → no upgrade
+    fn a2_relation_analysis(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::RelationAnalysis, confidence),
+            expected,
+            "RelationAnalysis confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-12: PatternRecognition → always use large model ─────────────
+
+    #[rstest]
+    #[case::zero(0.0)]
+    #[case::low(0.3)]
+    #[case::mid(0.5)]
+    #[case::high(0.99)]
+    #[case::perfect(1.0)]
+    fn a2_pattern_recognition_always_forced(#[case] confidence: f64) {
+        let router = ModelRouter::new();
+        assert!(
+            router.should_upgrade(&TaskType::PatternRecognition, confidence),
+            "PatternRecognition confidence={confidence} should always upgrade (force_large_model=true)"
+        );
+    }
+
+    // ── A2-13 ~ A2-14: Classification threshold = 0.6 ──────────────────
+
+    #[rstest]
+    #[case::below(0.4, true)] // A2-13: < 0.6 → upgrade
+    #[case::above(0.8, false)] // A2-14: > 0.6 → no upgrade
+    fn a2_classification(#[case] confidence: f64, #[case] expected: bool) {
+        let router = ModelRouter::new();
+        assert_eq!(
+            router.should_upgrade(&TaskType::Classification, confidence),
+            expected,
+            "Classification confidence={confidence} should upgrade={expected}"
+        );
+    }
+
+    // ── A2-15: Custom threshold overrides default ──────────────────────
+
+    #[test]
+    fn a2_custom_threshold_overrides_default() {
+        let router = ModelRouter::with_thresholds(vec![UpgradeThreshold {
+            task_type: TaskType::Classification,
+            threshold: 0.9,
+            force_large_model: false,
+        }]);
+        // Default threshold is 0.6, custom is 0.9
+        // 0.8 < 0.9 → upgrade (would NOT upgrade with default 0.6)
+        assert!(
+            router.should_upgrade(&TaskType::Classification, 0.8),
+            "Custom threshold 0.9 should cause 0.8 to trigger upgrade"
+        );
+        // 0.95 >= 0.9 → no upgrade
+        assert!(
+            !router.should_upgrade(&TaskType::Classification, 0.95),
+            "Custom threshold 0.9 should NOT trigger upgrade at 0.95"
+        );
+    }
+
+    // ── A2-16: Unknown task type → no upgrade ──────────────────────────
+
+    #[test]
+    fn a2_unknown_task_type_no_upgrade() {
+        let router = ModelRouter::with_thresholds(vec![UpgradeThreshold {
+            task_type: TaskType::Classification,
+            threshold: 0.6,
+            force_large_model: false,
+        }]);
+        // EntityExtraction not in config → always false
+        assert!(
+            !router.should_upgrade(&TaskType::EntityExtraction, 0.0),
+            "Unknown task type should never upgrade, even at confidence=0.0"
+        );
+        assert!(
+            !router.should_upgrade(&TaskType::EntityExtraction, 1.0),
+            "Unknown task type should never upgrade, even at confidence=1.0"
+        );
     }
 }

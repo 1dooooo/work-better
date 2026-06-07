@@ -1,0 +1,20 @@
+[profile.default]
+test-threads = "num-cpus"
+
+[profile.pr]
+fail-fast = true
+
+[profile.pr.slow-timeout]
+period = "30s"
+terminate-after = 2
+
+[profile.release]
+fail-fast = false
+
+[profile.release.slow-timeout]
+period = "60s"
+terminate-after = 3
+
+[profile.ci]
+retries = 2
+fail-fast = false

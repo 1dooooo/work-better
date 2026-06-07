@@ -209,4 +209,115 @@ mod tests {
         );
         assert_eq!(Classifier::classify(&event), ProcessingRoute::Instant);
     }
+
+    // ─── A1-09: AppActivity → Aggregate ────────────────────────────
+
+    #[test]
+    fn test_app_activity_is_aggregate() {
+        let event = make_event(
+            Source::SystemAppSwitch,
+            Confidence::Medium,
+            EventType::AppActivity,
+            json!({"app": "VS Code", "duration_min": 30}),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Aggregate);
+    }
+
+    // ─── A1-12: CalendarEvent → Instant ────────────────────────────
+
+    #[test]
+    fn test_calendar_event_is_instant() {
+        let event = make_event(
+            Source::FeishuCalendar,
+            Confidence::High,
+            EventType::CalendarEvent,
+            json!({"event_id": "cal-001", "title": "周会"}),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Instant);
+    }
+
+    // ─── A1-14: @mention detection — JSON object with "text" key ───
+
+    #[test]
+    fn test_mention_in_json_object_text_field() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!({"text": "@李四 帮忙看看这个 bug"}),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Instant);
+    }
+
+    #[test]
+    fn test_no_mention_in_json_object_text_field() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!({"text": "这个需求改一下"}),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Aggregate);
+    }
+
+    #[test]
+    fn test_mention_in_json_object_without_text_key_falls_back() {
+        // Object without "text" key -> unwrap_or("") -> no '@' detected
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!({"msg": "@王五 你好"}),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Aggregate);
+    }
+
+    // ─── A1-15: @mention detection — raw string content ────────────
+
+    #[test]
+    fn test_mention_in_raw_string_content() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!("@赵六 请确认一下"),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Instant);
+    }
+
+    #[test]
+    fn test_no_mention_in_raw_string_content() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!("今天天气不错"),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Aggregate);
+    }
+
+    // ─── A1-16: @mention detection — non-JSON fallback ─────────────
+    // Array / Number / Bool -> serde_json::to_string -> check for '@'
+
+    #[test]
+    fn test_mention_in_array_fallback() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!(["@user", "message"]),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Instant);
+    }
+
+    #[test]
+    fn test_no_mention_in_number_fallback() {
+        let event = make_event(
+            Source::FeishuMessage,
+            Confidence::Medium,
+            EventType::Message,
+            json!(42),
+        );
+        assert_eq!(Classifier::classify(&event), ProcessingRoute::Aggregate);
+    }
 }

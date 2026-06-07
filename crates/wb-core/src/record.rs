@@ -92,7 +92,10 @@ mod tests {
         );
 
         assert!(!record.id.is_empty(), "id should not be empty");
-        assert_eq!(record.needs_review, false, "confidence 0.9 should not need review");
+        assert_eq!(
+            record.needs_review, false,
+            "confidence 0.9 should not need review"
+        );
 
         let low_confidence_record = WorkRecord::new(
             "Low Confidence".to_string(),

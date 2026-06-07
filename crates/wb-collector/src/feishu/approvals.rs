@@ -38,7 +38,15 @@ impl FeishuApprovalsCollector {
     /// * `limit` - 最大采集数量
     pub fn collect(limit: u32) -> Result<Vec<Event>> {
         let params = format!(r#"{{"page_size":{}}}"#, limit);
-        let args = vec!["approval", "instances", "initiated", "--params", &params, "--format", "json"];
+        let args = vec![
+            "approval",
+            "instances",
+            "initiated",
+            "--params",
+            &params,
+            "--format",
+            "json",
+        ];
 
         let response: LarkApprovalsResponse = runner::execute_json("lark-cli", &args)?;
 

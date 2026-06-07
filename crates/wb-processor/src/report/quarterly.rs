@@ -44,11 +44,7 @@ pub struct QuarterlyReport {
 ///
 /// 汇总指定季度（quarter 1-4）的 WorkRecord 数据。
 /// 内容包含：OKR 进度、项目里程碑、能力成长、总结。
-pub fn generate_quarter(
-    year: i32,
-    quarter: u32,
-    records: &[WorkRecord],
-) -> Report {
+pub fn generate_quarter(year: i32, quarter: u32, records: &[WorkRecord]) -> Report {
     let (period_start, period_end) = quarter_date_range(year, quarter);
     let period = format!("{}-Q{}", year, quarter);
 
@@ -91,13 +87,8 @@ pub fn generate_quarter(
     // 能力成长（基于每月完成趋势）
     let capability_growth = build_capability_metrics(records, year, quarter);
 
-    let summary = build_quarterly_summary(
-        &period,
-        total,
-        done_count,
-        blocked_count,
-        &category_counts,
-    );
+    let summary =
+        build_quarterly_summary(&period, total, done_count, blocked_count, &category_counts);
 
     let quarterly_report = QuarterlyReport {
         period: period.clone(),
@@ -150,7 +141,11 @@ fn build_okr_from_records(records: &[WorkRecord]) -> Vec<OkrItem> {
 
         let entry = objectives.entry(key.to_string()).or_insert((0, 0));
         entry.1 += 1; // total
-        if r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false) {
+        if r.task_status
+            .as_ref()
+            .map(|s| is_done_status(s))
+            .unwrap_or(false)
+        {
             entry.0 += 1; // done
         }
     }
@@ -177,12 +172,19 @@ fn build_milestones(records: &[WorkRecord], projects: &[String]) -> Vec<Mileston
     projects
         .iter()
         .filter_map(|proj| {
-            let proj_records: Vec<&WorkRecord> =
-                records.iter().filter(|r| r.project.as_ref() == Some(proj)).collect();
+            let proj_records: Vec<&WorkRecord> = records
+                .iter()
+                .filter(|r| r.project.as_ref() == Some(proj))
+                .collect();
 
             let done_count = proj_records
                 .iter()
-                .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
+                .filter(|r| {
+                    r.task_status
+                        .as_ref()
+                        .map(|s| is_done_status(s))
+                        .unwrap_or(false)
+                })
                 .count();
 
             let total = proj_records.len();
@@ -219,7 +221,12 @@ fn build_capability_metrics(
             .collect();
         let done = month_records
             .iter()
-            .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
+            .filter(|r| {
+                r.task_status
+                    .as_ref()
+                    .map(|s| is_done_status(s))
+                    .unwrap_or(false)
+            })
             .count();
         monthly_done.push(done);
     }
@@ -269,10 +276,11 @@ fn build_quarterly_summary(
     }
 
     // 主要投入领域
-    if let Some((top_cat, top_count)) =
-        category_counts.iter().max_by_key(|(_, c)| *c)
-    {
-        summary.push_str(&format!(" 主要投入领域为「{}」（{} 项）。", top_cat, top_count));
+    if let Some((top_cat, top_count)) = category_counts.iter().max_by_key(|(_, c)| *c) {
+        summary.push_str(&format!(
+            " 主要投入领域为「{}」（{} 项）。",
+            top_cat, top_count
+        ));
     }
 
     summary

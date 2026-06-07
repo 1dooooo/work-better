@@ -207,9 +207,7 @@ mod tests {
         day: u32,
     ) -> WorkRecord {
         let mut r = make_record(title, status, category);
-        r.created_at = Utc
-            .with_ymd_and_hms(year, month, day, 12, 0, 0)
-            .unwrap();
+        r.created_at = Utc.with_ymd_and_hms(year, month, day, 12, 0, 0).unwrap();
         r
     }
 
@@ -221,8 +219,14 @@ mod tests {
         ];
         let report = generate_month(2026, 6, &records);
         assert_eq!(report.title, "月报：2026年6月");
-        assert_eq!(report.period_start, NaiveDate::from_ymd_opt(2026, 6, 1).unwrap());
-        assert_eq!(report.period_end, NaiveDate::from_ymd_opt(2026, 6, 30).unwrap());
+        assert_eq!(
+            report.period_start,
+            NaiveDate::from_ymd_opt(2026, 6, 1).unwrap()
+        );
+        assert_eq!(
+            report.period_end,
+            NaiveDate::from_ymd_opt(2026, 6, 30).unwrap()
+        );
         assert!(report.content.contains("目标进度"));
         assert!(report.content.contains("时间分配"));
         assert!(report.content.contains("效率趋势"));
@@ -252,7 +256,10 @@ mod tests {
     #[test]
     fn test_generate_month_december() {
         let report = generate_month(2026, 12, &[]);
-        assert_eq!(report.period_end, NaiveDate::from_ymd_opt(2026, 12, 31).unwrap());
+        assert_eq!(
+            report.period_end,
+            NaiveDate::from_ymd_opt(2026, 12, 31).unwrap()
+        );
     }
 
     #[test]

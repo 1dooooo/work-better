@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli mail user_mailbox.messages list 响应
 #[derive(Debug, Deserialize)]
@@ -77,16 +77,21 @@ impl Collector for FeishuEmailCollector {
 
     async fn collect(&self) -> Result<Vec<Event>> {
         let params = r#"{"user_mailbox_id":"me","page_size":50}"#;
-        let args = vec!["mail", "user_mailbox.messages", "list", "--params", params, "--format", "json"];
+        let args = vec![
+            "mail",
+            "user_mailbox.messages",
+            "list",
+            "--params",
+            params,
+            "--format",
+            "json",
+        ];
 
         let response: LarkEmailsResponse = runner::execute_json("lark-cli", &args)?;
 
         let items = response.data.and_then(|d| d.items).unwrap_or_default();
 
-        let events: Vec<Event> = items
-            .into_iter()
-            .filter_map(Self::convert_email)
-            .collect();
+        let events: Vec<Event> = items.into_iter().filter_map(Self::convert_email).collect();
 
         Ok(events)
     }

@@ -29,10 +29,7 @@ impl DependencyGraph {
     /// Register a task with its dependencies.
     /// Existing dependencies are merged (not replaced).
     pub fn add_task(&mut self, task_id: &str, depends_on: Vec<&str>) {
-        let entry = self
-            .deps
-            .entry(task_id.to_string())
-            .or_default();
+        let entry = self.deps.entry(task_id.to_string()).or_default();
         for dep in depends_on {
             entry.insert(dep.to_string());
         }
@@ -127,17 +124,20 @@ impl DependencyGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
+    // ── A7-01: No dependencies → can run ──────────────────────────────
     #[test]
-    fn test_can_run_with_no_deps() {
+    fn a7_01_no_deps_can_run() {
         let mut graph = DependencyGraph::new();
         graph.add_task("a", vec![]);
         let completed = HashSet::new();
         assert!(graph.can_run("a", &completed));
     }
 
+    // ── A7-02: Dependencies completed → can run ───────────────────────
     #[test]
-    fn test_can_run_with_met_deps() {
+    fn a7_02_deps_completed_can_run() {
         let mut graph = DependencyGraph::new();
         graph.add_task("a", vec![]);
         graph.add_task("b", vec!["a"]);
@@ -147,8 +147,9 @@ mod tests {
         assert!(graph.can_run("b", &completed));
     }
 
+    // ── A7-03: Dependencies not completed → cannot run ────────────────
     #[test]
-    fn test_cannot_run_with_unmet_deps() {
+    fn a7_03_deps_not_completed_cannot_run() {
         let mut graph = DependencyGraph::new();
         graph.add_task("a", vec![]);
         graph.add_task("b", vec!["a"]);
@@ -157,42 +158,42 @@ mod tests {
         assert!(!graph.can_run("b", &completed));
     }
 
-    #[test]
-    fn test_topological_order_linear() {
+    // ── A7-04: Topological sort correct (parameterized) ──────────────
+    #[rstest]
+    #[case::linear(
+        vec![("a", vec![]), ("b", vec!["a"]), ("c", vec!["b"])],
+        vec!["a", "b", "c"],
+    )]
+    #[case::diamond(
+        vec![("a", vec![]), ("b", vec!["a"]), ("c", vec!["a"]), ("d", vec!["b", "c"])],
+        vec!["a"], // a must be first; b,c before d
+    )]
+    fn a7_04_topological_sort_correct(
+        #[case] tasks: Vec<(&str, Vec<&str>)>,
+        #[case] must_be_first: Vec<&str>,
+    ) {
         let mut graph = DependencyGraph::new();
-        graph.add_task("a", vec![]);
-        graph.add_task("b", vec!["a"]);
-        graph.add_task("c", vec!["b"]);
-
+        for (id, deps) in tasks {
+            graph.add_task(id, deps);
+        }
         let order = graph.topological_order().unwrap();
-        let pos_a = order.iter().position(|x| x == "a").unwrap();
-        let pos_b = order.iter().position(|x| x == "b").unwrap();
-        let pos_c = order.iter().position(|x| x == "c").unwrap();
-        assert!(pos_a < pos_b);
-        assert!(pos_b < pos_c);
+
+        // All expected-first nodes must appear before any other node
+        for first in &must_be_first {
+            let first_pos = order.iter().position(|x| x == *first).unwrap();
+            for node in order
+                .iter()
+                .filter(|n| !must_be_first.contains(&n.as_str()))
+            {
+                let pos = order.iter().position(|x| x == node).unwrap();
+                assert!(first_pos < pos, "{first} should come before {node}");
+            }
+        }
     }
 
+    // ── A7-05: Cycle detection ────────────────────────────────────────
     #[test]
-    fn test_topological_order_diamond() {
-        let mut graph = DependencyGraph::new();
-        graph.add_task("a", vec![]);
-        graph.add_task("b", vec!["a"]);
-        graph.add_task("c", vec!["a"]);
-        graph.add_task("d", vec!["b", "c"]);
-
-        let order = graph.topological_order().unwrap();
-        let pos_a = order.iter().position(|x| x == "a").unwrap();
-        let pos_b = order.iter().position(|x| x == "b").unwrap();
-        let pos_c = order.iter().position(|x| x == "c").unwrap();
-        let pos_d = order.iter().position(|x| x == "d").unwrap();
-        assert!(pos_a < pos_b);
-        assert!(pos_a < pos_c);
-        assert!(pos_b < pos_d);
-        assert!(pos_c < pos_d);
-    }
-
-    #[test]
-    fn test_cycle_detection() {
+    fn a7_05_cycle_detection() {
         let mut graph = DependencyGraph::new();
         graph.add_task("a", vec!["c"]);
         graph.add_task("b", vec!["a"]);
@@ -203,10 +204,82 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("cyclic"));
     }
 
+    // ── A7-06: Empty graph ────────────────────────────────────────────
     #[test]
-    fn test_empty_graph() {
+    fn a7_06_empty_graph() {
         let graph = DependencyGraph::new();
         let order = graph.topological_order().unwrap();
         assert!(order.is_empty());
+    }
+
+    // ── A7-07: Complex dependency chain ───────────────────────────────
+    //
+    //  Graph shape:
+    //      init → db_migrate → seed_data ──┐
+    //      init → config_load ─────────────┼→ app_start → health_check
+    //                                       │
+    //      init → cache_warm ───────────────┘
+    //
+    //  All paths from init must be ordered correctly.
+    #[test]
+    fn a7_07_complex_dependency_chain() {
+        let mut graph = DependencyGraph::new();
+        graph.add_task("init", vec![]);
+        graph.add_task("db_migrate", vec!["init"]);
+        graph.add_task("seed_data", vec!["db_migrate"]);
+        graph.add_task("config_load", vec!["init"]);
+        graph.add_task("cache_warm", vec!["init"]);
+        graph.add_task("app_start", vec!["seed_data", "config_load", "cache_warm"]);
+        graph.add_task("health_check", vec!["app_start"]);
+
+        let order = graph.topological_order().unwrap();
+        assert_eq!(order.len(), 7);
+
+        let pos = |node: &str| order.iter().position(|x| x == node).unwrap();
+
+        // init is first
+        assert_eq!(pos("init"), 0);
+
+        // db_migrate after init
+        assert!(pos("init") < pos("db_migrate"));
+        // seed_data after db_migrate
+        assert!(pos("db_migrate") < pos("seed_data"));
+
+        // config_load after init
+        assert!(pos("init") < pos("config_load"));
+        // cache_warm after init
+        assert!(pos("init") < pos("cache_warm"));
+
+        // app_start after all three predecessors
+        assert!(pos("seed_data") < pos("app_start"));
+        assert!(pos("config_load") < pos("app_start"));
+        assert!(pos("cache_warm") < pos("app_start"));
+
+        // health_check is last
+        assert_eq!(pos("health_check"), 6);
+        assert!(pos("app_start") < pos("health_check"));
+    }
+
+    // ── Additional: unknown task can_run returns true ─────────────────
+    #[test]
+    fn can_run_unknown_task_returns_true() {
+        let graph = DependencyGraph::new();
+        let completed = HashSet::new();
+        // A task not in the graph has no deps, so can always run
+        assert!(graph.can_run("nonexistent", &completed));
+    }
+
+    // ── Additional: partial deps met still cannot run ─────────────────
+    #[test]
+    fn partial_deps_met_cannot_run() {
+        let mut graph = DependencyGraph::new();
+        graph.add_task("a", vec![]);
+        graph.add_task("b", vec![]);
+        graph.add_task("c", vec!["a", "b"]);
+
+        let mut completed = HashSet::new();
+        completed.insert("a");
+        // b is not completed, so c cannot run
+        assert!(!graph.can_run("c", &completed));
     }
 }

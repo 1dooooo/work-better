@@ -115,14 +115,12 @@ impl TaskRunner {
         let model_size = self.select_model_size(&task_type, initial_confidence);
         let model_name = self.get_adapter_name(&model_size);
 
-        let adapter = self
-            .get_adapter(&model_size)
-            .ok_or_else(|| {
-                wb_core::error::WbError::Ai(format!(
-                    "No adapter configured for model size {:?}",
-                    model_size
-                ))
-            })?;
+        let adapter = self.get_adapter(&model_size).ok_or_else(|| {
+            wb_core::error::WbError::Ai(format!(
+                "No adapter configured for model size {:?}",
+                model_size
+            ))
+        })?;
 
         let start = Instant::now();
 
@@ -141,9 +139,8 @@ impl TaskRunner {
                 self.budget.record_usage(tokens_used as u64);
 
                 Ok(TaskOutput {
-                    content: serde_json::to_string(&classification).map_err(|e| {
-                        wb_core::error::WbError::Serialization(e)
-                    })?,
+                    content: serde_json::to_string(&classification)
+                        .map_err(wb_core::error::WbError::Serialization)?,
                     confidence: classification.confidence,
                     model_used: model_name,
                     tokens_used,
@@ -168,14 +165,12 @@ impl TaskRunner {
         let model_size = self.select_model_size(&task_type, initial_confidence);
         let model_name = self.get_adapter_name(&model_size);
 
-        let adapter = self
-            .get_adapter(&model_size)
-            .ok_or_else(|| {
-                wb_core::error::WbError::Ai(format!(
-                    "No adapter configured for model size {:?}",
-                    model_size
-                ))
-            })?;
+        let adapter = self.get_adapter(&model_size).ok_or_else(|| {
+            wb_core::error::WbError::Ai(format!(
+                "No adapter configured for model size {:?}",
+                model_size
+            ))
+        })?;
 
         let start = Instant::now();
 
@@ -193,9 +188,8 @@ impl TaskRunner {
                 self.budget.record_usage(tokens_used as u64);
 
                 Ok(TaskOutput {
-                    content: serde_json::to_string(&extraction).map_err(|e| {
-                        wb_core::error::WbError::Serialization(e)
-                    })?,
+                    content: serde_json::to_string(&extraction)
+                        .map_err(wb_core::error::WbError::Serialization)?,
                     confidence: extraction.confidence,
                     model_used: model_name,
                     tokens_used,
@@ -220,14 +214,12 @@ impl TaskRunner {
         let model_size = self.select_model_size(&task_type, initial_confidence);
         let model_name = self.get_adapter_name(&model_size);
 
-        let adapter = self
-            .get_adapter(&model_size)
-            .ok_or_else(|| {
-                wb_core::error::WbError::Ai(format!(
-                    "No adapter configured for model size {:?}",
-                    model_size
-                ))
-            })?;
+        let adapter = self.get_adapter(&model_size).ok_or_else(|| {
+            wb_core::error::WbError::Ai(format!(
+                "No adapter configured for model size {:?}",
+                model_size
+            ))
+        })?;
 
         let start = Instant::now();
 
@@ -271,7 +263,7 @@ fn estimate_tokens(text: &str) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{Extraction, MockAdapter, Classification};
+    use crate::adapter::{Classification, Extraction, MockAdapter};
     use crate::budget::TokenBudget;
     use crate::router::ModelRouter;
     use wb_core::event::{Confidence, EventType, Source};
@@ -293,9 +285,7 @@ mod tests {
         adapters.insert(ModelSize::Small, Box::new(MockAdapter::new()));
         adapters.insert(
             ModelSize::Large,
-            Box::new(
-                MockAdapter::new().with_model_name("mock-large".to_string()),
-            ),
+            Box::new(MockAdapter::new().with_model_name("mock-large".to_string())),
         );
 
         let mut adapter_names = HashMap::new();
@@ -367,7 +357,10 @@ mod tests {
         runner.run_classify(&event, 0.9).await.unwrap();
         let after_used = runner.budget().daily_used;
 
-        assert!(after_used > initial_used, "Budget should record token usage");
+        assert!(
+            after_used > initial_used,
+            "Budget should record token usage"
+        );
     }
 
     #[tokio::test]
@@ -414,8 +407,7 @@ mod tests {
         let mut adapter_names = HashMap::new();
         adapter_names.insert(ModelSize::Small, "mock".to_string());
 
-        let mut runner = TaskRunner::new(router, budget, adapters, adapter_names)
-            .with_timeout(0); // 0ms 超时
+        let mut runner = TaskRunner::new(router, budget, adapters, adapter_names).with_timeout(0); // 0ms 超时
 
         let event = make_test_event();
         let result = runner.run_classify(&event, 0.9).await;

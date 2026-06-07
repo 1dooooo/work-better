@@ -54,9 +54,8 @@ pub fn generate_annual(year: i32, records: &[WorkRecord]) -> Report {
     }
 
     // 全景总结
-    let panoramic_summary = build_panoramic_summary(
-        year, total, done_count, blocked_count, &category_counts,
-    );
+    let panoramic_summary =
+        build_panoramic_summary(year, total, done_count, blocked_count, &category_counts);
 
     // 成长轨迹（按季度统计）
     let growth_trajectory = build_growth_trajectory(records, year);
@@ -144,7 +143,12 @@ fn build_growth_trajectory(records: &[WorkRecord], year: i32) -> Vec<GrowthPoint
             quarter_total += month_records.len();
             quarter_done += month_records
                 .iter()
-                .filter(|r| r.task_status.as_ref().map(|s| is_done_status(s)).unwrap_or(false))
+                .filter(|r| {
+                    r.task_status
+                        .as_ref()
+                        .map(|s| is_done_status(s))
+                        .unwrap_or(false)
+                })
                 .count();
         }
 
@@ -406,8 +410,12 @@ mod tests {
         ];
         let trajectory = build_growth_trajectory(&records, 2026);
         assert_eq!(trajectory.len(), 8); // 4 quarters * 2 metrics
-        assert!(trajectory.iter().any(|p| p.period == "Q1" && p.metric == "完成率"));
-        assert!(trajectory.iter().any(|p| p.period == "Q4" && p.value == 100.0));
+        assert!(trajectory
+            .iter()
+            .any(|p| p.period == "Q1" && p.metric == "完成率"));
+        assert!(trajectory
+            .iter()
+            .any(|p| p.period == "Q4" && p.value == 100.0));
     }
 
     #[test]
@@ -429,7 +437,14 @@ mod tests {
     #[test]
     fn test_next_year_plan_with_q4_records() {
         let records = vec![
-            make_record_with_date("Q4 Continue", Some("in_progress"), Category::Task, 2026, 10, 15),
+            make_record_with_date(
+                "Q4 Continue",
+                Some("in_progress"),
+                Category::Task,
+                2026,
+                10,
+                15,
+            ),
             make_record_with_date("Q4 Done", Some("done"), Category::Task, 2026, 11, 1),
         ];
         let plan = build_next_year_plan(&records);

@@ -1,0 +1,13 @@
+{
+  "message_id": "om_msg_single",
+  "msg_type": "text",
+  "content": "{\"text\":\"Single message test\"}",
+  "sender": {
+    "id": "ou_user_003",
+    "name": "Charlie",
+    "sender_type": "user",
+    "tenant_key": "tenant_xyz"
+  },
+  "create_time": "1717776000",
+  "chat_id": "oc_chat_002"
+}

@@ -1,0 +1,79 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, dev/*]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Gate 1: Fast (< 2 min) — type check + unit tests
+  fast-gate:
+    name: ⚡ Fast Gate
+    runs-on: macos-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - run: cargo check --workspace
+      - run: cargo nextest run --workspace --profile pr
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:unit
+
+  # Gate 2: Deep (< 10 min) — integration + contract
+  deep-gate:
+    name: 🔍 Deep Gate
+    needs: fast-gate
+    runs-on: macos-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - run: cargo nextest run --workspace --profile release
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:int
+
+  # Gate 3: Full (< 15 min) — E2E
+  full-gate:
+    name: 🎯 Full Gate
+    needs: deep-gate
+    runs-on: macos-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm test:e2e
+
+  # Gate 4: Nightly — full acceptance + coverage
+  nightly:
+    name: 🌙 Nightly
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - run: cargo nextest run --workspace --profile ci
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:coverage
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./test-results/coverage/coverage-final.json

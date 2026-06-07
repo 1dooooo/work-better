@@ -6,7 +6,7 @@ use wb_core::error::Result;
 use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::runner;
-use crate::traits::{HealthStatus, Collector};
+use crate::traits::{Collector, HealthStatus};
 
 /// lark-cli base +base-block-list 响应
 #[derive(Debug, Deserialize)]
@@ -77,7 +77,14 @@ impl Collector for FeishuBitableCollector {
     async fn collect(&self) -> Result<Vec<Event>> {
         // base +base-block-list 需要 --base-token，使用默认空值
         let default_token = "";
-        let args = vec!["base", "+base-block-list", "--base-token", default_token, "--format", "json"];
+        let args = vec![
+            "base",
+            "+base-block-list",
+            "--base-token",
+            default_token,
+            "--format",
+            "json",
+        ];
 
         let response: LarkBitableResponse = runner::execute_json("lark-cli", &args)?;
 

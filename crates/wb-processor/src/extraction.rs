@@ -3,8 +3,8 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use wb_core::record::{Category, WorkRecord};
 use wb_core::event::Event;
+use wb_core::record::{Category, WorkRecord};
 
 /// 从模型提取输出中解析出的结构化数据
 #[derive(Debug, Clone, PartialEq)]
@@ -55,8 +55,8 @@ impl EntityExtractor {
 
     /// 从原始 JSON 中提取数据（回退路径）
     fn from_raw_json(json_str: &str, category: &Category) -> ExtractedData {
-        let parsed: serde_json::Value = serde_json::from_str(json_str)
-            .unwrap_or(serde_json::Value::Null);
+        let parsed: serde_json::Value =
+            serde_json::from_str(json_str).unwrap_or(serde_json::Value::Null);
 
         let title = parsed
             .get("title")
@@ -128,11 +128,7 @@ impl EntityExtractor {
     }
 
     /// 将 ExtractedData 与 Event 信息合并为 WorkRecord
-    pub fn to_work_record(
-        data: &ExtractedData,
-        event: &Event,
-        model_used: &str,
-    ) -> WorkRecord {
+    pub fn to_work_record(data: &ExtractedData, event: &Event, model_used: &str) -> WorkRecord {
         WorkRecord {
             id: Uuid::new_v4().to_string(),
             created_at: Utc::now(),
@@ -273,7 +269,13 @@ mod tests {
             Some("in_progress".to_string())
         );
         assert_eq!(EntityExtractor::infer_task_status(&Category::Meeting), None);
-        assert_eq!(EntityExtractor::infer_task_status(&Category::Research), None);
-        assert_eq!(EntityExtractor::infer_task_status(&Category::Document), None);
+        assert_eq!(
+            EntityExtractor::infer_task_status(&Category::Research),
+            None
+        );
+        assert_eq!(
+            EntityExtractor::infer_task_status(&Category::Document),
+            None
+        );
     }
 }
