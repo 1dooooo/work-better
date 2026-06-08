@@ -59,4 +59,42 @@ describe("CollectorSettings", () => {
       expect(screen.getByPlaceholderText("输入飞书会话 ID")).toBeInTheDocument();
     });
   });
+
+  it("shows 未启用 badge when collector is disabled", async () => {
+    const { getCollectorStatuses } = await import("../../lib/tauri");
+    vi.mocked(getCollectorStatuses).mockResolvedValueOnce([
+      { id: "feishu", name: "飞书", enabled: false, healthy: false },
+      { id: "manual", name: "手动输入", enabled: false, healthy: false },
+    ]);
+    render(<CollectorSettings />);
+    await waitFor(() => {
+      expect(screen.getAllByText("未启用")).toHaveLength(2);
+      expect(screen.queryByText("异常")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows 异常 badge when enabled but unhealthy", async () => {
+    const { getCollectorStatuses } = await import("../../lib/tauri");
+    vi.mocked(getCollectorStatuses).mockResolvedValueOnce([
+      { id: "feishu", name: "飞书", enabled: true, healthy: false },
+    ]);
+    render(<CollectorSettings />);
+    await waitFor(() => {
+      expect(screen.getByText("异常")).toBeInTheDocument();
+      expect(screen.queryByText("未启用")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows 正常 badge when enabled and healthy", async () => {
+    const { getCollectorStatuses } = await import("../../lib/tauri");
+    vi.mocked(getCollectorStatuses).mockResolvedValueOnce([
+      { id: "feishu", name: "飞书", enabled: true, healthy: true },
+    ]);
+    render(<CollectorSettings />);
+    await waitFor(() => {
+      expect(screen.getByText("正常")).toBeInTheDocument();
+      expect(screen.queryByText("未启用")).not.toBeInTheDocument();
+      expect(screen.queryByText("异常")).not.toBeInTheDocument();
+    });
+  });
 });

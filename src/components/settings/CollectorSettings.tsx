@@ -110,10 +110,20 @@ export default function CollectorSettings() {
               <div className="flex items-center gap-2">
                 <span className="text-sm">{collector.name}</span>
                 <Badge
-                  variant={collector.healthy ? "secondary" : "destructive"}
+                  variant={
+                    !collector.enabled
+                      ? "outline"
+                      : collector.healthy
+                        ? "secondary"
+                        : "destructive"
+                  }
                   className="text-[10px]"
                 >
-                  {collector.healthy ? "正常" : "异常"}
+                  {!collector.enabled
+                    ? "未启用"
+                    : collector.healthy
+                      ? "正常"
+                      : "异常"}
                 </Badge>
               </div>
               <Switch

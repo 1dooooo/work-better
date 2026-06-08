@@ -198,6 +198,52 @@ const event: Event = {
 - JSONL 文件用于事件流（每行一个 Event）
 - 文件名描述场景：`feishu-messages-success.json`、`task-update-event.jsonl`
 
+## UI 语义正确性测试
+
+> **教训来源**：采集器设置页将"未启用"显示为"异常"，测试体系未捕获。
+> 根因：测试只验证逻辑正确性（`enabled=false → healthy=false`），未验证 UI 语义是否合理。
+
+### 规则
+
+组件测试必须覆盖 **所有可见状态**，而非仅测试正常路径。
+
+### 状态空间穷举清单
+
+编写组件测试前，先列出组件的所有可见状态组合，确保每个状态都有测试覆盖：
+
+```typescript
+// ✅ 穷举三态
+it('未启用时显示灰色「未启用」', ...)
+it('启用但健康检查失败时显示红色「异常」', ...)
+it('启用且健康时显示绿色「正常」', ...)
+
+// ❌ 只测正常路径
+it('显示采集器状态', ...)  // 只测了 enabled+healthy 一种情况
+```
+
+### UI 文案断言规范
+
+UI 文案（badge 文字、状态标签、错误提示）必须作为断言目标：
+
+```typescript
+// ✅ 断言具体文案
+expect(screen.getByText('未启用')).toBeInTheDocument();
+expect(screen.queryByText('异常')).not.toBeInTheDocument();
+
+// ❌ 只断言元素存在
+expect(screen.getByTestId('status-badge')).toBeInTheDocument();
+```
+
+### 组件状态矩阵模板
+
+对于有多个状态维度的组件，先画状态矩阵再写测试：
+
+| enabled | healthy | 预期文案 | 预期样式 |
+|---------|---------|---------|---------|
+| false   | false   | 未启用   | outline/灰色 |
+| true    | false   | 异常     | destructive/红色 |
+| true    | true    | 正常     | secondary/绿色 |
+
 ## 禁止事项
 
 | 禁止 | 原因 |
