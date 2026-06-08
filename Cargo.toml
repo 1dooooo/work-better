@@ -8,6 +8,7 @@ members = [
     "crates/wb-storage",
     "crates/wb-ai",
     "crates/wb-scheduler",
+    "tests/acceptance",
 ]
 
 [workspace.dependencies]
@@ -17,6 +18,7 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4", "serde"] }
+cucumber = "0.21"
 
 # Testing
 rstest = "0.26"
