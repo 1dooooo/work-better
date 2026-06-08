@@ -1,4 +1,25 @@
 import { useState, useCallback, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Plus,
+  ArrowRight,
+  RotateCcw,
+  CalendarClock,
+  Circle,
+  Clock,
+  CheckCircle2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -23,23 +44,23 @@ const SCHEDULED_TASKS = [
   { id: "s3", title: "依赖安全检查", schedule: "每周一 09:00" },
 ];
 
-const STATUS_META: Record<Task["status"], { label: string; next: Task["status"] }> = {
-  todo: { label: "待处理", next: "in_progress" },
-  in_progress: { label: "进行中", next: "done" },
-  done: { label: "已完成", next: "todo" },
+const STATUS_META: Record<Task["status"], { label: string; next: Task["status"]; icon: typeof Circle }> = {
+  todo: { label: "待处理", next: "in_progress", icon: Circle },
+  in_progress: { label: "进行中", next: "done", icon: Clock },
+  done: { label: "已完成", next: "todo", icon: CheckCircle2 },
 };
 
-const PRIORITY_LABELS: Record<Task["priority"], string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
+const PRIORITY_CONFIG: Record<Task["priority"], { label: string; className: string }> = {
+  high: { label: "高", className: "bg-destructive/10 text-destructive border-destructive/20" },
+  medium: { label: "中", className: "bg-warning/10 text-warning-foreground border-warning/20" },
+  low: { label: "低", className: "bg-muted text-muted-foreground" },
 };
 
 const PRIORITY_ORDER: Record<Task["priority"], number> = { high: 0, medium: 1, low: 2 };
 
 let nextId = 100;
 
-export default function TaskView() {
+export default function TasksView() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
@@ -78,89 +99,148 @@ export default function TaskView() {
   const grouped = (["todo", "in_progress", "done"] as const).map((s) => ({
     status: s,
     label: STATUS_META[s].label,
+    icon: STATUS_META[s].icon,
     items: tasks
       .filter((t) => t.status === s)
       .sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]),
   }));
 
   return (
-    <div className="view tasks-view">
-      <div className="view__header">
-        <h2 className="view__title">任务管理</h2>
-        <span className="view__count">{tasks.length} 个任务</span>
-      </div>
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold">任务管理</h1>
+          <Badge variant="secondary" className="text-xs">
+            {tasks.length} 个任务
+          </Badge>
+        </div>
+      </header>
 
-      <form className="tasks-view__form" onSubmit={handleCreate}>
-        <input
-          className="tasks-view__input"
+      {/* Create Form */}
+      <form
+        onSubmit={handleCreate}
+        className="flex items-center gap-2 border-b border-border px-6 py-3"
+      >
+        <Input
           placeholder="新任务标题..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          className="h-8 flex-1 text-sm"
         />
-        <select
-          className="tasks-view__select"
+        <Select
           value={priority}
-          onChange={(e) => setPriority(e.target.value as Task["priority"])}
+          onValueChange={(v) => setPriority(v as Task["priority"])}
         >
-          <option value="high">高优先级</option>
-          <option value="medium">中优先级</option>
-          <option value="low">低优先级</option>
-        </select>
-        <input
-          className="tasks-view__input tasks-view__input--date"
+          <SelectTrigger className="h-8 w-[100px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="high">高优先级</SelectItem>
+            <SelectItem value="medium">中优先级</SelectItem>
+            <SelectItem value="low">低优先级</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
+          className="h-8 w-[130px] text-xs"
         />
-        <button className="tasks-view__btn" type="submit">
+        <Button type="submit" size="sm" className="h-8 gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
           添加
-        </button>
+        </Button>
       </form>
 
-      <div className="tasks-view__board">
-        {grouped.map(({ status, label, items }) => (
-          <div key={status} className="tasks-view__column">
-            <h3 className="tasks-view__column-title">
-              {label}
-              <span className="tasks-view__column-count">{items.length}</span>
-            </h3>
-            <ul className="tasks-view__column-list">
+      {/* Kanban Board */}
+      <div className="flex flex-1 gap-4 overflow-auto p-6">
+        {grouped.map(({ status, label, icon: StatusIcon, items }) => (
+          <div key={status} className="flex flex-1 flex-col gap-2">
+            <div className="flex items-center gap-2 px-1">
+              <StatusIcon
+                className={cn(
+                  "h-4 w-4",
+                  status === "todo" && "text-muted-foreground",
+                  status === "in_progress" && "text-info",
+                  status === "done" && "text-success"
+                )}
+              />
+              <h3 className="text-sm font-medium">{label}</h3>
+              <Badge variant="secondary" className="h-5 text-[10px]">
+                {items.length}
+              </Badge>
+            </div>
+            <div className="flex flex-col gap-1.5">
               {items.map((task) => (
-                <li key={task.id} className="tasks-view__card">
-                  <div className="tasks-view__card-title">{task.title}</div>
-                  <div className="tasks-view__card-meta">
-                    <span className="tasks-view__priority">
-                      {PRIORITY_LABELS[task.priority]}
-                    </span>
-                    <span className="tasks-view__card-date">{task.dueDate}</span>
-                  </div>
-                  <button
-                    className="tasks-view__card-btn"
-                    onClick={() => toggleStatus(task.id)}
-                  >
-                    {status === "done" ? "重新打开" : "推进"}
-                  </button>
-                </li>
+                <Card
+                  key={task.id}
+                  className="border-border transition-shadow hover:shadow-sm"
+                >
+                  <CardContent className="px-3 py-2.5">
+                    <div className="text-sm font-medium">{task.title}</div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn("text-[10px]", PRIORITY_CONFIG[task.priority].className)}
+                      >
+                        {PRIORITY_CONFIG[task.priority].label}
+                      </Badge>
+                      <span className="text-[11px] text-muted-foreground">
+                        {task.dueDate}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1.5 h-6 gap-1 px-1 text-[11px] text-muted-foreground"
+                      onClick={() => toggleStatus(task.id)}
+                    >
+                      {status === "done" ? (
+                        <>
+                          <RotateCcw className="h-3 w-3" />
+                          重新打开
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRight className="h-3 w-3" />
+                          推进
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
               ))}
               {items.length === 0 && (
-                <li className="tasks-view__empty-col">暂无任务</li>
+                <div className="flex h-20 items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground">
+                  暂无任务
+                </div>
               )}
-            </ul>
+            </div>
           </div>
         ))}
       </div>
 
-      <section className="tasks-view__scheduled">
-        <h3 className="tasks-view__section-title">定时任务</h3>
-        <ul className="tasks-view__scheduled-list">
+      {/* Scheduled Tasks */}
+      <div className="border-t border-border px-6 py-4">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarClock className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-medium">定时任务</h3>
+        </div>
+        <div className="flex flex-col gap-1">
           {SCHEDULED_TASKS.map((s) => (
-            <li key={s.id} className="tasks-view__scheduled-item">
+            <div
+              key={s.id}
+              className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
+            >
               <span>{s.title}</span>
-              <span className="tasks-view__schedule">{s.schedule}</span>
-            </li>
+              <span className="text-xs text-muted-foreground">
+                {s.schedule}
+              </span>
+            </div>
           ))}
-        </ul>
-      </section>
+        </div>
+      </div>
     </div>
   );
 }

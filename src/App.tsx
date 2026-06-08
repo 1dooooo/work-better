@@ -1,7 +1,6 @@
-import MainWindow from "./components/MainWindow";
+import MainWindow from "./components/layout/MainWindow";
 import CaptureWindow from "./capture/CaptureWindow";
 import MenuBar from "./components/MenuBar";
-import "./styles/main-window.css";
 
 function App() {
   const params = new URLSearchParams(window.location.search);

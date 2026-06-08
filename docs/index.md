@@ -20,4 +20,5 @@ status: active
 | 测试 | [testing/_index.md](testing/_index.md) | 测试策略与规范 |
 | 设计规格 | [superpowers/specs/](superpowers/specs/) | 设计规格文档 |
 | 实现计划 | [superpowers/plans/](superpowers/plans/) | 实现计划 |
+| 设计体系 | [design/design-system.md](design/design-system.md) | UI 设计规范与组件文档 |
 | 规范 | [conventions.md](conventions.md) | 文档规范（本文档） |
