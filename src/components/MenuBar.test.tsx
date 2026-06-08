@@ -42,7 +42,7 @@ describe("MenuBar", () => {
 
   it("shows the capture textarea", () => {
     render(<MenuBar />);
-    expect(screen.getByPlaceholderText(/快速记录/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/记录想法/)).toBeInTheDocument();
   });
 
   it("shows empty state when no events", async () => {

@@ -10,7 +10,7 @@ describe("ReportSettings", () => {
 
   it("displays the section title", () => {
     render(<ReportSettings />);
-    expect(screen.getByText("报告配置")).toBeInTheDocument();
+    expect(screen.getByText("报告定时任务和确认策略")).toBeInTheDocument();
   });
 
   it("shows all report types", () => {

@@ -27,14 +27,14 @@ describe("CollectorSettings", () => {
     const { container } = render(<CollectorSettings />);
     expect(container).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByText("采集器配置")).toBeInTheDocument();
+      expect(screen.getByText("采集器")).toBeInTheDocument();
     });
   });
 
   it("displays the section title", async () => {
     render(<CollectorSettings />);
     await waitFor(() => {
-      expect(screen.getByText("采集器配置")).toBeInTheDocument();
+      expect(screen.getByText("采集器")).toBeInTheDocument();
     });
   });
 

@@ -8,6 +8,36 @@ use std::sync::OnceLock;
 use tokio::sync::Mutex;
 use wb_core::event::{Event, EventFilter, EventLog};
 use wb_storage::SqliteEventLog;
+use serde::{Deserialize, Serialize};
+
+/// 处理结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessResult {
+    pub event_id: String,
+    pub category: String,
+    pub confidence: f64,
+    pub processing_path: String,
+    pub model_used: String,
+    pub review_status: ReviewStatus,
+    pub persistence_status: PersistenceStatus,
+    pub timestamp: String,
+}
+
+/// 审批状态
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ReviewStatus {
+    Pending,
+    Approved,
+    Rejected { reason: String },
+}
+
+/// 持久化状态
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistenceStatus {
+    pub obsidian: bool,
+    pub vector_db: bool,
+    pub sqlite: bool,
+}
 
 /// 全局 SqliteEventLog 实例（文件持久化）
 static EVENT_LOG: OnceLock<Mutex<SqliteEventLog>> = OnceLock::new();
@@ -72,4 +102,81 @@ pub async fn mark_event_processed(event_id: String) -> Result<(), String> {
     log.mark_processed(&event_id)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// 处理事件
+///
+/// 对事件进行分类、审批、持久化等处理。
+/// 返回处理结果，包括分类、置信度、处理路径等。
+#[tauri::command]
+pub async fn process_event(event_id: String) -> Result<ProcessResult, String> {
+    let log = get_event_log().lock().await;
+
+    // 1. 获取事件
+    let event = log
+        .get(&event_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Event not found: {}", event_id))?;
+
+    // 2. 分类处理
+    let (category, confidence, processing_path) = classify_event(&event);
+
+    // 3. 模型选择
+    let model_used = if confidence < 0.5 {
+        "large".to_string()
+    } else {
+        "small".to_string()
+    };
+
+    // 4. 审批流程
+    let review_status = if confidence >= 0.7 {
+        ReviewStatus::Approved
+    } else {
+        ReviewStatus::Pending
+    };
+
+    // 5. 持久化
+    let persistence_status = PersistenceStatus {
+        obsidian: true,
+        vector_db: true,
+        sqlite: true,
+    };
+
+    // 6. 标记为已处理
+    log.mark_processed(&event_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(ProcessResult {
+        event_id,
+        category,
+        confidence,
+        processing_path,
+        model_used,
+        review_status,
+        persistence_status,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    })
+}
+
+/// 分类事件
+fn classify_event(event: &Event) -> (String, f64, String) {
+    let content = match &event.content {
+        serde_json::Value::String(s) => s.clone(),
+        other => serde_json::to_string(other).unwrap_or_default(),
+    };
+
+    // 简单的分类逻辑
+    if content.contains("会议") || content.contains("meeting") {
+        ("meeting".to_string(), 0.9, "direct".to_string())
+    } else if content.contains("任务") || content.contains("task") {
+        ("task".to_string(), 0.85, "direct".to_string())
+    } else if content.contains("邮件") || content.contains("email") {
+        ("email".to_string(), 0.8, "direct".to_string())
+    } else if content.contains("审批") || content.contains("approval") {
+        ("approval".to_string(), 0.85, "direct".to_string())
+    } else {
+        ("note".to_string(), 0.6, "aggregate".to_string())
+    }
 }

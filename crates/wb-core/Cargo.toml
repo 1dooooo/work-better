@@ -17,3 +17,7 @@ rstest = { workspace = true }
 insta = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["test-util"] }
+
+[[test]]
+name = "security"
+path = "tests/security/mod.rs"

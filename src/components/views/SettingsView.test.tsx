@@ -50,12 +50,13 @@ describe("SettingsView", () => {
   it("renders all settings sections", async () => {
     render(<SettingsView />);
     await waitFor(() => {
-      expect(screen.getByText("模型配置")).toBeInTheDocument();
+      expect(screen.getByText("设置")).toBeInTheDocument();
     });
-    expect(screen.getByText("采集器配置")).toBeInTheDocument();
-    expect(screen.getByText("存储配置")).toBeInTheDocument();
-    expect(screen.getByText("快捷键配置")).toBeInTheDocument();
-    expect(screen.getByText("保鲜规则配置")).toBeInTheDocument();
-    expect(screen.getByText("报告配置")).toBeInTheDocument();
+    expect(screen.getByText("模型")).toBeInTheDocument();
+    expect(screen.getByText("采集器")).toBeInTheDocument();
+    expect(screen.getByText("存储")).toBeInTheDocument();
+    expect(screen.getByText("快捷键")).toBeInTheDocument();
+    expect(screen.getByText("维护")).toBeInTheDocument();
+    expect(screen.getByText("报告")).toBeInTheDocument();
   });
 });

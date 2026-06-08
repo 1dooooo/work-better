@@ -1,4 +1,11 @@
-import { useState, useCallback, type FormEvent } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
+import {
+  listScheduledTasks,
+  pauseScheduler,
+  resumeScheduler,
+  isSchedulerPaused,
+  type TaskInfo,
+} from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,8 +25,13 @@ import {
   Circle,
   Clock,
   CheckCircle2,
+  Loader2,
+  Pause,
+  Play,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Task {
   id: string;

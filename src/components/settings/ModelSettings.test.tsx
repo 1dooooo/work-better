@@ -27,14 +27,14 @@ describe("ModelSettings", () => {
     const { container } = render(<ModelSettings />);
     expect(container).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByText("模型配置")).toBeInTheDocument();
+      expect(screen.getByLabelText("API Endpoint")).toBeInTheDocument();
     });
   });
 
   it("displays the section title", async () => {
     render(<ModelSettings />);
     await waitFor(() => {
-      expect(screen.getByText("模型配置")).toBeInTheDocument();
+      expect(screen.getByLabelText("API Endpoint")).toBeInTheDocument();
     });
   });
 

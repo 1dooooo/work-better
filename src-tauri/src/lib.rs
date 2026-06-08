@@ -126,6 +126,7 @@ pub fn run() {
             commands::events::get_events,
             commands::events::get_unprocessed_count,
             commands::events::mark_event_processed,
+            commands::events::process_event,
             commands::collect::trigger_feishu_collect,
             commands::collect::trigger_manual_capture,
             commands::collectors::list_collectors,

@@ -10,7 +10,7 @@ describe("ShortcutSettings", () => {
 
   it("displays the section title", () => {
     render(<ShortcutSettings />);
-    expect(screen.getByText("快捷键配置")).toBeInTheDocument();
+    expect(screen.getByText("自定义全局快捷键")).toBeInTheDocument();
   });
 
   it("shows default shortcuts", () => {

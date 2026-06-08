@@ -26,14 +26,14 @@ describe("StorageSettings", () => {
     const { container } = render(<StorageSettings />);
     expect(container).toBeTruthy();
     await waitFor(() => {
-      expect(screen.getByText("存储配置")).toBeInTheDocument();
+      expect(screen.getByLabelText("Obsidian Vault 路径")).toBeInTheDocument();
     });
   });
 
   it("displays the section title", async () => {
     render(<StorageSettings />);
     await waitFor(() => {
-      expect(screen.getByText("存储配置")).toBeInTheDocument();
+      expect(screen.getByLabelText("Obsidian Vault 路径")).toBeInTheDocument();
     });
   });
 

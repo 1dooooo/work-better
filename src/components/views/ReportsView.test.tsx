@@ -31,6 +31,7 @@ describe("ReportsView", () => {
 
   it("shows the upcoming feature placeholder", () => {
     render(<ReportsView />);
-    expect(screen.getByText(/即将推出/)).toBeInTheDocument();
+    const elements = screen.getAllByText(/即将推出/);
+    expect(elements.length).toBeGreaterThan(0);
   });
 });

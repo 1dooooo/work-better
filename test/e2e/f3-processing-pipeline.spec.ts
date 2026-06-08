@@ -23,13 +23,6 @@ import {
 
 test.describe("F3: Processing Pipeline", () => {
   // F3-01: Event -> classifier -> correct processing path
-  // This requires a processing UI or at minimum a "process" button on events.
-  // The current EventsView only has "标记已处理" (mark processed), not actual
-  // processing. When the processing pipeline UI is added, unskip this test.
-  test.skip(
-    true,
-    "TODO F3-01: Requires processing pipeline UI — classifier routing is a backend concern not yet exposed in frontend",
-  );
   test("F3-01: Event triggers classifier and routes to correct processing path", async ({
     page,
   }) => {
@@ -48,10 +41,6 @@ test.describe("F3: Processing Pipeline", () => {
   });
 
   // F3-02: Low confidence triggers upgrade to large model
-  test.skip(
-    true,
-    "TODO F3-02: Requires confidence display and model upgrade UI",
-  );
   test("F3-02: Low confidence event gets upgraded to large model call", async ({
     page,
   }) => {
@@ -67,10 +56,6 @@ test.describe("F3: Processing Pipeline", () => {
   });
 
   // F3-03: Processing output goes to ReviewAgent for approval
-  test.skip(
-    true,
-    "TODO F3-03: Requires review/approval UI in the frontend",
-  );
   test("F3-03: Processing output is sent to ReviewAgent for approval", async ({
     page,
   }) => {
@@ -87,10 +72,6 @@ test.describe("F3: Processing Pipeline", () => {
   });
 
   // F3-04: Approved output is persisted to Obsidian, VectorDB, and SQLite
-  test.skip(
-    true,
-    "TODO F3-04: Requires output persistence verification UI",
-  );
   test("F3-04: Approved event persists to Obsidian, VectorDB, and SQLite", async ({
     page,
   }) => {

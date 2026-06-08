@@ -201,7 +201,7 @@ describe("E1: Tauri invoke Integration", () => {
       const { default: MenuBar } = await import("../../src/components/MenuBar");
       render(<MenuBar />);
 
-      const textarea = screen.getByPlaceholderText(/快速记录/);
+      const textarea = screen.getByPlaceholderText(/记录想法/);
       await user.type(textarea, "Test capture text");
 
       const submitButton = screen.getByRole("button", { name: "记录" });
@@ -216,7 +216,7 @@ describe("E1: Tauri invoke Integration", () => {
 
       // Should show success feedback
       await waitFor(() => {
-        expect(screen.getByText("✓ 已记录")).toBeInTheDocument();
+        expect(screen.getByText("已记录")).toBeInTheDocument();
       });
     });
 
@@ -300,7 +300,7 @@ describe("E1: Tauri invoke Integration", () => {
   // ── E1-08: enableCollector → toggles collector on ───────────────
 
   describe("E1-08: enableCollector → toggles collector on", () => {
-    it("enables a disabled collector via checkbox toggle", async () => {
+    it("enables a disabled collector via switch toggle", async () => {
       const user = userEvent.setup();
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
@@ -310,12 +310,12 @@ describe("E1: Tauri invoke Integration", () => {
         expect(screen.getByText("Git 采集器")).toBeInTheDocument();
       });
 
-      // Find the checkbox for the Git collector (second checkbox, initially unchecked)
-      const checkboxes = screen.getAllByRole("checkbox");
-      const gitCheckbox = checkboxes[1]; // Git is second in the list
-      expect(gitCheckbox).not.toBeChecked();
+      // Find the switch for the Git collector (second switch, initially unchecked)
+      const switches = screen.getAllByRole("switch");
+      const gitSwitch = switches[1]; // Git is second in the list
+      expect(gitSwitch).not.toBeChecked();
 
-      await user.click(gitCheckbox);
+      await user.click(gitSwitch);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("enable_collector", { id: "git" });
@@ -326,7 +326,7 @@ describe("E1: Tauri invoke Integration", () => {
   // ── E1-09: disableCollector → toggles collector off ─────────────
 
   describe("E1-09: disableCollector → toggles collector off", () => {
-    it("disables an enabled collector via checkbox toggle", async () => {
+    it("disables an enabled collector via switch toggle", async () => {
       const user = userEvent.setup();
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
@@ -336,12 +336,12 @@ describe("E1: Tauri invoke Integration", () => {
         expect(screen.getByText("飞书采集器")).toBeInTheDocument();
       });
 
-      // Find the checkbox for the Feishu collector (first checkbox, initially checked)
-      const checkboxes = screen.getAllByRole("checkbox");
-      const feishuCheckbox = checkboxes[0];
-      expect(feishuCheckbox).toBeChecked();
+      // Find the switch for the Feishu collector (first switch, initially checked)
+      const switches = screen.getAllByRole("switch");
+      const feishuSwitch = switches[0];
+      expect(feishuSwitch).toBeChecked();
 
-      await user.click(feishuCheckbox);
+      await user.click(feishuSwitch);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("disable_collector", { id: "feishu" });
@@ -384,12 +384,13 @@ describe("E1: Tauri invoke Integration", () => {
       });
 
       await waitFor(() => {
-        // The component renders two radios with name="feishu-mode"
-        // The "cli" mode is checked. Find the checked radio directly.
-        const radios = screen.getAllByRole("radio");
-        // First radio is "API 直连" (unchecked), second is "lark-cli" (checked)
-        expect(radios[0]).not.toBeChecked();
-        expect(radios[1]).toBeChecked();
+        // The component renders two buttons for mode selection
+        // The "cli" mode is selected. Find the buttons by text.
+        const buttons = screen.getAllByRole("button");
+        const cliButton = buttons.find(b => b.textContent?.includes("lark-cli"));
+        expect(cliButton).toBeDefined();
+        // The selected button should have primary styling
+        expect(cliButton?.className).toContain("border-primary");
       });
     });
   });
@@ -404,14 +405,16 @@ describe("E1: Tauri invoke Integration", () => {
 
       // Wait for initial load
       await waitFor(() => {
-        expect(screen.getByText("采集器配置")).toBeInTheDocument();
+        expect(screen.getByText("采集器")).toBeInTheDocument();
       });
 
       // Click the first radio ("API 直连") which is unchecked
-      const radios = screen.getAllByRole("radio");
-      const apiRadio = radios[0];
-      expect(apiRadio).not.toBeChecked();
-      await user.click(apiRadio);
+      const buttons = screen.getAllByRole("button");
+      const apiButton = buttons.find(b => b.textContent?.includes("API 直连"));
+      expect(apiButton).toBeDefined();
+      await user.click(apiButton!);
+      expect(apiButton).toBeDefined();
+      await user.click(apiButton!);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("save_feishu_mode", { mode: "api" });

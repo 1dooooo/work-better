@@ -149,3 +149,31 @@ export async function resumeScheduler(): Promise<void> {
 export async function isSchedulerPaused(): Promise<boolean> {
   return invoke<boolean>("is_scheduler_paused");
 }
+
+// ─── Event Processing ───────────────────────────────────────────────
+
+export interface ProcessResult {
+  event_id: string;
+  category: string;
+  confidence: number;
+  processing_path: string;
+  model_used: string;
+  review_status: ReviewStatus;
+  persistence_status: PersistenceStatus;
+  timestamp: string;
+}
+
+export type ReviewStatus =
+  | { Pending: null }
+  | { Approved: null }
+  | { Rejected: { reason: string } };
+
+export interface PersistenceStatus {
+  obsidian: boolean;
+  vector_db: boolean;
+  sqlite: boolean;
+}
+
+export async function processEvent(eventId: string): Promise<ProcessResult> {
+  return invoke<ProcessResult>("process_event", { eventId });
+}
