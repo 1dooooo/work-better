@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 
 interface ReportConfig {
   id: string;
@@ -38,37 +39,40 @@ export default function ReportSettings() {
   };
 
   return (
-    <section className="settings__section">
-      <h3 className="settings__section-title">报告配置</h3>
-      <p className="settings__hint">报告定时任务和确认策略</p>
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        报告定时任务和确认策略
+      </p>
 
-      <div className="settings__list">
+      <div className="space-y-1">
         {configs.map((c) => (
-          <div key={c.id} className="settings__list-item">
-            <label className="settings__toggle">
-              <input
-                type="checkbox"
+          <div
+            key={c.id}
+            className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+          >
+            <div className="flex items-center gap-3">
+              <Switch
                 checked={c.enabled}
-                onChange={() => toggleReport(c.id)}
+                onCheckedChange={() => toggleReport(c.id)}
               />
-              <span className="settings__toggle-slider" />
-            </label>
-            <span>{c.name}</span>
-            <span className="settings__hint">
-              {SCHEDULE_LABELS[c.schedule] ?? c.schedule}
-            </span>
-            <label className="settings__auto-label">
+              <span className="text-sm">{c.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {SCHEDULE_LABELS[c.schedule] ?? c.schedule}
+              </span>
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 checked={c.autoConfirm}
                 onChange={() => toggleAutoConfirm(c.id)}
                 disabled={!c.enabled}
+                className="h-3.5 w-3.5 rounded border-border"
               />
-              <span>自动确认</span>
+              自动确认
             </label>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }

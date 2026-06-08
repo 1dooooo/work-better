@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Check } from "lucide-react";
 
 interface StorageConfig {
   vault_path: string;
@@ -33,20 +37,20 @@ export default function StorageSettings() {
   }, [config]);
 
   if (!config) {
-    return <div className="settings__loading">加载中...</div>;
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        加载中...
+      </div>
+    );
   }
 
   return (
-    <section className="settings__section">
-      <h3 className="settings__section-title">存储配置</h3>
-
-      <div className="settings__field">
-        <label className="settings__label" htmlFor="vault-path">
-          Obsidian Vault 路径
-        </label>
-        <input
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="vault-path">Obsidian Vault 路径</Label>
+        <Input
           id="vault-path"
-          className="settings__input"
           type="text"
           value={config.vault_path}
           onChange={(e) =>
@@ -56,13 +60,10 @@ export default function StorageSettings() {
         />
       </div>
 
-      <div className="settings__field">
-        <label className="settings__label" htmlFor="db-path">
-          数据库路径
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="db-path">数据库路径</Label>
+        <Input
           id="db-path"
-          className="settings__input"
           type="text"
           value={config.db_path}
           onChange={(e) =>
@@ -72,16 +73,17 @@ export default function StorageSettings() {
         />
       </div>
 
-      <div className="settings__actions">
-        <button
-          className="view__btn"
-          onClick={handleSave}
-          disabled={saving}
-        >
+      <div className="flex items-center gap-2 pt-2">
+        <Button size="sm" onClick={handleSave} disabled={saving}>
           {saving ? "保存中..." : "保存"}
-        </button>
-        {saved && <span className="settings__saved">已保存</span>}
+        </Button>
+        {saved && (
+          <span className="flex items-center gap-1 text-xs text-success">
+            <Check className="h-3.5 w-3.5" />
+            已保存
+          </span>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

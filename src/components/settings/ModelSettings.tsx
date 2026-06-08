@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Check } from "lucide-react";
 
 interface ModelConfig {
   api_endpoint: string;
@@ -32,20 +36,20 @@ export default function ModelSettings() {
   }, [config]);
 
   if (!config) {
-    return <div className="settings__loading">加载中...</div>;
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        加载中...
+      </div>
+    );
   }
 
   return (
-    <section className="settings__section">
-      <h3 className="settings__section-title">模型配置</h3>
-
-      <div className="settings__field">
-        <label className="settings__label" htmlFor="api-endpoint">
-          API Endpoint
-        </label>
-        <input
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="api-endpoint">API Endpoint</Label>
+        <Input
           id="api-endpoint"
-          className="settings__input"
           type="url"
           value={config.api_endpoint}
           onChange={(e) =>
@@ -55,13 +59,10 @@ export default function ModelSettings() {
         />
       </div>
 
-      <div className="settings__field">
-        <label className="settings__label" htmlFor="api-key">
-          API Key
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="api-key">API Key</Label>
+        <Input
           id="api-key"
-          className="settings__input"
           type="password"
           value={config.api_key}
           onChange={(e) => setConfig({ ...config, api_key: e.target.value })}
@@ -69,13 +70,10 @@ export default function ModelSettings() {
         />
       </div>
 
-      <div className="settings__field">
-        <label className="settings__label" htmlFor="token-budget">
-          Token 预算
-        </label>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="token-budget">Token 预算</Label>
+        <Input
           id="token-budget"
-          className="settings__input settings__input--short"
           type="number"
           min={256}
           max={128000}
@@ -84,22 +82,24 @@ export default function ModelSettings() {
           onChange={(e) =>
             setConfig({ ...config, token_budget: Number(e.target.value) })
           }
+          className="max-w-[200px]"
         />
-        <span className="settings__hint">
+        <p className="text-xs text-muted-foreground">
           单次处理最大 token 数（256 - 128000）
-        </span>
+        </p>
       </div>
 
-      <div className="settings__actions">
-        <button
-          className="view__btn"
-          onClick={handleSave}
-          disabled={saving}
-        >
+      <div className="flex items-center gap-2 pt-2">
+        <Button size="sm" onClick={handleSave} disabled={saving}>
           {saving ? "保存中..." : "保存"}
-        </button>
-        {saved && <span className="settings__saved">已保存</span>}
+        </Button>
+        {saved && (
+          <span className="flex items-center gap-1 text-xs text-success">
+            <Check className="h-3.5 w-3.5" />
+            已保存
+          </span>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

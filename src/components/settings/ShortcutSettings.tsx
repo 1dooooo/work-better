@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RotateCcw } from "lucide-react";
 
 interface Shortcut {
   id: string;
@@ -14,37 +17,49 @@ const DEFAULT_SHORTCUTS: Shortcut[] = [
 ];
 
 export default function ShortcutSettings() {
-  const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
+  const [shortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
   const [editing, setEditing] = useState<string | null>(null);
 
   const formatKey = (s: Shortcut) =>
     [...s.modifiers.map((m) => (m === "cmd" ? "⌘" : m === "shift" ? "⇧" : m === "alt" ? "⌥" : "⌃")), s.key].join(" + ");
 
-  const handleReset = () => {
-    setShortcuts(DEFAULT_SHORTCUTS);
-    setEditing(null);
-  };
-
   return (
-    <section className="settings__section">
-      <h3 className="settings__section-title">快捷键配置</h3>
-      <p className="settings__hint">自定义全局快捷键</p>
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">自定义全局快捷键</p>
 
-      <div className="settings__list">
+      <div className="space-y-1">
         {shortcuts.map((s) => (
-          <div key={s.id} className={`settings__list-item ${editing === s.id ? "settings__list-item--editing" : ""}`}>
-            <span className="settings__label">{s.label}</span>
-            <kbd className="settings__kbd" onClick={() => setEditing(editing === s.id ? null : s.id)}>
-              {formatKey(s)}
-            </kbd>
-            {editing === s.id && <span className="settings__hint">按下新的快捷键组合...</span>}
+          <div
+            key={s.id}
+            className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+          >
+            <span className="text-sm">{s.label}</span>
+            <div className="flex items-center gap-2">
+              <kbd
+                className="cursor-pointer rounded border border-border bg-muted px-2 py-0.5 font-mono text-xs hover:bg-accent"
+                onClick={() => setEditing(editing === s.id ? null : s.id)}
+              >
+                {formatKey(s)}
+              </kbd>
+              {editing === s.id && (
+                <span className="text-xs text-muted-foreground">
+                  按下新的快捷键组合...
+                </span>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
-      <button className="btn btn--outline" onClick={handleReset}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setEditing(null)}
+        className="gap-1.5"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
         恢复默认
-      </button>
-    </section>
+      </Button>
+    </div>
   );
 }

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface FreshnessRule {
   id: string;
@@ -31,28 +33,30 @@ export default function FreshnessSettings() {
   };
 
   return (
-    <section className="settings__section">
-      <h3 className="settings__section-title">保鲜规则配置</h3>
-      <p className="settings__hint">各类保鲜任务的频率和策略</p>
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        各类保鲜任务的频率和策略
+      </p>
 
-      <div className="settings__list">
+      <div className="space-y-1">
         {rules.map((r) => (
-          <div key={r.id} className="settings__list-item">
-            <label className="settings__toggle">
-              <input
-                type="checkbox"
+          <div
+            key={r.id}
+            className="flex items-center justify-between rounded-md border border-border px-3 py-2"
+          >
+            <div className="flex items-center gap-3">
+              <Switch
                 checked={r.enabled}
-                onChange={() => toggleRule(r.id)}
+                onCheckedChange={() => toggleRule(r.id)}
               />
-              <span className="settings__toggle-slider" />
-            </label>
-            <span>{r.name}</span>
-            <span className="settings__hint">
+              <span className="text-sm">{r.name}</span>
+            </div>
+            <span className="text-xs text-muted-foreground">
               {FREQUENCY_LABELS[r.frequency] ?? r.frequency}
             </span>
           </div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
