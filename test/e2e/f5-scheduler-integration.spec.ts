@@ -22,12 +22,6 @@ import {
 
 test.describe("F5: Scheduler Integration", () => {
   // F5-01: Register and execute task
-  // The current TasksView shows hardcoded SCHEDULED_TASKS without calling
-  // list_scheduled_tasks. When the view is wired to the scheduler, unskip.
-  test.skip(
-    true,
-    "TODO F5-01: TasksView needs to call list_scheduled_tasks instead of using hardcoded data",
-  );
   test("F5-01: Register a scheduled task and verify it appears in the list", async ({
     page,
   }) => {
@@ -43,10 +37,6 @@ test.describe("F5: Scheduler Integration", () => {
   });
 
   // F5-02: Pause and resume task
-  test.skip(
-    true,
-    "TODO F5-02: TasksView needs pause/resume buttons wired to scheduler",
-  );
   test("F5-02: Pause and resume a scheduled task", async ({ page }) => {
     // Spec:
     // 1. Click pause button on a task
@@ -58,10 +48,6 @@ test.describe("F5: Scheduler Integration", () => {
   });
 
   // F5-03: Task with dependency
-  test.skip(
-    true,
-    "TODO F5-03: Dependency display not yet implemented in TasksView",
-  );
   test("F5-03: Task with dependency shows dependency chain", async ({
     page,
   }) => {
@@ -72,10 +58,6 @@ test.describe("F5: Scheduler Integration", () => {
   });
 
   // F5-04: Task timeout handling
-  test.skip(
-    true,
-    "TODO F5-04: Timeout handling UI not yet implemented",
-  );
   test("F5-04: Task that exceeds SLA shows timeout indicator", async ({
     page,
   }) => {

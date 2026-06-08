@@ -77,6 +77,47 @@ export default function TasksView() {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
   const [dueDate, setDueDate] = useState("");
+  const [scheduledTasks, setScheduledTasks] = useState<TaskInfo[]>([]);
+  const [schedulerPaused, setSchedulerPaused] = useState(false);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
+
+  // 加载调度器任务
+  useEffect(() => {
+    const loadScheduledTasks = async () => {
+      setLoadingScheduled(true);
+      try {
+        const [tasks, paused] = await Promise.all([
+          listScheduledTasks(),
+          isSchedulerPaused(),
+        ]);
+        setScheduledTasks(tasks);
+        setSchedulerPaused(paused);
+      } catch (err) {
+        console.error("Failed to load scheduled tasks:", err);
+      } finally {
+        setLoadingScheduled(false);
+      }
+    };
+    loadScheduledTasks();
+  }, []);
+
+  // 暂停/恢复调度器
+  const handleToggleScheduler = useCallback(async () => {
+    try {
+      if (schedulerPaused) {
+        await resumeScheduler();
+        setSchedulerPaused(false);
+        toast.success("调度器已恢复");
+      } else {
+        await pauseScheduler();
+        setSchedulerPaused(true);
+        toast.success("调度器已暂停");
+      }
+    } catch (err) {
+      console.error("Failed to toggle scheduler:", err);
+      toast.error("操作失败");
+    }
+  }, [schedulerPaused]);
 
   const handleCreate = useCallback(
     (e: FormEvent) => {
@@ -235,23 +276,74 @@ export default function TasksView() {
 
       {/* Scheduled Tasks */}
       <div className="border-t border-border px-6 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <CalendarClock className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium">定时任务</h3>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">定时任务</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleScheduler}
+            className="h-7 gap-1.5"
+          >
+            {schedulerPaused ? (
+              <>
+                <Play className="h-3.5 w-3.5" />
+                恢复
+              </>
+            ) : (
+              <>
+                <Pause className="h-3.5 w-3.5" />
+                暂停
+              </>
+            )}
+          </Button>
         </div>
-        <div className="flex flex-col gap-1">
-          {SCHEDULED_TASKS.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
-            >
-              <span>{s.title}</span>
-              <span className="text-xs text-muted-foreground">
-                {s.schedule}
-              </span>
-            </div>
-          ))}
-        </div>
+        {loadingScheduled ? (
+          <div className="flex items-center justify-center py-4 text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            加载中...
+          </div>
+        ) : scheduledTasks.length > 0 ? (
+          <div className="flex flex-col gap-1">
+            {scheduledTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-2">
+                  <span>{task.name}</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {task.layer}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {task.cron}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    SLA: {task.sla_ms}ms
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {SCHEDULED_TASKS.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
+              >
+                <span>{s.title}</span>
+                <span className="text-xs text-muted-foreground">
+                  {s.schedule}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
