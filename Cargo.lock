@@ -5896,6 +5896,8 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "ts-rs",
+ "uuid",
  "wb-collector",
  "wb-core",
  "wb-processor",
@@ -6582,12 +6584,14 @@ name = "work-better"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "rusqlite",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-shell",
  "tokio",
+ "uuid",
  "wb-ai",
  "wb-collector",
  "wb-core",

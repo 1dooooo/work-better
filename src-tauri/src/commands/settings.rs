@@ -189,6 +189,21 @@ pub async fn save_storage_config(config: StorageConfig) -> Result<(), String> {
     save_config(&app_config)
 }
 
+/// 获取开发者模式状态
+#[tauri::command]
+pub async fn get_developer_mode() -> Result<bool, String> {
+    let app_config = load_config()?;
+    Ok(app_config.developer_mode)
+}
+
+/// 保存开发者模式状态
+#[tauri::command]
+pub async fn save_developer_mode(enabled: bool) -> Result<(), String> {
+    let mut app_config = load_config()?;
+    app_config.developer_mode = enabled;
+    save_config(&app_config)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

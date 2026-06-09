@@ -109,6 +109,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             commands::events::init_event_log(app.handle());
+            commands::audit::init_audit_log(app.handle())
+                .map_err(|e| e.to_string())?;
 
             // 异步注册内置采集器
             let handle = app.handle().clone();
@@ -151,6 +153,11 @@ pub fn run() {
             commands::notify::send_notification,
             commands::notify::get_pending_notifications,
             commands::capture::take_screenshot,
+            commands::audit::get_processing_audits,
+            commands::audit::get_execution_logs,
+            commands::audit::get_audit_summary,
+            commands::settings::get_developer_mode,
+            commands::settings::save_developer_mode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

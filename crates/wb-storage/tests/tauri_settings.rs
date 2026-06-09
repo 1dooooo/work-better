@@ -42,6 +42,7 @@ fn b3_01_settings_roundtrip() {
                 enabled: true,
             }],
         },
+        developer_mode: false,
     };
 
     let json = config.to_json().unwrap();
@@ -67,6 +68,8 @@ fn b3_02_default_config() {
     assert_eq!(config.storage.db_path, "~/.work-better/data.db");
     assert!(config.scheduler.enabled);
     assert!(config.scheduler.tasks.is_empty());
+    // M5: 验证 developer_mode 默认值
+    assert!(!config.developer_mode);
 }
 
 #[test]

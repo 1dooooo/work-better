@@ -177,3 +177,93 @@ export interface PersistenceStatus {
 export async function processEvent(eventId: string): Promise<ProcessResult> {
   return invoke<ProcessResult>("process_event", { eventId });
 }
+
+// ─── Audit Log ────────────────────────────────────────────────────
+
+export interface ProcessingAuditRow {
+  event_id: string;
+  record_id: string | null;
+  trace_id: string;
+  step: string;
+  timestamp: string;
+  duration_ms: number;
+  model: string;
+  model_version: string;
+  prompt_id: string;
+  prompt_params: string;
+  input_summary: string;
+  output: string;
+  confidence: number;
+  token_input: number;
+  token_output: number;
+  cost_estimate: number;
+  upgrade_reason: string | null;
+  previous_model: string | null;
+  review_verdict: string | null;
+  review_issues: string | null;
+  user_action: string | null;
+  user_correction: string | null;
+}
+
+export interface ExecutionLogRow {
+  id: string;
+  task_id: string;
+  task_name: string;
+  status: string;
+  started_at: string;
+  finished_at: string;
+  duration_ms: number;
+  output: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export interface AuditSummary {
+  total_processing_audits: number;
+  total_execution_logs: number;
+  total_tokens: number;
+  total_cost: number;
+  success_rate: number;
+}
+
+export async function getProcessingAudits(options?: {
+  step?: string;
+  traceId?: string;
+  since?: string;
+  until?: string;
+  limit?: number;
+}): Promise<ProcessingAuditRow[]> {
+  return invoke<ProcessingAuditRow[]>("get_processing_audits", {
+    step: options?.step ?? null,
+    traceId: options?.traceId ?? null,
+    since: options?.since ?? null,
+    until: options?.until ?? null,
+    limit: options?.limit ?? null,
+  });
+}
+
+export async function getExecutionLogs(options?: {
+  taskId?: string;
+  status?: string;
+  limit?: number;
+}): Promise<ExecutionLogRow[]> {
+  return invoke<ExecutionLogRow[]>("get_execution_logs", {
+    taskId: options?.taskId ?? null,
+    status: options?.status ?? null,
+    limit: options?.limit ?? null,
+  });
+}
+
+export async function getAuditSummary(): Promise<AuditSummary> {
+  return invoke<AuditSummary>("get_audit_summary");
+}
+
+// ─── Developer Mode ───────────────────────────────────────────────
+
+export async function getDeveloperMode(): Promise<boolean> {
+  return invoke<boolean>("get_developer_mode");
+}
+
+export async function saveDeveloperMode(enabled: boolean): Promise<void> {
+  return invoke("save_developer_mode", { enabled });
+}

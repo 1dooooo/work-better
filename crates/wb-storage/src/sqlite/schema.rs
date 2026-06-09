@@ -73,6 +73,23 @@ pub fn initialize_schema(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_audits_trace ON processing_audits(trace_id);
         CREATE INDEX IF NOT EXISTS idx_audits_event ON processing_audits(event_id);
+
+        CREATE TABLE IF NOT EXISTS execution_logs (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            task_name TEXT NOT NULL,
+            status TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            finished_at TEXT NOT NULL,
+            duration_ms INTEGER NOT NULL,
+            output TEXT,
+            error TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_exec_logs_task ON execution_logs(task_id);
+        CREATE INDEX IF NOT EXISTS idx_exec_logs_status ON execution_logs(status);
+        CREATE INDEX IF NOT EXISTS idx_exec_logs_created ON execution_logs(created_at);
         ",
     )
 }

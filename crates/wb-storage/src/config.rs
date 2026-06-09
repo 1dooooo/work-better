@@ -91,6 +91,9 @@ pub struct AppConfig {
     #[serde(default)]
     pub storage: StorageConfig,
     pub scheduler: SchedulerConfig,
+    /// 开发者模式：显示审计日志等调试功能
+    #[serde(default)]
+    pub developer_mode: bool,
 }
 
 impl AppConfig {
@@ -151,6 +154,7 @@ mod tests {
                     enabled: true,
                 }],
             },
+            developer_mode: false,
         };
 
         let json = config.to_json().unwrap();

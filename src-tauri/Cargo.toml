@@ -17,6 +17,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 chrono = { workspace = true }
+rusqlite = { version = "0.32", features = ["bundled"] }
+uuid = { workspace = true }
 wb-core = { path = "../crates/wb-core" }
 wb-collector = { path = "../crates/wb-collector" }
 wb-processor = { path = "../crates/wb-processor" }

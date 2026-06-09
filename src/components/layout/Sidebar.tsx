@@ -7,6 +7,7 @@ import {
   Settings,
   Sun,
   Moon,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +22,16 @@ import {
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
-export type ViewId = "events" | "tasks" | "timeline" | "reports" | "settings";
+export type ViewId = "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
 
 interface NavItem {
   id: ViewId;
   label: string;
   icon: LucideIcon;
+  /** 是否为底部固定项（设置等） */
+  isBottom?: boolean;
+  /** 是否为开发者模式专属项 */
+  developerOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -34,13 +39,17 @@ const NAV_ITEMS: NavItem[] = [
   { id: "tasks", label: "任务", icon: CheckSquare },
   { id: "timeline", label: "时间线", icon: Clock },
   { id: "reports", label: "报告", icon: BarChart3 },
-  { id: "settings", label: "设置", icon: Settings },
+  // 开发者模式专属项
+  { id: "audit", label: "审计", icon: ScrollText, developerOnly: true },
+  // 底部固定项
+  { id: "settings", label: "设置", icon: Settings, isBottom: true },
 ];
 
 interface SidebarProps {
   activeView: ViewId;
   onViewChange: (view: ViewId) => void;
   unprocessedCount: number;
+  developerMode?: boolean;
 }
 
 function useTheme() {
@@ -65,8 +74,16 @@ export default function Sidebar({
   activeView,
   onViewChange,
   unprocessedCount,
+  developerMode = false,
 }: SidebarProps) {
   const { theme, toggle } = useTheme();
+
+  // M6: 使用更清晰的过滤逻辑
+  const navItems = NAV_ITEMS.filter((item) => {
+    // developerOnly 项仅在开发者模式下显示
+    if (item.developerOnly && !developerMode) return false;
+    return true;
+  });
 
   return (
     <aside className="flex h-full w-[200px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -85,7 +102,7 @@ export default function Sidebar({
       {/* Navigation */}
       <ScrollArea className="flex-1 px-2 py-2">
         <nav className="flex flex-col gap-0.5">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
             return (
