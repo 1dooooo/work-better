@@ -8,6 +8,7 @@ import {
   Keyboard,
   Sparkles,
   FileBarChart,
+  Bug,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ import StorageSettings from "../settings/StorageSettings";
 import ShortcutSettings from "../settings/ShortcutSettings";
 import FreshnessSettings from "../settings/FreshnessSettings";
 import ReportSettings from "../settings/ReportSettings";
+import DeveloperSettings from "../settings/DeveloperSettings";
 
 interface SettingsTab {
   id: string;
@@ -32,6 +34,7 @@ const SETTINGS_TABS: SettingsTab[] = [
   { id: "shortcuts", label: "快捷键", icon: Keyboard, component: ShortcutSettings },
   { id: "freshness", label: "维护", icon: Sparkles, component: FreshnessSettings },
   { id: "reports", label: "报告", icon: FileBarChart, component: ReportSettings },
+  { id: "developer", label: "开发者", icon: Bug, component: DeveloperSettings },
 ];
 
 export default function SettingsView() {

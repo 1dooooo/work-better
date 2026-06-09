@@ -48,6 +48,12 @@ export default function MainWindow() {
     };
   }, [refreshCount]);
 
+  // 切换视图时刷新开发者模式（从设置页返回时立即生效）
+  const handleViewChange = useCallback((view: ViewId) => {
+    setActiveView(view);
+    getDeveloperMode().then(setDeveloperMode).catch(() => {});
+  }, []);
+
   const ActiveComponent = VIEW_COMPONENTS[activeView];
 
   return (
@@ -55,7 +61,7 @@ export default function MainWindow() {
       <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
         <Sidebar
           activeView={activeView}
-          onViewChange={setActiveView}
+          onViewChange={handleViewChange}
           unprocessedCount={unprocessedCount}
           developerMode={developerMode}
         />
