@@ -18,6 +18,7 @@ docs/testing/
 ├── index.md                    # 本文档：测试文档索引
 ├── architecture.md             # 测试体系总体架构
 ├── implementation-progress.md  # 测试实施进度
+├── test-effectiveness-audit.md # 测试有效性审计报告
 ├── conventions.md              # 测试编写规范
 ├── layers/                     # 测试层级定义
 │   ├── overview.md             # 层级总览
@@ -38,6 +39,7 @@ docs/testing/
 | [architecture.md](architecture.md) | 测试体系总体架构、框架选型、设计目标 | 架构变更时 |
 | [implementation-progress.md](implementation-progress.md) | 测试实施进度、已完成工作、待完成工作 | 每次测试实现后 |
 | [conventions.md](conventions.md) | 测试编写规范、命名规则、组织方式 | 规范变更时 |
+| [test-effectiveness-audit.md](test-effectiveness-audit.md) | 测试有效性审计——问题分析与修复路线图 | 审计/修复后 |
 
 ### 层级文档
 
@@ -106,6 +108,7 @@ cargo test --package wb-acceptance
 
 | 文档 | 位置 | 说明 |
 |------|------|------|
+| 测试有效性 ADR | [../decisions/001-test-effectiveness-gap.md](../decisions/001-test-effectiveness-gap.md) | 决策依据 |
 | 多 Agent 协作规范 | [../development/multi-agent-collaboration.md](../development/multi-agent-collaboration.md) | Agent 协作流程 |
 | Workflow Spec | [../../.workflow/specs/dev-test-review.yaml](../../.workflow/specs/dev-test-review.yaml) | Workflow 定义 |
 | 文档规范 | [../conventions.md](../conventions.md) | 文档编写规范 |
