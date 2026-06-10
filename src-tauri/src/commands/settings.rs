@@ -60,6 +60,13 @@ pub fn load_config_for_collect() -> Result<AppConfig, String> {
 }
 
 /// 将 AppConfig 保存到配置文件
+///
+/// 此函数为 `pub(crate)` 可见性，供 `collectors` 模块在启用/禁用采集器时持久化状态。
+pub(crate) fn save_config_pub(config: &AppConfig) -> Result<(), String> {
+    save_config(config)
+}
+
+/// 将 AppConfig 保存到配置文件（内部实现）
 fn save_config(config: &AppConfig) -> Result<(), String> {
     let path = config_path()?;
     if let Some(parent) = path.parent() {

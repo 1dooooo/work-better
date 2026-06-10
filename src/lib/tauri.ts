@@ -267,3 +267,75 @@ export async function getDeveloperMode(): Promise<boolean> {
 export async function saveDeveloperMode(enabled: boolean): Promise<void> {
   return invoke("save_developer_mode", { enabled });
 }
+
+// ─── Task Management ─────────────────────────────────────────────
+
+export interface TaskDto {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  source: string;
+  due_date: string | null;
+  created_at: string;
+  tags: string[];
+}
+
+export interface PendingTaskDto {
+  id: string;
+  title: string;
+  description: string | null;
+  source: string;
+  priority: string;
+  origin_text: string;
+  created_at: string;
+}
+
+export async function discoverTasksFromText(
+  text: string,
+  source: string,
+): Promise<PendingTaskDto[]> {
+  return invoke<PendingTaskDto[]>("discover_tasks_from_text", { text, source });
+}
+
+export async function getPendingTasks(): Promise<PendingTaskDto[]> {
+  return invoke<PendingTaskDto[]>("get_pending_tasks");
+}
+
+export async function confirmPendingTask(
+  pendingId: string,
+): Promise<TaskDto> {
+  return invoke<TaskDto>("confirm_pending_task", { pendingId });
+}
+
+export async function rejectPendingTask(pendingId: string): Promise<void> {
+  return invoke("reject_pending_task", { pendingId });
+}
+
+export async function listTasks(options?: {
+  status?: string;
+  priority?: string;
+}): Promise<TaskDto[]> {
+  return invoke<TaskDto[]>("list_tasks", {
+    status: options?.status ?? null,
+    priority: options?.priority ?? null,
+  });
+}
+
+export async function createTask(
+  title: string,
+  priority?: string,
+): Promise<TaskDto> {
+  return invoke<TaskDto>("create_task", {
+    title,
+    priority: priority ?? null,
+  });
+}
+
+export async function updateTaskStatus(
+  taskId: string,
+  newStatus: string,
+): Promise<TaskDto> {
+  return invoke<TaskDto>("update_task_status", { taskId, newStatus });
+}

@@ -11,5 +11,5 @@ pub use config::{
     AppConfig, CollectorConfig, ModelConfig, SchedulerConfig, ScheduledTaskConfig, StorageConfig,
 };
 pub use obsidian::ObsidianWriter;
-pub use sqlite::{AuditLogStore, AuditQueryFilter, ExecutionLogFilter, ExecutionLogInsert};
+pub use sqlite::{AuditLogStore, AuditQueryFilter, ExecutionLogFilter, ExecutionLogInsert, ProcessingAuditInsert};
 pub use sqlite::SqliteEventLog;

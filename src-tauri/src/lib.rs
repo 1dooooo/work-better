@@ -112,6 +112,9 @@ pub fn run() {
             commands::audit::init_audit_log(app.handle())
                 .map_err(|e| e.to_string())?;
 
+            // 初始化任务管理器
+            commands::tasks::init_task_manager();
+
             // 异步注册内置采集器
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -158,6 +161,13 @@ pub fn run() {
             commands::audit::get_audit_summary,
             commands::settings::get_developer_mode,
             commands::settings::save_developer_mode,
+            commands::tasks::discover_tasks_from_text,
+            commands::tasks::get_pending_tasks,
+            commands::tasks::confirm_pending_task,
+            commands::tasks::reject_pending_task,
+            commands::tasks::list_tasks,
+            commands::tasks::create_task,
+            commands::tasks::update_task_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

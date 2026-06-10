@@ -7,7 +7,7 @@
 use std::sync::OnceLock;
 use tokio::sync::Mutex;
 use wb_core::event::{Event, EventFilter, EventLog};
-use wb_storage::SqliteEventLog;
+use wb_storage::{ProcessingAuditInsert, SqliteEventLog};
 use serde::{Deserialize, Serialize};
 
 /// 处理结果
@@ -108,8 +108,10 @@ pub async fn mark_event_processed(event_id: String) -> Result<(), String> {
 ///
 /// 对事件进行分类、审批、持久化等处理。
 /// 返回处理结果，包括分类、置信度、处理路径等。
+/// 同时将处理审计写入 processing_audits 表。
 #[tauri::command]
 pub async fn process_event(event_id: String) -> Result<ProcessResult, String> {
+    let start_time = std::time::Instant::now();
     let log = get_event_log().lock().await;
 
     // 1. 获取事件
@@ -147,6 +149,37 @@ pub async fn process_event(event_id: String) -> Result<ProcessResult, String> {
     log.mark_processed(&event_id)
         .await
         .map_err(|e| e.to_string())?;
+
+    let total_ms = start_time.elapsed().as_millis() as u64;
+
+    // 7. 写入审计日志
+    let trace_id = uuid::Uuid::new_v4().to_string();
+    if let Some(audit_store) = super::audit::get_audit_log() {
+        let audit_conn = audit_store.lock().await;
+        let _ = audit_conn.insert_processing_audit(&ProcessingAuditInsert {
+            event_id: event_id.clone(),
+            record_id: None,
+            trace_id,
+            step: "Classifier".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            duration_ms: total_ms,
+            model: model_used.clone(),
+            model_version: "v1".to_string(),
+            prompt_id: "classify-event".to_string(),
+            prompt_params: "{}".to_string(),
+            input_summary: format!("source={:?}, type={:?}", event.source, event.event_type),
+            output: serde_json::json!({
+                "category": category,
+                "confidence": confidence,
+                "processing_path": processing_path,
+            })
+            .to_string(),
+            confidence,
+            token_input: 0,
+            token_output: 0,
+            cost_estimate: 0.0,
+        });
+    }
 
     Ok(ProcessResult {
         event_id,

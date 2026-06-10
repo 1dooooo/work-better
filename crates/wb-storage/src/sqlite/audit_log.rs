@@ -149,6 +149,27 @@ pub struct AuditSummary {
     pub success_rate: f64,
 }
 
+/// 处理审计日志写入记录（来自事件处理）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProcessingAuditInsert {
+    pub event_id: String,
+    pub record_id: Option<String>,
+    pub trace_id: String,
+    pub step: String,
+    pub timestamp: String,
+    pub duration_ms: u64,
+    pub model: String,
+    pub model_version: String,
+    pub prompt_id: String,
+    pub prompt_params: String,
+    pub input_summary: String,
+    pub output: String,
+    pub confidence: f64,
+    pub token_input: u64,
+    pub token_output: u64,
+    pub cost_estimate: f64,
+}
+
 /// 执行日志写入记录（来自 scheduler）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionLogInsert {
@@ -339,6 +360,45 @@ impl AuditLogStore {
                 record.duration_ms as i64,
                 record.output,
                 record.error,
+            ],
+        )
+        .map_err(|e| format!("Insert error: {}", e))?;
+
+        Ok(())
+    }
+
+    /// 插入处理审计日志
+    pub fn insert_processing_audit(&self, record: &ProcessingAuditInsert) -> Result<(), String> {
+        // 验证 step
+        if !VALID_STEPS.contains(&record.step.as_str()) {
+            return Err(format!("无效的 step '{}'，有效值: {:?}", record.step, VALID_STEPS));
+        }
+
+        let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO processing_audits
+             (event_id, record_id, trace_id, step, timestamp, duration_ms,
+              model, model_version, prompt_id, prompt_params, input_summary,
+              output, confidence, token_input, token_output, cost_estimate)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![
+                record.event_id,
+                record.record_id,
+                record.trace_id,
+                record.step,
+                record.timestamp,
+                record.duration_ms as i64,
+                record.model,
+                record.model_version,
+                record.prompt_id,
+                record.prompt_params,
+                record.input_summary,
+                record.output,
+                record.confidence,
+                record.token_input as i64,
+                record.token_output as i64,
+                record.cost_estimate,
             ],
         )
         .map_err(|e| format!("Insert error: {}", e))?;

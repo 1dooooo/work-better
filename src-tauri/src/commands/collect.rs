@@ -74,6 +74,38 @@ pub async fn trigger_feishu_collect(
     for event in &events {
         log.append(event).await.map_err(|e| e.to_string())?;
     }
+    drop(log);
+
+    // 从采集的消息中自动发现任务
+    let mut discovered_count = 0;
+    for event in &events {
+        let text = match &event.content {
+            serde_json::Value::Object(obj) => {
+                obj.get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string()
+            }
+            serde_json::Value::String(s) => s.clone(),
+            _ => continue,
+        };
+
+        if text.is_empty() {
+            continue;
+        }
+
+        let discovery = super::tasks::get_task_discovery();
+        let mut disc = discovery.lock().await;
+        let tasks = disc.discover_from_message(&text);
+        discovered_count += tasks.len();
+    }
+
+    if discovered_count > 0 {
+        eprintln!(
+            "[collect] 飞书采集完成: {} 条事件, 发现 {} 个待确认任务",
+            count, discovered_count
+        );
+    }
 
     // 通知前端采集完成
     app.emit("feishu:collect-complete", count)

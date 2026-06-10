@@ -33,25 +33,9 @@ pub fn init_audit_log(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
     let conn = rusqlite::Connection::open(path_str)
         .map_err(|e| format!("Failed to open database for audit log: {}", e))?;
 
-    // 确保 execution_logs 表存在
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS execution_logs (
-            id TEXT PRIMARY KEY,
-            task_id TEXT NOT NULL,
-            task_name TEXT NOT NULL,
-            status TEXT NOT NULL,
-            started_at TEXT NOT NULL,
-            finished_at TEXT NOT NULL,
-            duration_ms INTEGER NOT NULL,
-            output TEXT,
-            error TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_exec_logs_task ON execution_logs(task_id);
-        CREATE INDEX IF NOT EXISTS idx_exec_logs_status ON execution_logs(status);
-        CREATE INDEX IF NOT EXISTS idx_exec_logs_created ON execution_logs(created_at);",
-    )
-    .map_err(|e| format!("Failed to create execution_logs table: {}", e))?;
+    // 初始化完整 schema（包括 processing_audits 和 execution_logs 表）
+    wb_storage::sqlite::schema::initialize_schema(&conn)
+        .map_err(|e| format!("Failed to initialize audit schema: {}", e))?;
 
     let store = AuditLogStore::new(conn);
 
@@ -64,8 +48,8 @@ pub fn init_audit_log(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::
 
 /// 获取全局 AuditLogStore 实例的引用。
 ///
-/// 返回 `None` 如果尚未初始化。
-fn get_audit_log() -> Option<&'static Mutex<AuditLogStore>> {
+/// 返回 `None` 如果尚未初始化。供 `events` 模块写入审计日志使用。
+pub(crate) fn get_audit_log() -> Option<&'static Mutex<AuditLogStore>> {
     AUDIT_LOG.get()
 }
 
