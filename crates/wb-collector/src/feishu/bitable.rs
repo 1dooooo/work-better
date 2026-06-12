@@ -63,11 +63,19 @@ impl FeishuBitableCollector {
 #[async_trait]
 impl Collector for FeishuBitableCollector {
     fn id(&self) -> &str {
-        "feishu-bitable"
+        "feishu.bitable"
     }
 
     fn name(&self) -> &str {
-        "飞书多维表格采集器"
+        "多维表格"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

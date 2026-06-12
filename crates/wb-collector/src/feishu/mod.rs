@@ -13,3 +13,4 @@ pub mod okr;
 pub mod projects;
 pub mod spreadsheets;
 pub mod wiki;
+pub mod wrappers;

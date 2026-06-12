@@ -9,10 +9,21 @@ use wb_core::event::Event;
 
 use crate::traits::{Collector, HealthStatus};
 
+/// 采集器分组信息
+#[derive(Debug, Clone)]
+pub struct CollectorGroupInfo {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub collector_ids: Vec<String>,
+}
+
 /// 采集器管理器，支持运行时注册、启停、健康检查和批量采集
 pub struct CollectorManager {
     collectors: RwLock<HashMap<String, Arc<dyn Collector>>>,
     enabled: RwLock<HashMap<String, bool>>,
+    /// 分组启用状态（key: group_id）
+    group_enabled: RwLock<HashMap<String, bool>>,
 }
 
 impl CollectorManager {
@@ -20,14 +31,22 @@ impl CollectorManager {
         Self {
             collectors: RwLock::new(HashMap::new()),
             enabled: RwLock::new(HashMap::new()),
+            group_enabled: RwLock::new(HashMap::new()),
         }
     }
 
     /// 注册采集器，默认启用
     pub async fn register(&self, collector: Arc<dyn Collector>) {
         let id = collector.id().to_string();
+        let group_id = collector.group_id().to_string();
+
+        // 注册采集器
         self.collectors.write().await.insert(id.clone(), collector);
         self.enabled.write().await.insert(id, true);
+
+        // 确保分组存在且默认启用
+        let mut groups = self.group_enabled.write().await;
+        groups.entry(group_id).or_insert(true);
     }
 
     /// 注销采集器
@@ -55,6 +74,50 @@ impl CollectorManager {
         self.enabled.read().await.get(id).copied().unwrap_or(false)
     }
 
+    /// 启用分组
+    pub async fn enable_group(&self, group_id: &str) {
+        let mut groups = self.group_enabled.write().await;
+        groups.insert(group_id.to_string(), true);
+    }
+
+    /// 禁用分组
+    pub async fn disable_group(&self, group_id: &str) {
+        let mut groups = self.group_enabled.write().await;
+        groups.insert(group_id.to_string(), false);
+    }
+
+    /// 查询分组是否启用
+    pub async fn is_group_enabled(&self, group_id: &str) -> bool {
+        self.group_enabled.read().await.get(group_id).copied().unwrap_or(true)
+    }
+
+    /// 获取所有分组信息
+    pub async fn get_groups(&self) -> Vec<CollectorGroupInfo> {
+        let collectors = self.collectors.read().await;
+        let enabled = self.enabled.read().await;
+        let group_enabled = self.group_enabled.read().await;
+
+        let mut groups: HashMap<String, CollectorGroupInfo> = HashMap::new();
+
+        for (id, collector) in collectors.iter() {
+            let group_id = collector.group_id().to_string();
+            let group_name = collector.group_name().to_string();
+
+            let group = groups.entry(group_id.clone()).or_insert_with(|| {
+                CollectorGroupInfo {
+                    id: group_id.clone(),
+                    name: group_name,
+                    enabled: group_enabled.get(&group_id).copied().unwrap_or(true),
+                    collector_ids: Vec::new(),
+                }
+            });
+
+            group.collector_ids.push(id.clone());
+        }
+
+        groups.into_values().collect()
+    }
+
     /// 单个采集器健康检查
     pub async fn health_check(&self, id: &str) -> Option<HealthStatus> {
         let collectors = self.collectors.read().await;
@@ -77,10 +140,18 @@ impl CollectorManager {
     pub async fn collect_all(&self) -> Vec<Result<Vec<Event>>> {
         let collectors = self.collectors.read().await;
         let enabled = self.enabled.read().await;
+        let group_enabled = self.group_enabled.read().await;
 
         let mut results = Vec::new();
         for (id, collector) in collectors.iter() {
-            if enabled.get(id).copied().unwrap_or(false) {
+            // 检查分组和采集器是否都启用
+            let group_ok = group_enabled
+                .get(collector.group_id())
+                .copied()
+                .unwrap_or(true);
+            let collector_ok = enabled.get(id).copied().unwrap_or(false);
+
+            if group_ok && collector_ok {
                 results.push(collector.collect().await);
             }
         }
@@ -156,6 +227,14 @@ mod tests {
 
         fn name(&self) -> &str {
             &self.name
+        }
+
+        fn group_id(&self) -> &str {
+            "test"
+        }
+
+        fn group_name(&self) -> &str {
+            "测试"
         }
 
         fn version(&self) -> &str {

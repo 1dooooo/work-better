@@ -51,7 +51,15 @@ impl Collector for FeishuCollector {
     }
 
     fn name(&self) -> &str {
-        "飞书消息"
+        "消息"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {
@@ -66,7 +74,7 @@ impl Collector for FeishuCollector {
         if runner::check_tool_available(LARK_CLI) {
             HealthStatus::healthy()
         } else {
-            HealthStatus::unhealthy(format!("lark-cli 不可用，请确认已安装: {}", LARK_CLI))
+            HealthStatus::degraded(format!("lark-cli 未安装: {}", LARK_CLI))
         }
     }
 }
@@ -79,7 +87,9 @@ mod tests {
     fn test_feishu_collector_id_and_name() {
         let collector = FeishuCollector::new("oc_test".into(), 50);
         assert_eq!(collector.id(), "feishu");
-        assert_eq!(collector.name(), "飞书消息");
+        assert_eq!(collector.name(), "消息");
+        assert_eq!(collector.group_id(), "feishu");
+        assert_eq!(collector.group_name(), "飞书");
         assert_eq!(collector.version(), "0.1.0");
     }
 

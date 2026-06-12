@@ -7,6 +7,9 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CollectorConfig {
     pub enabled: HashMap<String, bool>,
+    /// 分组启用状态（key: group_id）
+    #[serde(default)]
+    pub group_enabled: HashMap<String, bool>,
     pub feishu_mode: String,
     /// 飞书会话 ID，用于采集指定会话的消息
     #[serde(default)]
@@ -17,6 +20,7 @@ impl Default for CollectorConfig {
     fn default() -> Self {
         Self {
             enabled: HashMap::new(),
+            group_enabled: HashMap::new(),
             feishu_mode: "cli".into(),
             feishu_chat_id: None,
         }
@@ -137,6 +141,7 @@ mod tests {
         let config = AppConfig {
             collectors: CollectorConfig {
                 enabled,
+                group_enabled: HashMap::new(),
                 feishu_mode: "api".into(),
                 feishu_chat_id: Some("oc_abc123".into()),
             },

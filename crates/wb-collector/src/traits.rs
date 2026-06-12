@@ -35,6 +35,17 @@ impl HealthStatus {
         }
     }
 
+    /// 创建降级状态（功能可用但有限制）
+    pub fn degraded(msg: String) -> Self {
+        Self {
+            level: HealthLevel::Degraded,
+            message: Some(msg),
+            last_check: Utc::now(),
+            last_success: Some(Utc::now()),
+            error_count: 0,
+        }
+    }
+
     /// 创建不健康状态
     pub fn unhealthy(msg: String) -> Self {
         Self {
@@ -57,6 +68,12 @@ pub trait Collector: Send + Sync {
 
     /// 采集器可读名称
     fn name(&self) -> &str;
+
+    /// 所属分组标识（如 "feishu", "system"）
+    fn group_id(&self) -> &str;
+
+    /// 所属分组可读名称（如 "飞书", "系统"）
+    fn group_name(&self) -> &str;
 
     /// 采集器版本
     fn version(&self) -> &str;

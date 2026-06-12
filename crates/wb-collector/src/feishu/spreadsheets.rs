@@ -63,11 +63,19 @@ impl FeishuSpreadsheetCollector {
 #[async_trait]
 impl Collector for FeishuSpreadsheetCollector {
     fn id(&self) -> &str {
-        "feishu-spreadsheet"
+        "feishu.spreadsheets"
     }
 
     fn name(&self) -> &str {
-        "飞书电子表格采集器"
+        "电子表格"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

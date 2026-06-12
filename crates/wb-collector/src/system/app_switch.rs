@@ -100,7 +100,15 @@ impl Collector for AppSwitchCollector {
     }
 
     fn name(&self) -> &str {
-        "前台应用切换采集器"
+        "前台应用"
+    }
+
+    fn group_id(&self) -> &str {
+        "system"
+    }
+
+    fn group_name(&self) -> &str {
+        "系统"
     }
 
     fn version(&self) -> &str {
@@ -142,7 +150,9 @@ mod tests {
     fn test_collector_metadata() {
         let collector = AppSwitchCollector::new();
         assert_eq!(collector.id(), "system.app_switch");
-        assert_eq!(collector.name(), "前台应用切换采集器");
+        assert_eq!(collector.name(), "前台应用");
+        assert_eq!(collector.group_id(), "system");
+        assert_eq!(collector.group_name(), "系统");
         assert_eq!(collector.version(), "0.1.0");
     }
 
