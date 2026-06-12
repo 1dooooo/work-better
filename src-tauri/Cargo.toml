@@ -25,3 +25,4 @@ wb-processor = { path = "../crates/wb-processor" }
 wb-storage = { path = "../crates/wb-storage" }
 wb-ai = { path = "../crates/wb-ai" }
 wb-scheduler = { path = "../crates/wb-scheduler" }
+reqwest = { version = "0.12", features = ["json"] }

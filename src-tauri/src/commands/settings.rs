@@ -15,6 +15,20 @@ pub struct ModelConfig {
     pub api_endpoint: String,
     pub api_key: String,
     pub token_budget: u32,
+    /// 小模型名称（如 gpt-4o-mini）
+    #[serde(default = "default_small_model")]
+    pub small_model: String,
+    /// 大模型名称（如 gpt-4o）
+    #[serde(default = "default_large_model")]
+    pub large_model: String,
+}
+
+fn default_small_model() -> String {
+    "gpt-4o-mini".to_string()
+}
+
+fn default_large_model() -> String {
+    "gpt-4o".to_string()
 }
 
 /// 采集器状态
@@ -85,8 +99,10 @@ pub async fn get_model_config() -> Result<ModelConfig, String> {
     let app_config = load_config()?;
     Ok(ModelConfig {
         api_endpoint: app_config.model.api_endpoint,
-        api_key: String::new(), // 出于安全考虑，不从文件回传 api_key
+        api_key: app_config.model.api_key.unwrap_or_default(),
         token_budget: app_config.model.token_budget,
+        small_model: app_config.model.small_model,
+        large_model: app_config.model.large_model,
     })
 }
 
@@ -96,7 +112,14 @@ pub async fn save_model_config(config: ModelConfig) -> Result<(), String> {
     let mut app_config = load_config()?;
     app_config.model.api_endpoint = config.api_endpoint;
     app_config.model.token_budget = config.token_budget;
-    // api_key 单独处理（暂不持久化到 config.json，避免明文存储风险）
+    app_config.model.small_model = config.small_model;
+    app_config.model.large_model = config.large_model;
+    // 持久化 api_key（本地桌面应用，config.json 权限为 user-only）
+    app_config.model.api_key = if config.api_key.is_empty() {
+        None
+    } else {
+        Some(config.api_key)
+    };
     save_config(&app_config)
 }
 
@@ -209,6 +232,264 @@ pub async fn save_developer_mode(enabled: bool) -> Result<(), String> {
     let mut app_config = load_config()?;
     app_config.developer_mode = enabled;
     save_config(&app_config)
+}
+
+// ─── 模型管理 ─────────────────────────────────────────────────────
+
+/// 模型信息（从 API 获取）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelInfo {
+    pub id: String,
+    pub name: String,
+}
+
+/// 构建 API URL，避免重复 /v1
+///
+/// 用户可能填 `https://api.example.com/v1` 或 `https://api.example.com/v1/`，
+/// 需要智能拼接，避免变成 `/v1/v1/models`。
+fn build_api_url(endpoint: &str, path: &str) -> String {
+    let base = endpoint.trim_end_matches('/').trim_end_matches("/v1");
+    format!("{}/v1/{}", base, path.trim_start_matches('/'))
+}
+
+/// 获取可用模型列表
+///
+/// - OpenAI 兼容端点：调用 GET /v1/models
+/// - Anthropic 端点：返回内置 Claude 模型列表
+#[tauri::command]
+pub async fn list_models(api_endpoint: String, api_key: String) -> Result<Vec<ModelInfo>, String> {
+    if api_key.is_empty() {
+        return Err("请先配置 API Key".to_string());
+    }
+
+    let is_anthropic = api_endpoint.contains("anthropic");
+
+    if is_anthropic {
+        // Anthropic 没有标准的模型列表 API，返回内置模型
+        Ok(vec![
+            ModelInfo { id: "claude-sonnet-4-6".into(), name: "Claude Sonnet 4.6（推荐）".into() },
+            ModelInfo { id: "claude-haiku-4-5-20251001".into(), name: "Claude Haiku 4.5（快速）".into() },
+            ModelInfo { id: "claude-opus-4-8".into(), name: "Claude Opus 4.8（最强）".into() },
+        ])
+    } else {
+        // OpenAI 兼容端点：调用 /v1/models
+        let client = reqwest::Client::new();
+        let url = build_api_url(&api_endpoint, "models");
+
+        let response = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .send()
+            .await
+            .map_err(|e| format!("请求模型列表失败: {}", e))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(format!("API 返回错误 {}: {}", status, body));
+        }
+
+        #[derive(Deserialize)]
+        struct ModelsResponse {
+            data: Vec<ModelEntry>,
+        }
+        #[derive(Deserialize)]
+        struct ModelEntry {
+            id: String,
+        }
+
+        let result: ModelsResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("解析模型列表失败: {}", e))?;
+
+        let mut models: Vec<ModelInfo> = result
+            .data
+            .into_iter()
+            .map(|m| {
+                let name = format_model_name(&m.id);
+                ModelInfo { id: m.id, name }
+            })
+            .collect();
+
+        // 按名称排序，常用的排前面
+        models.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Ok(models)
+    }
+}
+
+/// 为 OpenAI 模型 ID 生成友好名称
+fn format_model_name(id: &str) -> String {
+    match id {
+        s if s.contains("gpt-4o-mini") => format!("{}（快速·便宜）", id),
+        s if s.contains("gpt-4o") => format!("{}（推荐）", id),
+        s if s.contains("gpt-4-turbo") => format!("{}（均衡）", id),
+        s if s.contains("gpt-4") => format!("{}（强推理）", id),
+        s if s.contains("o1") => format!("{}（推理）", id),
+        s if s.contains("o3") => format!("{}（推理）", id),
+        s if s.contains("claude") => format!("{}（Claude）", id),
+        s if s.contains("deepseek") => format!("{}（DeepSeek）", id),
+        _ => id.to_string(),
+    }
+}
+
+/// 测试结果
+#[derive(Debug, Clone, Serialize)]
+pub struct TestResult {
+    pub success: bool,
+    pub message: String,
+    pub latency_ms: u64,
+}
+
+/// 测试模型连接
+///
+/// 发送一条简单消息，验证 API Key 和模型是否可用。
+#[tauri::command]
+pub async fn test_model(
+    api_endpoint: String,
+    api_key: String,
+    model: String,
+) -> Result<TestResult, String> {
+    if api_key.is_empty() {
+        return Err("请先配置 API Key".to_string());
+    }
+    if model.is_empty() {
+        return Err("请先选择模型".to_string());
+    }
+
+    let is_anthropic = api_endpoint.contains("anthropic");
+    let start = std::time::Instant::now();
+
+    let result = if is_anthropic {
+        test_anthropic_model(&api_endpoint, &api_key, &model).await
+    } else {
+        test_openai_model(&api_endpoint, &api_key, &model).await
+    };
+
+    let latency_ms = start.elapsed().as_millis() as u64;
+
+    match result {
+        Ok(reply) => Ok(TestResult {
+            success: true,
+            message: format!("连接成功！模型回复：「{}」", truncate(&reply, 100)),
+            latency_ms,
+        }),
+        Err(e) => Ok(TestResult {
+            success: false,
+            message: format!("测试失败：{}", e),
+            latency_ms,
+        }),
+    }
+}
+
+/// 测试 OpenAI 兼容模型
+async fn test_openai_model(endpoint: &str, api_key: &str, model: &str) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = build_api_url(endpoint, "chat/completions");
+
+    let body = serde_json::json!({
+        "model": model,
+        "max_tokens": 32,
+        "messages": [{"role": "user", "content": "Say hello in one word."}]
+    });
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let err_body = response.text().await.unwrap_or_default();
+        return Err(format!("API 错误 {}: {}", status, err_body));
+    }
+
+    #[derive(Deserialize)]
+    struct ChatResponse {
+        choices: Vec<ChatChoice>,
+    }
+    #[derive(Deserialize)]
+    struct ChatChoice {
+        message: ChatMessage,
+    }
+    #[derive(Deserialize)]
+    struct ChatMessage {
+        content: String,
+    }
+
+    let result: ChatResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    result
+        .choices
+        .first()
+        .map(|c| c.message.content.clone())
+        .ok_or_else(|| "API 返回空响应".to_string())
+}
+
+/// 测试 Anthropic 模型
+async fn test_anthropic_model(endpoint: &str, api_key: &str, model: &str) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = build_api_url(endpoint, "messages");
+
+    let body = serde_json::json!({
+        "model": model,
+        "max_tokens": 32,
+        "messages": [{"role": "user", "content": "Say hello in one word."}]
+    });
+
+    let response = client
+        .post(&url)
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let err_body = response.text().await.unwrap_or_default();
+        return Err(format!("API 错误 {}: {}", status, err_body));
+    }
+
+    #[derive(Deserialize)]
+    struct MsgResponse {
+        content: Vec<ContentBlock>,
+    }
+    #[derive(Deserialize)]
+    struct ContentBlock {
+        text: String,
+    }
+
+    let result: MsgResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    result
+        .content
+        .first()
+        .map(|c| c.text.clone())
+        .ok_or_else(|| "API 返回空响应".to_string())
+}
+
+/// 截断字符串
+fn truncate(s: &str, max_chars: usize) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= max_chars {
+        s.to_string()
+    } else {
+        format!("{}...", chars[..max_chars].iter().collect::<String>())
+    }
 }
 
 #[cfg(test)]

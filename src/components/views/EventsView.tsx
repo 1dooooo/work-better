@@ -8,8 +8,6 @@ import {
   type Event,
 } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -17,13 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   RefreshCw,
   Download,
   CheckCircle2,
-  X,
   Loader2,
   Inbox,
 } from "lucide-react";
@@ -31,12 +26,21 @@ import { toast } from "sonner";
 
 type FilterSource = "all" | string;
 
+// 事件类型配置
+const EVENT_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
+  message: { label: "MSG", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  issue: { label: "ISS", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  pr: { label: "PR", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  document: { label: "DOC", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+  default: { label: "EVT", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+};
+
 export default function EventsView() {
   const [events, setEvents] = useState<Event[]>([]);
   const [filter, setFilter] = useState<FilterSource>("all");
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,7 +66,6 @@ export default function EventsView() {
 
   const handleCollect = async () => {
     setCollecting(true);
-    setError(null);
     try {
       const chatId = await getFeishuChatId();
       await triggerFeishuCollect(chatId || undefined, 20);
@@ -71,7 +74,6 @@ export default function EventsView() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Collect failed:", err);
-      setError(`采集失败: ${msg}`);
       toast.error("采集失败", { description: msg });
     } finally {
       setCollecting(false);
@@ -81,9 +83,7 @@ export default function EventsView() {
   const handleMarkProcessed = async (id: string) => {
     try {
       await markEventProcessed(id);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, processed: true } : e))
-      );
+      setProcessedIds((prev) => new Set(prev).add(id));
       toast.success("已标记为已处理");
     } catch (err) {
       console.error("Mark processed failed:", err);
@@ -98,19 +98,50 @@ export default function EventsView() {
 
   const sources = Array.from(new Set(events.map((e) => e.source)));
 
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "刚刚";
+    if (diffMins < 60) return `${diffMins}分钟前`;
+    if (diffHours < 24) return `${diffHours}小时前`;
+    if (diffDays < 7) return `${diffDays}天前`;
+    return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  };
+
+  const truncateContent = (content: string, maxLength: number = 100) => {
+    if (content.length <= maxLength) return content;
+    return content.slice(0, maxLength) + "...";
+  };
+
+  const getEventType = (type: string) => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes("message") || lowerType.includes("消息")) return EVENT_TYPE_CONFIG.message;
+    if (lowerType.includes("issue")) return EVENT_TYPE_CONFIG.issue;
+    if (lowerType.includes("pr") || lowerType.includes("pull")) return EVENT_TYPE_CONFIG.pr;
+    if (lowerType.includes("doc") || lowerType.includes("文档")) return EVENT_TYPE_CONFIG.document;
+    return EVENT_TYPE_CONFIG.default;
+  };
+
+  const unprocessedCount = filteredEvents.filter((e) => !processedIds.has(e.id)).length;
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3 min-h-[48px]">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">事件流</h1>
-          <Badge variant="secondary" className="text-xs">
+          <h1 className="text-sm font-semibold text-foreground">事件流</h1>
+          <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {filteredEvents.length}
-          </Badge>
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={(v) => v !== null && setFilter(v)}>
-            <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectTrigger className="h-7 w-[100px] text-[11px]">
               <SelectValue placeholder="全部来源" />
             </SelectTrigger>
             <SelectContent>
@@ -126,106 +157,119 @@ export default function EventsView() {
             size="sm"
             onClick={handleCollect}
             disabled={collecting}
-            className="h-8 gap-1.5"
+            className="h-7 gap-1 text-[11px] px-3"
           >
             {collecting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3 w-3" />
             )}
-            {collecting ? "采集中..." : "采集飞书"}
+            {collecting ? "采集中..." : "采集"}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={refresh}
-            className="h-8 gap-1.5"
+            className="h-7 gap-1 text-[11px] px-3"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-3 w-3" />
             刷新
           </Button>
         </div>
       </header>
 
-      {/* Error Banner */}
-      {error && (
-        <div className="flex items-center gap-2 bg-destructive/10 px-6 py-2 text-sm text-destructive">
-          <span className="flex-1">{error}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 text-destructive"
-            onClick={() => setError(null)}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
-
-      {/* Content */}
-      <ScrollArea className="flex-1 px-6 py-4">
+      {/* Event List */}
+      <div className="flex-1 overflow-y-auto">
         {loading && events.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            加载中...
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-xs">加载中...</span>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="flex h-40 flex-col items-center justify-center gap-2 text-muted-foreground">
-            <Inbox className="h-8 w-8" />
-            <span className="text-sm">暂无事件</span>
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+            <Inbox className="h-6 w-6 opacity-50" />
+            <span className="text-xs">暂无事件</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="border-border">
-                <CardHeader className="flex flex-row items-center gap-2 px-4 py-2.5">
-                  <Badge variant="outline" className="text-[11px]">
-                    {event.type}
-                  </Badge>
-                  <Badge variant="secondary" className="text-[11px]">
-                    {event.source}
-                  </Badge>
-                  <span className="ml-auto text-[11px] text-muted-foreground">
-                    {new Date(event.timestamp).toLocaleString("zh-CN")}
-                  </span>
-                </CardHeader>
-                <CardContent className="px-4 pb-3 pt-0">
-                  <pre className="whitespace-pre-wrap break-words text-sm text-foreground/90">
-                    {typeof event.content === "string"
+          filteredEvents.map((event) => {
+            const typeConfig = getEventType(event.type);
+            return (
+              <div
+                key={event.id}
+                className="group flex items-center px-5 py-2 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"
+                onClick={() => !processedIds.has(event.id) && handleMarkProcessed(event.id)}
+              >
+                {/* 状态指示器 */}
+                <div
+                  className={`w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0 ${
+                    processedIds.has(event.id) ? "bg-border" : "bg-primary"
+                  }`}
+                />
+
+                {/* 类型标签 */}
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mr-2 flex-shrink-0 uppercase tracking-wider leading-none ${typeConfig.className}`}
+                >
+                  {typeConfig.label}
+                </span>
+
+                {/* 来源 */}
+                <span className="text-[11px] text-muted-foreground mr-3 flex-shrink-0 min-w-[80px]">
+                  {event.source}
+                </span>
+
+                {/* 内容摘要 */}
+                <span className="flex-1 text-xs text-foreground truncate mr-3">
+                  {truncateContent(
+                    typeof event.content === "string"
                       ? event.content
-                      : JSON.stringify(event.content, null, 2)}
-                  </pre>
-                  {event.tags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {event.tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="text-[10px]"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
+                      : JSON.stringify(event.content)
                   )}
-                  <Separator className="my-2" />
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs text-muted-foreground"
-                      onClick={() => handleMarkProcessed(event.id)}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      标记已处理
-                    </Button>
+                </span>
+
+                {/* 标签 */}
+                {event.tags.length > 0 && (
+                  <div className="flex gap-1 mr-3 flex-shrink-0">
+                    {event.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] px-1 py-0.5 bg-muted text-muted-foreground rounded"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                )}
+
+                {/* 时间 */}
+                <span className="text-[10px] text-muted-foreground flex-shrink-0 min-w-[60px] text-right mr-3">
+                  {formatTime(event.timestamp)}
+                </span>
+
+                {/* 操作按钮 */}
+                {!processedIds.has(event.id) && (
+                  <button
+                    className="flex items-center gap-1 text-[10px] px-2 py-1 bg-background border border-border rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary flex-shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkProcessed(event.id);
+                    }}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    已处理
+                  </button>
+                )}
+              </div>
+            );
+          })
         )}
-      </ScrollArea>
+      </div>
+
+      {/* Footer */}
+      <footer className="flex items-center justify-between px-5 py-2 border-t border-border bg-muted/30 text-[10px] text-muted-foreground">
+        <span>共 {filteredEvents.length} 个事件</span>
+        <span>{unprocessedCount} 个未处理</span>
+      </footer>
     </div>
   );
 }

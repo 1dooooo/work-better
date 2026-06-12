@@ -29,6 +29,8 @@ pub struct Extraction {
     pub tags: Vec<String>,
     /// 项目
     pub project: Option<String>,
+    /// 截止时间
+    pub due_date: Option<String>,
     /// 置信度
     pub confidence: f64,
 }
@@ -73,6 +75,7 @@ impl MockAdapter {
                 people: vec![],
                 tags: vec!["mock".to_string()],
                 project: None,
+                due_date: None,
                 confidence: 0.95,
             },
             summary: "Mock summary text".to_string(),
@@ -188,6 +191,7 @@ mod tests {
             people: vec!["Alice".to_string()],
             tags: vec!["custom".to_string()],
             project: Some("ProjectX".to_string()),
+            due_date: None,
             confidence: 0.88,
         });
         let event = make_test_event();

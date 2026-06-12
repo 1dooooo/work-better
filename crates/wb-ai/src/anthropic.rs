@@ -131,6 +131,7 @@ impl ModelAdapter for AnthropicAdapter {
   "people": ["人名列表"],
   "tags": ["标签列表"],
   "project": "项目名或null",
+  "due_date": "截止时间（如'明天10点'、'下周五'、'2024-01-15'），无则null",
   "confidence": 0.0-1.0
 }}
 

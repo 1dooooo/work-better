@@ -1,35 +1,85 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
+
+use wb_collector::manager::CollectorManager;
+use wb_core::event::Event;
+use wb_processor::task::TaskManager;
+use wb_scheduler::scheduler::Scheduler;
+use wb_storage::SqliteEventLog;
 
 /// Acceptance test world — holds all mutable state across Given/When/Then steps.
-#[derive(Debug, Default, cucumber::World)]
+#[derive(cucumber::World)]
 pub struct AcceptanceWorld {
-    // Event context
+    // ── Real system instances ──────────────────────────────
+    pub event_log: Arc<SqliteEventLog>,
+    pub task_manager: Arc<TaskManager>,
+    pub collector_manager: Arc<CollectorManager>,
+    pub scheduler: Arc<Scheduler>,
+
+    // ── Pending event (created in Given, appended in When) ─
+    pub pending_event: Option<Event>,
+    pub last_event_id: Option<String>,
+
+    // ── Existing fields (backward compat with G2-G7 steps) ─
     pub event_type: Option<String>,
     pub event_content: Option<String>,
     pub confidence: Option<f64>,
     pub priority: Option<String>,
-
-    // Processing context
     pub processing_result: Option<String>,
     pub model_used: Option<String>,
     pub review_verdict: Option<String>,
-
-    // Task context
     pub task_status: Option<String>,
     pub task_source: Option<String>,
     pub completed_at: Option<String>,
-
-    // Storage context
     pub storage_path: Option<PathBuf>,
     pub vault_path: Option<PathBuf>,
     pub stored_records: Vec<String>,
-
-    // System context
     pub budget_remaining: Option<f64>,
     pub error: Option<String>,
     pub notifications: Vec<String>,
-
-    // Generic key-value store for ad-hoc state
     pub state: HashMap<String, String>,
+}
+
+impl std::fmt::Debug for AcceptanceWorld {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AcceptanceWorld")
+            .field("pending_event", &self.pending_event)
+            .field("last_event_id", &self.last_event_id)
+            .field("event_type", &self.event_type)
+            .field("state", &self.state)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Default for AcceptanceWorld {
+    fn default() -> Self {
+        Self {
+            event_log: Arc::new(
+                SqliteEventLog::new_in_memory().expect("in-memory DB"),
+            ),
+            task_manager: Arc::new(TaskManager::new()),
+            collector_manager: Arc::new(CollectorManager::new()),
+            scheduler: Arc::new(Scheduler::new()),
+            pending_event: None,
+            last_event_id: None,
+            event_type: None,
+            event_content: None,
+            confidence: None,
+            priority: None,
+            processing_result: None,
+            model_used: None,
+            review_verdict: None,
+            task_status: None,
+            task_source: None,
+            completed_at: None,
+            storage_path: None,
+            vault_path: None,
+            stored_records: Vec::new(),
+            budget_remaining: None,
+            error: None,
+            notifications: Vec::new(),
+            state: HashMap::new(),
+        }
+    }
 }

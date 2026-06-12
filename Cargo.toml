@@ -9,6 +9,7 @@ members = [
     "crates/wb-ai",
     "crates/wb-scheduler",
     "tests/acceptance",
+    "crates/wb-real-backend-tests",
 ]
 
 [workspace.dependencies]

@@ -46,14 +46,18 @@ pub struct OpenAIAdapter {
 
 impl OpenAIAdapter {
     pub fn new(config: ModelConfig) -> Self {
-        Self {
-            config,
-            client: Client::new(),
-        }
+        let client = Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .unwrap_or_else(|_| Client::new());
+        Self { config, client }
     }
 
     /// 调用 OpenAI Chat Completions API
     async fn call_chat(&self, prompt: &str) -> wb_core::error::Result<String> {
+        let url = format!("{}/v1/chat/completions", self.config.base_url);
+
         let request = ChatRequest {
             model: self.config.model.clone(),
             max_tokens: self.config.max_tokens,
@@ -65,7 +69,7 @@ impl OpenAIAdapter {
 
         let response = self
             .client
-            .post(format!("{}/v1/chat/completions", self.config.base_url))
+            .post(&url)
             .header("Authorization", format!("Bearer {}", self.config.api_key))
             .header("Content-Type", "application/json")
             .json(&request)
@@ -135,6 +139,7 @@ impl ModelAdapter for OpenAIAdapter {
   "people": ["人名列表"],
   "tags": ["标签列表"],
   "project": "项目名或null",
+  "due_date": "截止时间（如'明天10点'、'下周五'、'2024-01-15'），无则null",
   "confidence": 0.0-1.0
 }}
 

@@ -5790,12 +5790,18 @@ dependencies = [
 name = "wb-acceptance"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "cucumber",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
  "uuid",
+ "wb-collector",
+ "wb-core",
+ "wb-processor",
+ "wb-scheduler",
+ "wb-storage",
 ]
 
 [[package]]
@@ -5862,6 +5868,20 @@ dependencies = [
  "uuid",
  "wb-ai",
  "wb-core",
+ "wb-storage",
+]
+
+[[package]]
+name = "wb-real-backend-tests"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "serde_json",
+ "tokio",
+ "wb-collector",
+ "wb-core",
+ "wb-processor",
+ "wb-scheduler",
  "wb-storage",
 ]
 
@@ -6584,6 +6604,7 @@ name = "work-better"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "reqwest 0.12.28",
  "rusqlite",
  "serde",
  "serde_json",

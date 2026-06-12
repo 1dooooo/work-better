@@ -30,6 +30,9 @@ pub struct ModelConfig {
     pub large_model: String,
     pub api_endpoint: String,
     pub token_budget: u32,
+    /// API Key（可选，None 表示未配置）
+    #[serde(default)]
+    pub api_key: Option<String>,
 }
 
 impl Default for ModelConfig {
@@ -39,6 +42,7 @@ impl Default for ModelConfig {
             large_model: "gpt-4o".into(),
             api_endpoint: "https://api.openai.com/v1".into(),
             token_budget: 4096,
+            api_key: None,
         }
     }
 }
@@ -141,6 +145,7 @@ mod tests {
                 large_model: "claude-3-opus".into(),
                 api_endpoint: "https://api.anthropic.com".into(),
                 token_budget: 8192,
+                api_key: Some("sk-test-key".into()),
             },
             storage: StorageConfig {
                 vault_path: "/tmp/test-vault".into(),
