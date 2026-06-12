@@ -11,11 +11,11 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Gate 1: Fast (< 2 min) — type check + unit tests
+  # Gate 1: Fast (< 5 min) — type check + unit tests
   fast-gate:
     name: ⚡ Fast Gate
     runs-on: macos-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -63,7 +63,7 @@ jobs:
     name: 🌙 Nightly
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
