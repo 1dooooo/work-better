@@ -5833,6 +5833,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "wb-core",
+ "wb-scheduler",
 ]
 
 [[package]]

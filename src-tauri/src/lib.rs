@@ -2,9 +2,11 @@
 
 mod commands;
 
+use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
+use wb_collector::collector_task::CollectorTask;
 
 /// 设置 macOS 菜单栏托盘
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -115,10 +117,57 @@ pub fn run() {
             // 初始化任务管理器
             commands::tasks::init_task_manager();
 
-            // 异步注册内置采集器
+            // 异步注册内置采集器并启动调度器
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                // 注册采集器
                 commands::collectors::register_builtin_collectors().await;
+
+                // 获取采集器管理器
+                let manager = commands::collectors::get_collector_manager();
+
+                // 创建调度器并注册采集任务
+                let scheduler = commands::scheduler::get_scheduler();
+
+                // 按照产品设计注册采集任务
+                // 参考: docs/architecture/modules/scheduler.md
+
+                // C-02: 飞书任务同步 - 每 30 分钟
+                let feishu_task = Arc::new(CollectorTask::new(
+                    Arc::clone(manager),
+                    "feishu".to_string(),
+                    "C-02 飞书任务同步".to_string(),
+                    1800, // 30 分钟
+                ));
+                scheduler.register_with_interval(feishu_task, 1800).await;
+
+                // C-04: 浏览器历史采样 - 每 15 分钟
+                let browser_task = Arc::new(CollectorTask::new(
+                    Arc::clone(manager),
+                    "system.browser_history".to_string(),
+                    "C-04 浏览器历史采样".to_string(),
+                    900, // 15 分钟
+                ));
+                scheduler.register_with_interval(browser_task, 900).await;
+
+                // 应用切换采集 - 每 5 分钟（采样，非实时）
+                // 设计要求"停留 > 30 秒才记录"，这里采用 5 分钟采样间隔
+                let app_switch_task = Arc::new(CollectorTask::new(
+                    Arc::clone(manager),
+                    "system.app_switch".to_string(),
+                    "应用切换采样".to_string(),
+                    300, // 5 分钟
+                ));
+                scheduler.register_with_interval(app_switch_task, 300).await;
+
+                // 启动调度器
+                scheduler.start().await;
+
+                eprintln!("[scheduler] Started with collector tasks:");
+                eprintln!("[scheduler] - C-02 feishu: every 30 minutes");
+                eprintln!("[scheduler] - C-04 browser: every 15 minutes");
+                eprintln!("[scheduler] - app_switch: every 5 minutes (sampling)");
+
                 let _ = handle;
             });
 
@@ -138,6 +187,7 @@ pub fn run() {
             commands::collectors::enable_collector,
             commands::collectors::disable_collector,
             commands::collectors::check_collector_health,
+            commands::collectors::get_collector_statuses,
             commands::scheduler::list_scheduled_tasks,
             commands::scheduler::pause_scheduler,
             commands::scheduler::resume_scheduler,
@@ -146,7 +196,6 @@ pub fn run() {
             commands::capture::hide_capture_window,
             commands::settings::get_model_config,
             commands::settings::save_model_config,
-            commands::settings::get_collector_statuses,
             commands::settings::get_feishu_mode,
             commands::settings::save_feishu_mode,
             commands::settings::get_feishu_chat_id,
