@@ -7,24 +7,22 @@ import {
 } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   CheckCircle2,
   XCircle,
   Clock,
-  AlertCircle,
   Zap,
   Database,
   FileText,
-  Vector,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ProcessingView() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState<Record<string, ProcessResult>>({});
   const [loading, setLoading] = useState(false);
   const [processingEvent, setProcessingEvent] = useState<string | null>(null);
@@ -33,7 +31,7 @@ export default function ProcessingView() {
     setLoading(true);
     try {
       const data = await getEvents(20);
-      setEvents(data.filter((e) => !e.processed));
+      setEvents(data);
     } catch (err) {
       console.error("Failed to load events:", err);
     } finally {
@@ -50,6 +48,7 @@ export default function ProcessingView() {
     try {
       const result = await processEvent(eventId);
       setProcessing((prev) => ({ ...prev, [eventId]: result }));
+      setProcessedIds((prev) => new Set(prev).add(eventId));
       toast.success("处理完成");
     } catch (err) {
       console.error("Process failed:", err);
@@ -123,7 +122,7 @@ export default function ProcessingView() {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">处理管线</h1>
           <Badge variant="secondary" className="text-xs">
-            {events.length} 待处理
+            {events.filter((e) => !processedIds.has(e.id)).length} 待处理
           </Badge>
         </div>
         <Button
@@ -144,14 +143,14 @@ export default function ProcessingView() {
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             加载中...
           </div>
-        ) : events.length === 0 ? (
+        ) : events.filter((e) => !processedIds.has(e.id)).length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center gap-2 text-muted-foreground">
             <CheckCircle2 className="h-8 w-8" />
             <span className="text-sm">所有事件已处理</span>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {events.map((event) => {
+            {events.filter((e) => !processedIds.has(e.id)).map((event) => {
               const result = processing[event.id];
               const isProcessing = processingEvent === event.id;
 

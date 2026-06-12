@@ -19,7 +19,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["@testing-library/jest-dom"]
   },
-  "include": ["src"]
+  "include": ["src", "test"],
+  "exclude": ["test/e2e"]
 }
