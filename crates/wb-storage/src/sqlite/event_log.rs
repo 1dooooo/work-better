@@ -62,11 +62,12 @@ fn row_to_event(row: &rusqlite::Row) -> rusqlite::Result<Event> {
         tags: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or_default(),
         related_ids: serde_json::from_str(&row.get::<_, String>(9)?).unwrap_or_default(),
         attachments: serde_json::from_str(&row.get::<_, String>(10)?).unwrap_or_default(),
+        processed: row.get::<_, i32>(11)? != 0,
     })
 }
 
 const SELECT_COLUMNS: &str =
-    "id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments";
+    "id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments, processed";
 
 #[async_trait::async_trait]
 impl EventLog for SqliteEventLog {
@@ -82,8 +83,8 @@ impl EventLog for SqliteEventLog {
         let attachments = serde_json::to_string(&event.attachments)?;
 
         conn.execute(
-            "INSERT OR IGNORE INTO events (id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT OR IGNORE INTO events (id, timestamp, collected_at, source, source_confidence, event_type, content, raw_payload, tags, related_ids, attachments, processed)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
                 event.id,
                 event.timestamp.to_rfc3339(),
@@ -96,6 +97,7 @@ impl EventLog for SqliteEventLog {
                 tags,
                 related_ids,
                 attachments,
+                event.processed as i32,
             ],
         )
         .map_err(|e| wb_core::error::WbError::Storage(format!("Failed to append event: {}", e)))?;
@@ -275,6 +277,22 @@ mod tests {
 
         let unprocessed = log.get_unprocessed(None).await.unwrap();
         assert!(unprocessed.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_processed_field_persists() {
+        let log = SqliteEventLog::new_in_memory().unwrap();
+        let event = make_test_event(Source::FeishuMessage, EventType::Message);
+
+        // New event should be unprocessed
+        log.append(&event).await.unwrap();
+        let fetched = log.get(&event.id).await.unwrap().unwrap();
+        assert!(!fetched.processed, "newly appended event should be unprocessed");
+
+        // After marking processed, the field should persist
+        log.mark_processed(&event.id).await.unwrap();
+        let fetched = log.get(&event.id).await.unwrap().unwrap();
+        assert!(fetched.processed, "event should be processed after mark_processed");
     }
 
     #[tokio::test]

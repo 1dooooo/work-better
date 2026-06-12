@@ -40,7 +40,6 @@ export default function EventsView() {
   const [filter, setFilter] = useState<FilterSource>("all");
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
-  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -81,11 +80,18 @@ export default function EventsView() {
   };
 
   const handleMarkProcessed = async (id: string) => {
+    // Optimistic update
+    setEvents((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, processed: true } : e)),
+    );
     try {
       await markEventProcessed(id);
-      setProcessedIds((prev) => new Set(prev).add(id));
       toast.success("已标记为已处理");
     } catch (err) {
+      // Rollback on failure
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, processed: false } : e)),
+      );
       console.error("Mark processed failed:", err);
       toast.error("标记失败");
     }
@@ -127,7 +133,7 @@ export default function EventsView() {
     return EVENT_TYPE_CONFIG.default;
   };
 
-  const unprocessedCount = filteredEvents.filter((e) => !processedIds.has(e.id)).length;
+  const unprocessedCount = filteredEvents.filter((e) => !e.processed).length;
 
   return (
     <div className="flex h-full flex-col">
@@ -197,12 +203,12 @@ export default function EventsView() {
               <div
                 key={event.id}
                 className="group flex items-center px-5 py-2 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"
-                onClick={() => !processedIds.has(event.id) && handleMarkProcessed(event.id)}
+                onClick={() => !event.processed && handleMarkProcessed(event.id)}
               >
                 {/* 状态指示器 */}
                 <div
                   className={`w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0 ${
-                    processedIds.has(event.id) ? "bg-border" : "bg-primary"
+                    event.processed ? "bg-border" : "bg-primary"
                   }`}
                 />
 
@@ -247,7 +253,7 @@ export default function EventsView() {
                 </span>
 
                 {/* 操作按钮 */}
-                {!processedIds.has(event.id) && (
+                {!event.processed && (
                   <button
                     className="flex items-center gap-1 text-[10px] px-2 py-1 bg-background border border-border rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary flex-shrink-0"
                     onClick={(e) => {

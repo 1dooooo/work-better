@@ -66,6 +66,7 @@ fn make_full_event() -> Event {
                 size_bytes: 512000,
             },
         ],
+        processed: false,
     }
 }
 
