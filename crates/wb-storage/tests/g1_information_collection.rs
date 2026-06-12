@@ -507,6 +507,8 @@ async fn g1_28_disable_collector_stops_sub_collectors() {
     impl Collector for StubCollector {
         fn id(&self) -> &str { &self.id }
         fn name(&self) -> &str { &self.id }
+        fn group_id(&self) -> &str { "test" }
+        fn group_name(&self) -> &str { "测试" }
         fn version(&self) -> &str { "0.1.0" }
         async fn collect(&self) -> WbResult<Vec<wb_core::event::Event>> { Ok(vec![]) }
         async fn health_check(&self) -> HealthStatus { HealthStatus::healthy() }
@@ -534,6 +536,8 @@ async fn g1_29_re_enable_collector_restores_state() {
     impl Collector for StubCollector {
         fn id(&self) -> &str { &self.id }
         fn name(&self) -> &str { &self.id }
+        fn group_id(&self) -> &str { "test" }
+        fn group_name(&self) -> &str { "测试" }
         fn version(&self) -> &str { "0.1.0" }
         async fn collect(&self) -> WbResult<Vec<wb_core::event::Event>> { Ok(vec![]) }
         async fn health_check(&self) -> HealthStatus { HealthStatus::healthy() }
@@ -564,6 +568,8 @@ async fn g1_30_failed_collector_auto_disabled() {
     impl Collector for FailingCollector {
         fn id(&self) -> &str { "failing" }
         fn name(&self) -> &str { "Failing Collector" }
+        fn group_id(&self) -> &str { "test" }
+        fn group_name(&self) -> &str { "测试" }
         fn version(&self) -> &str { "0.1.0" }
         async fn collect(&self) -> WbResult<Vec<wb_core::event::Event>> {
             Err(wb_core::error::WbError::Collector("connection timeout".into()))
@@ -604,6 +610,8 @@ async fn g1_32_runtime_collector_registration() {
     impl Collector for NewCollector {
         fn id(&self) -> &str { "new-collector" }
         fn name(&self) -> &str { "New Collector" }
+        fn group_id(&self) -> &str { "test" }
+        fn group_name(&self) -> &str { "测试" }
         fn version(&self) -> &str { "0.1.0" }
         async fn collect(&self) -> WbResult<Vec<wb_core::event::Event>> { Ok(vec![]) }
         async fn health_check(&self) -> HealthStatus { HealthStatus::healthy() }

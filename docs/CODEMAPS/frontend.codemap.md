@@ -54,7 +54,7 @@ status: active
 
 | 文件 | 职责 |
 |------|------|
-| `CollectorSettings.tsx` | 采集器配置（飞书认证、开关） |
+| `CollectorSettings.tsx` | 采集器配置（分组+子采集器开关、飞书认证） |
 | `ModelSettings.tsx` | 模型配置（大小模型 API、参数、预算） |
 | `StorageSettings.tsx` | 存储配置（Obsidian 路径、向量DB） |
 | `ShortcutSettings.tsx` | 快捷键配置 |

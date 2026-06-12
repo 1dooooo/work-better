@@ -21,6 +21,7 @@ fn b3_01_settings_roundtrip() {
     let config = AppConfig {
         collectors: CollectorConfig {
             enabled,
+            group_enabled: HashMap::new(),
             feishu_mode: "api".to_string(),
             feishu_chat_id: Some("oc_test123".to_string()),
         },
