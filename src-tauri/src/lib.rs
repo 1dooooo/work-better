@@ -120,8 +120,15 @@ pub fn run() {
                 .unwrap_or_default();
             let vault_path = &vault_config.storage.vault_path;
             if !vault_path.is_empty() {
-                match wb_storage::obsidian::VaultManager::new(vault_path) {
-                    Ok(_) => eprintln!("[vault] Initialized at: {}", vault_path),
+                // 展开 ~ 符号为用户主目录
+                let expanded_path = if vault_path.starts_with("~") {
+                    let home = std::env::var("HOME").unwrap_or_default();
+                    vault_path.replacen("~", &home, 1)
+                } else {
+                    vault_path.clone()
+                };
+                match wb_storage::obsidian::VaultManager::new(&expanded_path) {
+                    Ok(_) => eprintln!("[vault] Initialized at: {}", expanded_path),
                     Err(e) => eprintln!("[vault] Failed to initialize: {}", e),
                 }
             }
