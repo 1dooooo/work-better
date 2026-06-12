@@ -5796,6 +5796,10 @@ dependencies = [
  "tempfile",
  "tokio",
  "uuid",
+ "wb-collector",
+ "wb-core",
+ "wb-scheduler",
+ "wb-storage",
 ]
 
 [[package]]

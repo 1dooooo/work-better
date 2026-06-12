@@ -2,14 +2,23 @@
 
 use cucumber::{given, when, then};
 use crate::world::AcceptanceWorld;
+use wb_core::event::{Source, EventType, Confidence, EventLog};
 
 // ── Given steps: set up event sources ──────────────────────
 
 #[given(regex = r"^飞书消息@提及用户$")]
-fn feishu_at_mention(world: &mut AcceptanceWorld) {
+async fn feishu_at_mention(world: &mut AcceptanceWorld) {
     world.event_type = Some("message".into());
     world.event_content = Some(r#"{"type":"message","mention":"@user"}"#.into());
     world.confidence = Some(0.95);
+
+    // 创建真实的事件
+    let event = world.create_event(
+        Source::FeishuMessage,
+        EventType::Message,
+        r#"{"type":"message","mention":"@user"}"#,
+    );
+    world.current_event = Some(event);
 }
 
 #[given(regex = r"^飞书消息是回复用户参与的线程$")]
@@ -19,15 +28,31 @@ fn feishu_thread_reply(world: &mut AcceptanceWorld) {
 }
 
 #[given(regex = r"^飞书私信$")]
-fn feishu_dm(world: &mut AcceptanceWorld) {
+async fn feishu_dm(world: &mut AcceptanceWorld) {
     world.event_type = Some("message".into());
     world.state.insert("visibility".into(), "direct_message".into());
+
+    // 创建真实的事件
+    let event = world.create_event(
+        Source::FeishuMessage,
+        EventType::Message,
+        r#"{"type":"message","visibility":"direct_message"}"#,
+    );
+    world.current_event = Some(event);
 }
 
 #[given(regex = r"^消息匹配关键词规则$")]
-fn message_matches_keyword(world: &mut AcceptanceWorld) {
+async fn message_matches_keyword(world: &mut AcceptanceWorld) {
     world.event_type = Some("message".into());
     world.state.insert("keyword_match".into(), "true".into());
+
+    // 创建真实的事件
+    let event = world.create_event(
+        Source::FeishuMessage,
+        EventType::Message,
+        r#"{"type":"message","keyword_match":true}"#,
+    );
+    world.current_event = Some(event);
 }
 
 #[given(regex = r"^消息与用户无关$")]
@@ -189,8 +214,21 @@ fn processing_logic_changed(world: &mut AcceptanceWorld) {
 // ── When steps: trigger actions ────────────────────────────
 
 #[when(regex = r"^到达$")]
-fn event_arrives(world: &mut AcceptanceWorld) {
-    world.processing_result = world.event_type.clone().map(|t| format!("received:{t}"));
+async fn event_arrives(world: &mut AcceptanceWorld) {
+    // 如果有当前事件，追加到 EventLog
+    if let Some(event) = world.current_event.take() {
+        match world.append_event(event).await {
+            Ok(()) => {
+                world.processing_result = Some("received".into());
+            }
+            Err(e) => {
+                world.last_error = Some(e.clone());
+                world.processing_result = Some(format!("error:{}", e));
+            }
+        }
+    } else {
+        world.processing_result = world.event_type.clone().map(|t| format!("received:{t}"));
+    }
 }
 
 #[when(regex = r"^检测$")]
@@ -199,13 +237,39 @@ fn event_detected(world: &mut AcceptanceWorld) {
 }
 
 #[when(regex = r"^评估$")]
-fn event_evaluated(world: &mut AcceptanceWorld) {
-    world.processing_result = Some("evaluated".into());
+async fn event_evaluated(world: &mut AcceptanceWorld) {
+    // 如果有当前事件，追加到 EventLog
+    if let Some(event) = world.current_event.take() {
+        match world.append_event(event).await {
+            Ok(()) => {
+                world.processing_result = Some("evaluated".into());
+            }
+            Err(e) => {
+                world.last_error = Some(e.clone());
+                world.processing_result = Some(format!("error:{}", e));
+            }
+        }
+    } else {
+        world.processing_result = Some("evaluated".into());
+    }
 }
 
 #[when(regex = r"^捕获$")]
-fn event_captured(world: &mut AcceptanceWorld) {
-    world.processing_result = Some("captured".into());
+async fn event_captured(world: &mut AcceptanceWorld) {
+    // 调用真实的 EventLog 追加事件
+    if let Some(event) = world.current_event.take() {
+        match world.append_event(event).await {
+            Ok(()) => {
+                world.processing_result = Some("captured".into());
+            }
+            Err(e) => {
+                world.last_error = Some(e.clone());
+                world.processing_result = Some(format!("error:{}", e));
+            }
+        }
+    } else {
+        world.processing_result = Some("no_event".into());
+    }
 }
 
 #[when(regex = r"^每小时同步$")]
@@ -306,14 +370,29 @@ fn trigger_replay(world: &mut AcceptanceWorld) {
 // ── Then steps: assertions ─────────────────────────────────
 
 #[then(regex = r"^捕获为 message.*confidence[=为] ?high")]
-fn assert_message_high(world: &mut AcceptanceWorld) {
-    assert_eq!(world.event_type.as_deref(), Some("message"), "应为 message 类型");
-    assert!(world.confidence.unwrap_or(0.0) >= 0.8, "confidence 应为 high");
+async fn assert_message_high(world: &mut AcceptanceWorld) {
+    // 验证事件已被持久化到 EventLog
+    let unprocessed = world.event_log.get_unprocessed(None).await
+        .expect("查询未处理事件失败");
+
+    assert!(!unprocessed.is_empty(), "应该有未处理的事件");
+
+    let event = &unprocessed[0];
+    assert_eq!(event.source, Source::FeishuMessage, "来源应该是 FeishuMessage");
+    assert_eq!(event.event_type, EventType::Message, "类型应该是 Message");
+    assert_eq!(event.source_confidence, Confidence::High, "confidence 应为 high");
 }
 
 #[then(regex = r"^捕获为 message")]
-fn assert_captured_message(world: &mut AcceptanceWorld) {
-    assert_eq!(world.event_type.as_deref(), Some("message"), "应捕获为 message");
+async fn assert_captured_message(world: &mut AcceptanceWorld) {
+    // 验证事件已被持久化到 EventLog
+    let unprocessed = world.event_log.get_unprocessed(None).await
+        .expect("查询未处理事件失败");
+
+    assert!(!unprocessed.is_empty(), "应该有未处理的事件");
+
+    let event = &unprocessed[0];
+    assert_eq!(event.event_type, EventType::Message, "应捕获为 message");
 }
 
 #[then(regex = r"^捕获并关联线程$")]
@@ -461,8 +540,21 @@ fn assert_replay_processed(world: &mut AcceptanceWorld) {
 // ── Additional When steps ──────────────────────────────────
 
 #[when(regex = r"^消息到达$")]
-fn message_arrives(world: &mut AcceptanceWorld) {
-    world.processing_result = world.event_type.clone().map(|t| format!("arrived:{t}"));
+async fn message_arrives(world: &mut AcceptanceWorld) {
+    // 如果有当前事件，追加到 EventLog
+    if let Some(event) = world.current_event.take() {
+        match world.append_event(event).await {
+            Ok(()) => {
+                world.processing_result = Some("arrived".into());
+            }
+            Err(e) => {
+                world.last_error = Some(e.clone());
+                world.processing_result = Some(format!("error:{}", e));
+            }
+        }
+    } else {
+        world.processing_result = world.event_type.clone().map(|t| format!("arrived:{t}"));
+    }
 }
 
 #[when(regex = r"^窗口打开$")]
