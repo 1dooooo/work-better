@@ -48,7 +48,7 @@ const MOCK_EVENTS = [
 
 const MOCK_COLLECTORS = [
   { id: "feishu", name: "飞书采集器", enabled: true, healthy: true },
-  { id: "git", name: "Git 采集器", enabled: false, healthy: false },
+  { id: "git", name: "Git 采集器", enabled: true, healthy: false },
 ];
 
 const MOCK_COLLECTOR_HEALTH = {
@@ -71,6 +71,13 @@ const MOCK_TASKS = [
     layer: "scheduler",
     cron: "0 17 * * 5",
     sla_ms: 120000,
+  },
+  {
+    id: "task-3",
+    name: "依赖安全检查",
+    layer: "scheduler",
+    cron: "0 9 * * 1",
+    sla_ms: 300000,
   },
 ];
 
@@ -181,8 +188,8 @@ describe("E1: Tauri invoke Integration", () => {
         expect(screen.getByText("Hello from Feishu")).toBeInTheDocument();
       });
 
-      // Click the first "标记已处理" button
-      const markButtons = screen.getAllByText("标记已处理");
+      // Click the first "已处理" button
+      const markButtons = screen.getAllByText("已处理");
       await user.click(markButtons[0]);
 
       await waitFor(() => {
@@ -256,7 +263,7 @@ describe("E1: Tauri invoke Integration", () => {
         expect(screen.getByText("事件流")).toBeInTheDocument();
       });
 
-      const collectButton = screen.getByText("采集飞书");
+      const collectButton = screen.getByText("采集");
       await user.click(collectButton);
 
       await waitFor(() => {
@@ -307,18 +314,19 @@ describe("E1: Tauri invoke Integration", () => {
 
       // Wait for collectors to load
       await waitFor(() => {
-        expect(screen.getByText("Git 采集器")).toBeInTheDocument();
+        expect(screen.getByText("飞书采集器")).toBeInTheDocument();
       });
 
-      // Find the switch for the Git collector (second switch, initially unchecked)
+      // All collectors are enabled in mock, so click to disable one first
       const switches = screen.getAllByRole("switch");
-      const gitSwitch = switches[1]; // Git is second in the list
-      expect(gitSwitch).not.toBeChecked();
+      const feishuSwitch = switches[0];
+      expect(feishuSwitch).toBeChecked();
 
-      await user.click(gitSwitch);
+      // Click to disable
+      await user.click(feishuSwitch);
 
       await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith("enable_collector", { id: "git" });
+        expect(mockInvoke).toHaveBeenCalledWith("disable_collector", { id: "feishu" });
       });
     });
   });
@@ -485,7 +493,7 @@ describe("E1: Tauri invoke Integration", () => {
     it("returns scheduled tasks from invoke", async () => {
       const result = await mockInvoke("list_scheduled_tasks");
       expect(result).toEqual(MOCK_TASKS);
-      expect(result).toHaveLength(2);
+      expect(result).toHaveLength(3);
       expect(result[0].name).toBe("每日站会");
       expect(result[1].cron).toBe("0 17 * * 5");
     });
@@ -494,15 +502,15 @@ describe("E1: Tauri invoke Integration", () => {
       const { default: TaskView } = await import("../../src/components/views/TasksView");
       render(<TaskView />);
 
-      // TasksView uses hardcoded scheduled tasks data
+      // TasksView fetches scheduled tasks from Tauri API
       await waitFor(() => {
         expect(screen.getByText("定时任务")).toBeInTheDocument();
         expect(screen.getByText("每日站会")).toBeInTheDocument();
-        expect(screen.getByText("每天 10:00")).toBeInTheDocument();
+        expect(screen.getByText("0 10 * * *")).toBeInTheDocument();
         expect(screen.getByText("周报汇总")).toBeInTheDocument();
-        expect(screen.getByText("每周五 17:00")).toBeInTheDocument();
+        expect(screen.getByText("0 17 * * 5")).toBeInTheDocument();
         expect(screen.getByText("依赖安全检查")).toBeInTheDocument();
-        expect(screen.getByText("每周一 09:00")).toBeInTheDocument();
+        expect(screen.getByText("0 9 * * 1")).toBeInTheDocument();
       });
     });
   });

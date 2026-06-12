@@ -53,9 +53,11 @@ describe("EventsView", () => {
     });
   });
 
-  it("shows the collect button", () => {
+  it("shows the collect button", async () => {
     render(<EventsView />);
-    expect(screen.getByText("采集飞书")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("采集")).toBeInTheDocument();
+    });
   });
 
   it("shows refresh button", () => {

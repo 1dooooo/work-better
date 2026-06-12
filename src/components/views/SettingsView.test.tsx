@@ -10,7 +10,11 @@ vi.mock("@tauri-apps/api/core", () => ({
           api_endpoint: "https://api.openai.com/v1",
           api_key: "sk-test",
           token_budget: 4096,
+          small_model: "gpt-4o-mini",
+          large_model: "gpt-4o",
         });
+      case "list_models":
+        return Promise.resolve([]);
       case "get_storage_config":
         return Promise.resolve({
           vault_path: "~/Documents/Obsidian",

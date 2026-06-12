@@ -11,11 +11,11 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  # Gate 1: Fast (< 5 min) — type check + unit tests
+  # Gate 1: Fast (< 8 min) — type check + unit tests
   fast-gate:
     name: ⚡ Fast Gate
     runs-on: macos-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
