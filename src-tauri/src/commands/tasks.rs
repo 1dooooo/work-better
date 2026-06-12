@@ -124,10 +124,14 @@ pub async fn confirm_pending_task(pending_id: String) -> Result<TaskDto, String>
         discovery.confirm(&pending_id).map_err(|e| e.to_string())?
     };
 
-    // 创建正式任务
+    // 创建正式任务（确认后直接设为 Open，用户已确认无需再 Pending）
     let manager = get_task_manager().lock().await;
     let task = manager
         .create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+    let task = manager
+        .transition(&task.id, TaskStatus::Open)
         .await
         .map_err(|e| e.to_string())?;
 

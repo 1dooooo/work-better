@@ -55,7 +55,7 @@ impl TaskRunner {
             budget,
             adapters,
             adapter_names,
-            timeout_ms: 30_000, // 默认 30 秒
+            timeout_ms: 120_000, // 默认 120 秒（推理模型需要更长时间）
         }
     }
 

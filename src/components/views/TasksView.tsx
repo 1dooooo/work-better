@@ -14,8 +14,6 @@ import {
   type TaskInfo,
 } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -250,66 +248,62 @@ export default function TasksView() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="flex items-center justify-between border-b border-border px-5 py-3 min-h-[48px]">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold">任务管理</h1>
-          <Badge variant="secondary" className="text-xs">
+          <h1 className="text-sm font-semibold">任务管理</h1>
+          <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {tasks.length} 个任务
-          </Badge>
+          </span>
           {pendingTasks.length > 0 && (
-            <Badge variant="outline" className="gap-1 text-xs text-info">
-              <Sparkles className="h-3 w-3" />
-              {pendingTasks.length} 个待确认
-            </Badge>
+            <span className="text-[11px] text-info bg-info/10 px-2 py-0.5 rounded-full">
+              <Sparkles className="inline h-3 w-3 mr-0.5" />
+              {pendingTasks.length} 待确认
+            </span>
           )}
         </div>
       </header>
 
       {/* Pending Tasks (from AI discovery) */}
       {pendingTasks.length > 0 && (
-        <div className="border-b border-border bg-info/5 px-6 py-3">
-          <div className="mb-2 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-info" />
-            <h3 className="text-sm font-medium">AI 发现的待确认任务</h3>
+        <div className="border-b border-border bg-info/5 px-5 py-2">
+          <div className="mb-1.5 flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-info" />
+            <h3 className="text-xs font-medium">AI 发现的待确认任务</h3>
           </div>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             {pendingTasks.map((pt) => (
-              <Card key={pt.id} className="border-info/20">
-                <CardContent className="flex items-center justify-between px-3 py-2">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{pt.title}</div>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px]">
-                        {pt.source}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground">
-                        来源: {pt.origin_text.slice(0, 60)}
-                        {pt.origin_text.length > 60 ? "..." : ""}
-                      </span>
-                    </div>
+              <div key={pt.id} className="group flex items-center justify-between rounded-md px-2.5 py-1.5 border border-info/20 hover:bg-info/5 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">{pt.title}</div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{pt.source}</span>
+                    <span className="text-[10px] text-muted-foreground truncate">
+                      来源: {pt.origin_text.slice(0, 60)}
+                      {pt.origin_text.length > 60 ? "..." : ""}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 px-2 text-xs text-success"
-                      onClick={() => handleConfirm(pt.id)}
-                    >
-                      <Check className="h-3 w-3" />
-                      确认
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                      onClick={() => handleReject(pt.id)}
-                    >
-                      <X className="h-3 w-3" />
-                      拒绝
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-success"
+                    onClick={() => handleConfirm(pt.id)}
+                  >
+                    <Check className="h-3 w-3" />
+                    确认
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                    onClick={() => handleReject(pt.id)}
+                  >
+                    <X className="h-3 w-3" />
+                    拒绝
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -318,7 +312,7 @@ export default function TasksView() {
       {/* Create Form */}
       <form
         onSubmit={handleCreate}
-        className="flex items-center gap-2 border-b border-border px-6 py-3"
+        className="flex items-center gap-2 border-b border-border px-5 py-2"
       >
         <Input
           placeholder="新任务标题..."
@@ -353,7 +347,7 @@ export default function TasksView() {
       </form>
 
       {/* Kanban Board */}
-      <div className="flex flex-1 gap-4 overflow-auto p-6">
+      <div className="flex flex-1 gap-3 overflow-auto p-5">
         {loadingTasks ? (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -361,72 +355,69 @@ export default function TasksView() {
           </div>
         ) : (
           grouped.map(({ status, label, icon: StatusIcon, items }) => (
-            <div key={status} className="flex flex-1 flex-col gap-2">
+            <div key={status} className="flex flex-1 flex-col gap-1.5">
               <div className="flex items-center gap-2 px-1">
                 <StatusIcon
                   className={cn(
-                    "h-4 w-4",
+                    "h-3.5 w-3.5",
                     status === "Open" && "text-muted-foreground",
                     status === "InProgress" && "text-info",
                     status === "Done" && "text-success",
                   )}
                 />
-                <h3 className="text-sm font-medium">{label}</h3>
-                <Badge variant="secondary" className="h-5 text-[10px]">
+                <h3 className="text-xs font-medium">{label}</h3>
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
                   {items.length}
-                </Badge>
+                </span>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {items.map((task) => (
-                  <Card
+                  <div
                     key={task.id}
-                    className="border-border transition-shadow hover:shadow-sm"
+                    className="group rounded-md border border-border px-3 py-2 transition-colors hover:bg-muted/50"
                   >
-                    <CardContent className="px-3 py-2.5">
-                      <div className="text-sm font-medium">{task.title}</div>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px]",
-                            PRIORITY_CONFIG[task.priority]?.className ??
-                              "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {PRIORITY_CONFIG[task.priority]?.label ?? task.priority}
-                        </Badge>
-                        <span className="text-[11px] text-muted-foreground">
-                          {task.dueDate}
-                        </span>
-                        {task.source !== "Manual" && (
-                          <Badge variant="outline" className="text-[10px]">
-                            {task.source}
-                          </Badge>
+                    <div className="text-xs font-medium">{task.title}</div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded",
+                          PRIORITY_CONFIG[task.priority]?.className ??
+                            "bg-muted text-muted-foreground",
                         )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1.5 h-6 gap-1 px-1 text-[11px] text-muted-foreground"
-                        onClick={() => toggleStatus(task.id, task.status)}
                       >
-                        {status === "Done" ? (
-                          <>
-                            <RotateCcw className="h-3 w-3" />
-                            重新打开
-                          </>
-                        ) : (
-                          <>
-                            <ArrowRight className="h-3 w-3" />
-                            推进
-                          </>
-                        )}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        {PRIORITY_CONFIG[task.priority]?.label ?? task.priority}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {task.dueDate}
+                      </span>
+                      {task.source !== "Manual" && (
+                        <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">
+                          {task.source}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 h-5 gap-1 px-1 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => toggleStatus(task.id, task.status)}
+                    >
+                      {status === "Done" ? (
+                        <>
+                          <RotateCcw className="h-3 w-3" />
+                          重新打开
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRight className="h-3 w-3" />
+                          推进
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 ))}
                 {items.length === 0 && (
-                  <div className="flex h-20 items-center justify-center rounded-lg border border-dashed text-xs text-muted-foreground">
+                  <div className="flex h-16 items-center justify-center rounded-lg border border-dashed text-[11px] text-muted-foreground">
                     暂无任务
                   </div>
                 )}
@@ -437,54 +428,54 @@ export default function TasksView() {
       </div>
 
       {/* Scheduled Tasks */}
-      <div className="border-t border-border px-6 py-4">
-        <div className="mb-3 flex items-center justify-between">
+      <div className="border-t border-border px-5 py-3">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium">定时任务</h3>
+            <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
+            <h3 className="text-xs font-medium">定时任务</h3>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleToggleScheduler}
-            className="h-7 gap-1.5"
+            className="h-6 gap-1 text-[11px]"
           >
             {schedulerPaused ? (
               <>
-                <Play className="h-3.5 w-3.5" />
+                <Play className="h-3 w-3" />
                 恢复
               </>
             ) : (
               <>
-                <Pause className="h-3.5 w-3.5" />
+                <Pause className="h-3 w-3" />
                 暂停
               </>
             )}
           </Button>
         </div>
         {loadingScheduled ? (
-          <div className="flex items-center justify-center py-4 text-muted-foreground">
+          <div className="flex items-center justify-center py-3 text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             加载中...
           </div>
         ) : scheduledTasks.length > 0 ? (
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col">
             {scheduledTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-muted/50"
+                className="flex items-center justify-between px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors rounded"
               >
                 <div className="flex items-center gap-2">
-                  <span>{task.name}</span>
-                  <Badge variant="outline" className="text-[10px]">
+                  <span className="text-foreground">{task.name}</span>
+                  <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">
                     {task.layer}
-                  </Badge>
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-muted-foreground">
                     {task.cron}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground">
                     SLA: {task.sla_ms}ms
                   </span>
                 </div>
@@ -492,7 +483,7 @@ export default function TasksView() {
             ))}
           </div>
         ) : (
-          <div className="flex items-center justify-center py-4 text-xs text-muted-foreground">
+          <div className="flex items-center justify-center py-3 text-[11px] text-muted-foreground">
             暂无定时任务
           </div>
         )}

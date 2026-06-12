@@ -102,6 +102,11 @@ impl TaskDiscovery {
     pub fn pending_count(&self) -> usize {
         self.confirm_flow.pending_count()
     }
+
+    /// 直接添加一个待确认任务（供 AI extract 结果使用）
+    pub fn add_pending(&mut self, task: PendingTask) {
+        self.confirm_flow.add(task);
+    }
 }
 
 impl Default for TaskDiscovery {

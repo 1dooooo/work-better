@@ -258,6 +258,81 @@ export async function getAuditSummary(): Promise<AuditSummary> {
   return invoke<AuditSummary>("get_audit_summary");
 }
 
+// ─── Model Config ─────────────────────────────────────────────────
+
+export interface ModelConfig {
+  api_endpoint: string;
+  api_key: string;
+  token_budget: number;
+  small_model: string;
+  large_model: string;
+}
+
+/**
+ * 获取模型配置（用于检查 API Key 是否已配置）
+ */
+export async function getModelConfig(): Promise<ModelConfig> {
+  return invoke<ModelConfig>("get_model_config");
+}
+
+// ─── Model Management ─────────────────────────────────────────────
+
+export interface ModelInfo {
+  id: string;
+  name: string;
+}
+
+export interface TestModelResult {
+  success: boolean;
+  message: string;
+  latency_ms: number;
+}
+
+/**
+ * 获取可用模型列表（从 API 端点获取）
+ */
+export async function listModels(
+  apiEndpoint: string,
+  apiKey: string,
+): Promise<ModelInfo[]> {
+  return invoke<ModelInfo[]>("list_models", { apiEndpoint, apiKey });
+}
+
+/**
+ * 测试模型连接
+ */
+export async function testModel(
+  apiEndpoint: string,
+  apiKey: string,
+  model: string,
+): Promise<TestModelResult> {
+  return invoke<TestModelResult>("test_model", { apiEndpoint, apiKey, model });
+}
+
+// ─── Batch Processing ─────────────────────────────────────────────
+
+export interface BatchProcessResult {
+  total: number;
+  success: number;
+  failed: number;
+  skipped: number;
+  details: BatchProcessDetail[];
+}
+
+export interface BatchProcessDetail {
+  event_id: string;
+  status: string;
+  category: string | null;
+  error: string | null;
+}
+
+/**
+ * 批量处理所有未处理事件（开发者模式 - 主动整理）
+ */
+export async function triggerBatchProcess(): Promise<BatchProcessResult> {
+  return invoke<BatchProcessResult>("trigger_batch_process");
+}
+
 // ─── Developer Mode ───────────────────────────────────────────────
 
 export async function getDeveloperMode(): Promise<boolean> {

@@ -1,7 +1,7 @@
 ---
 title: Work Better 设计体系
 created: 2026-06-08
-updated: 2026-06-08
+updated: 2026-06-12
 status: active
 ---
 
@@ -243,9 +243,187 @@ pnpm dlx shadcn@latest add <component-name>
 # 组件会自动安装到 src/components/ui/
 ```
 
+## 紧凑型列表设计规范
+
+### 设计理念
+
+参考 Linear、GitHub、Raycast 的设计理念：
+- **Linear**: 极简、高效、对齐精准
+- **GitHub**: 图标驱动、紧凑布局
+- **Raycast**: 高密度、键盘友好
+
+### 核心原则
+
+1. **信息密度优先**：减少 40-60% 的间距，提升信息展示密度
+2. **视觉层次清晰**：使用颜色、字体大小、间距建立明确的层次
+3. **渐进式披露**：默认显示关键信息，悬停显示详细操作
+4. **对齐精准**：所有元素严格垂直居中，固定宽度列对齐
+
+### Header 规范
+
+```tsx
+<header className="flex items-center justify-between border-b border-border px-5 py-3 min-h-[48px]">
+  <div className="flex items-center gap-3">
+    <h1 className="text-sm font-semibold text-foreground">页面标题</h1>
+    <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+      {count}
+    </span>
+  </div>
+  <div className="flex items-center gap-2">
+    {/* 操作按钮 */}
+  </div>
+</header>
+```
+
+**关键点**：
+- 高度：`min-h-[48px]`
+- 内边距：`px-5 py-3`
+- 标题：`text-sm font-semibold`
+- 计数：`text-[11px]` + `bg-muted` + `rounded-full`
+
+### 列表项规范
+
+```tsx
+<div className="group flex items-center px-5 py-2 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]">
+  {/* 状态指示器 */}
+  <div className="w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0 bg-primary" />
+
+  {/* 类型标签 */}
+  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded mr-2 flex-shrink-0 uppercase tracking-wider leading-none bg-blue-100 text-blue-700">
+    MSG
+  </span>
+
+  {/* 来源 */}
+  <span className="text-[11px] text-muted-foreground mr-3 flex-shrink-0 min-w-[80px]">
+    来源名称
+  </span>
+
+  {/* 内容摘要 */}
+  <span className="flex-1 text-xs text-foreground truncate mr-3">
+    内容摘要...
+  </span>
+
+  {/* 标签 */}
+  <div className="flex gap-1 mr-3 flex-shrink-0">
+    <span className="text-[10px] px-1 py-0.5 bg-muted text-muted-foreground rounded">
+      tag
+    </span>
+  </div>
+
+  {/* 时间 */}
+  <span className="text-[10px] text-muted-foreground flex-shrink-0 min-w-[60px] text-right mr-3">
+    2分钟前
+  </span>
+
+  {/* 操作按钮（悬停显示） */}
+  <button className="opacity-0 group-hover:opacity-100 transition-opacity ...">
+    操作
+  </button>
+</div>
+```
+
+**关键点**：
+- 行高：`min-h-[40px]`
+- 内边距：`px-5 py-2`
+- 状态指示器：`w-1.5 h-1.5 rounded-full`
+- 类型标签：`text-[10px] uppercase tracking-wider`
+- 来源：`text-[11px] min-w-[80px]`
+- 内容：`text-xs truncate`
+- 标签：`text-[10px]`
+- 时间：`text-[10px] min-w-[60px] text-right`
+- 操作按钮：`opacity-0 group-hover:opacity-100`
+
+### 事件类型配色
+
+```tsx
+const EVENT_TYPE_CONFIG = {
+  message: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  issue: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  pr: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  document: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+};
+```
+
+### 时间显示规范
+
+```tsx
+const formatTime = (timestamp: string) => {
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "刚刚";
+  if (diffMins < 60) return `${diffMins}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+  return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+};
+```
+
+### Footer 规范
+
+```tsx
+<footer className="flex items-center justify-between px-5 py-2 border-t border-border bg-muted/30 text-[10px] text-muted-foreground">
+  <span>共 {total} 条记录</span>
+  <span>{unread} 条未读</span>
+</footer>
+```
+
+### 按钮规范
+
+#### Header 按钮
+
+```tsx
+// 主按钮
+<Button size="sm" className="h-7 gap-1 text-[11px] px-3">
+  <Icon className="h-3 w-3" />
+  操作
+</Button>
+
+// 次按钮
+<Button variant="outline" size="sm" className="h-7 gap-1 text-[11px] px-3">
+  <Icon className="h-3 w-3" />
+  操作
+</Button>
+```
+
+#### 列表项操作按钮
+
+```tsx
+<button className="flex items-center gap-1 text-[10px] px-2 py-1 bg-background border border-border rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary flex-shrink-0">
+  <Icon className="h-3 w-3" />
+  操作
+</button>
+```
+
+### 间距系统
+
+| 场景 | 间距 |
+|---|---|
+| Header 内边距 | `px-5 py-3` |
+| 列表项内边距 | `px-5 py-2` |
+| 元素间水平间距 | `mr-2` 或 `mr-3` |
+| 标签间距 | `gap-1` |
+| 垂直居中 | `flex items-center` |
+
+### 字体系统
+
+| 元素 | 字体大小 |
+|---|---|
+| 页面标题 | `text-sm` (14px) |
+| 计数徽章 | `text-[11px]` |
+| 列表项内容 | `text-xs` (13px) |
+| 类型标签 | `text-[10px]` |
+| 来源 | `text-[11px]` |
+| 时间 | `text-[10px]` |
+| 标签 | `text-[10px]` |
+| Footer | `text-[10px]` |
+
 ## 相关文件
 
 - `src/index.css` — Tailwind 主题配置
 - `src/components/ui/` — shadcn/ui 组件
 - `src/components/layout/` — 布局组件
 - `src/lib/utils.ts` — 工具函数
+- `ui-preview.html` — UI 设计预览（根目录）

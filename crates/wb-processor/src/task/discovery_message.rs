@@ -19,6 +19,14 @@ const MESSAGE_KEYWORDS: &[&str] = &[
     "能不能",
     "麻烦",
     "尽快",
+    // 个人意图表达
+    "我需要",
+    "我要",
+    "我打算",
+    "我计划",
+    "我准备",
+    "我得",
+    "我必须",
 ];
 
 /// 紧急关键词 —— 匹配时提升优先级
@@ -132,5 +140,29 @@ mod tests {
         let text = "请你帮忙检查 API 返回值";
         let tasks = discover_from_message(text);
         assert_eq!(tasks[0].origin_text, "请你帮忙检查 API 返回值");
+    }
+
+    #[test]
+    fn test_personal_intention_wo_yao() {
+        let text = "我要10点要发邮件给 bob";
+        let tasks = discover_from_message(text);
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "10点要发邮件给 bob");
+    }
+
+    #[test]
+    fn test_personal_intention_wo_xuyao() {
+        let text = "我需要准备明天的会议材料";
+        let tasks = discover_from_message(text);
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "准备明天的会议材料");
+    }
+
+    #[test]
+    fn test_personal_intention_wo_dasuan() {
+        let text = "我打算下周完成这份报告";
+        let tasks = discover_from_message(text);
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "下周完成这份报告");
     }
 }

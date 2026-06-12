@@ -318,6 +318,7 @@ mod tests {
             people: vec![],
             tags: vec![],
             project: None,
+            due_date: None,
             confidence: 0.3,
         });
         adapters.insert(ModelSize::Small, Box::new(low_conf_adapter));

@@ -15,7 +15,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 tempfile = { workspace = true }
+async-trait = "0.1"
 wb-core = { path = "../../crates/wb-core" }
 wb-storage = { path = "../../crates/wb-storage" }
+wb-processor = { path = "../../crates/wb-processor" }
 wb-collector = { path = "../../crates/wb-collector" }
 wb-scheduler = { path = "../../crates/wb-scheduler" }

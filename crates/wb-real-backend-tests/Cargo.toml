@@ -1,0 +1,15 @@
+[package]
+name = "wb-real-backend-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+wb-core = { path = "../wb-core" }
+wb-storage = { path = "../wb-storage" }
+wb-processor = { path = "../wb-processor" }
+wb-collector = { path = "../wb-collector" }
+wb-scheduler = { path = "../wb-scheduler" }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+async-trait = "0.1"
