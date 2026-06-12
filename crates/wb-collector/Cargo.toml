@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 wb-core = { path = "../wb-core" }
+wb-scheduler = { path = "../wb-scheduler" }
 async-trait = "0.1"
 chrono = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled"] }
