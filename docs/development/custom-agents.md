@@ -1,0 +1,166 @@
+---
+title: 自定义 Agent 注册指南
+created: 2026-06-12
+status: active
+---
+
+# 自定义 Agent 注册指南
+
+## 概述
+
+本项目使用多 Agent 协作开发模式，需要以下自定义 agent：
+
+| Agent | 职责 |
+|-------|------|
+| dev-agent | 功能开发 + L1-L2 测试 |
+| product-reviewer | 产品审查，判断功能是否符合预期，决策 bug/feature |
+| test-agent | 测试执行 + L4-L5 测试生成 |
+| review-agent | 代码审查 + H3-H5 安全测试 |
+| workflow-runner | 流程编排 + 重试管理 + 报告 |
+
+## 注册方式
+
+### 方式 1：使用启动脚本（推荐）
+
+```bash
+./scripts/start-claude-with-agents.sh
+```
+
+这个脚本会自动读取 `~/.claude/agents.json` 并传入 Claude Code。
+
+### 方式 2：手动传入
+
+```bash
+claude --agents "$(cat ~/.claude/agents.json)"
+```
+
+### 方式 3：使用通用 agent 替代
+
+当自定义 agent 不可用时，使用 `general-purpose` agent 并在 prompt 中指定角色：
+
+```
+Agent type: general-purpose
+prompt: "你是 [agent 角色]。职责：[具体职责]..."
+```
+
+## Agent 定义文件
+
+### 位置
+
+- `~/.claude/agents/` — 全局 agent 定义
+- `.claude/agents/` — 项目级 agent 定义
+
+### 格式
+
+Agent 定义文件使用 Markdown 格式，包含以下部分：
+
+```markdown
+# Agent Name
+
+职责描述。
+
+## 输入
+
+- 输入文件或数据
+
+## 工作流程
+
+1. 步骤 1
+2. 步骤 2
+...
+
+## 输出
+
+输出文件或数据
+
+## 约束
+
+- 约束条件
+
+## 协作
+
+与其他 agent 的协作方式
+```
+
+## agents.json 配置
+
+`~/.claude/agents.json` 文件定义了自定义 agent 的配置：
+
+```json
+{
+  "dev-agent": {
+    "description": "功能开发 + L1/L2 测试",
+    "prompt": "你是开发者 agent。职责：编写代码 + L1/L2 测试。"
+  },
+  "product-reviewer": {
+    "description": "产品审查，判断功能是否符合预期",
+    "prompt": "你是产品审查者。职责：从产品定义角度审查功能实现。"
+  }
+}
+```
+
+## Workflow 执行
+
+### 自动触发
+
+当 Claude 检测到代码变更时，会根据 agent.md 中的强制触发规则提醒执行 workflow。
+
+### 手动执行
+
+```bash
+# 1. 生成 dev-output.json
+./scripts/create-dev-output.sh <task_id>
+
+# 2. 执行 workflow
+./scripts/run-workflow.sh <task_id>
+```
+
+### 使用 agent 执行
+
+```bash
+# 使用 dev-agent
+Agent type: dev-agent
+prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，执行开发任务。"
+
+# 使用 product-reviewer
+Agent type: product-reviewer
+prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，从产品角度审查。"
+
+# 使用 test-agent
+Agent type: test-agent
+prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，执行测试。"
+
+# 使用 review-agent
+Agent type: review-agent
+prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，执行代码审查。"
+
+# 使用 workflow-runner
+Agent type: workflow-runner
+prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，编排 workflow。"
+```
+
+## 故障排查
+
+### Agent 不可用
+
+如果自定义 agent 不可用：
+
+1. 检查 `~/.claude/agents.json` 是否存在
+2. 检查 agent 定义文件是否在 `~/.claude/agents/` 目录下
+3. 使用启动脚本重新启动 Claude Code
+4. 或使用 `general-purpose` agent 替代
+
+### Workflow 执行失败
+
+1. 检查 `.workflow/artifacts/{task_id}/` 目录下的文件
+2. 查看 `final-report.json` 中的错误信息
+3. 根据错误类型进行修复：
+   - `code_bug` → 修复代码
+   - `test_bug` → 修复测试
+   - `env_issue` → 检查环境配置
+
+## 参考文档
+
+- [Workflow Spec](/.workflow/specs/dev-test-review.yaml)
+- [Agent Guide](/agent.md)
+- [Multi-Agent Collaboration](/docs/development/multi-agent-collaboration.md)

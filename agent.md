@@ -69,3 +69,34 @@ Workflow 定义见 [.workflow/specs/dev-test-review.yaml](.workflow/specs/dev-te
 → [文档规范](docs/conventions.md) | [文档索引](docs/index.md) | [ADR 决策记录](docs/decisions/)
 → [CODEMAP 索引](docs/CODEMAPS/_index.md) | [多 Agent 协作规范](docs/development/multi-agent-collaboration.md)
 → [Workflow Spec](.workflow/specs/dev-test-review.yaml)
+
+## 自定义 Agent 注册
+
+本项目使用自定义 agent 来执行多 Agent 协作 workflow。由于 Claude Code 的限制，自定义 agent 需要通过以下方式注册：
+
+### 方式 1：启动时传入（推荐）
+
+```bash
+# 使用启动脚本
+./scripts/start-claude-with-agents.sh
+
+# 或手动传入
+claude --agents "$(cat ~/.claude/agents.json)"
+```
+
+### 方式 2：使用通用 agent + 角色 prompt
+
+当自定义 agent 不可用时，使用 `general-purpose` agent 并在 prompt 中指定角色：
+
+```
+Agent type: general-purpose
+prompt: "你是 [agent 角色]。职责：[具体职责]..."
+```
+
+### Agent 定义文件
+
+- `~/.claude/agents/dev-agent.md` — 开发者 agent
+- `~/.claude/agents/product-reviewer.md` — 产品审查者
+- `~/.claude/agents/test-agent.md` — 测试执行者
+- `~/.claude/agents/review-agent.md` — 代码审查者
+- `~/.claude/agents/workflow-runner.md` — 流程编排者
