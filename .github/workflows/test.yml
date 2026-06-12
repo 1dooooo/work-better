@@ -25,6 +25,8 @@ jobs:
       - run: cargo check --workspace
       - run: cargo nextest run --workspace --profile pr
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:unit
 
@@ -42,6 +44,8 @@ jobs:
         uses: taiki-e/install-action@nextest
       - run: cargo nextest run --workspace --profile release
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:int
 
@@ -56,6 +60,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
@@ -75,6 +81,8 @@ jobs:
         uses: taiki-e/install-action@nextest
       - run: cargo nextest run --workspace --profile ci
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:coverage
       - name: Upload coverage
