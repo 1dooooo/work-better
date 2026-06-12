@@ -7,6 +7,7 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 use wb_collector::collector_task::CollectorTask;
+use wb_storage::sqlite::audit_log::ExecutionLogInsert;
 
 /// 设置 macOS 菜单栏托盘
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -114,6 +115,17 @@ pub fn run() {
             commands::audit::init_audit_log(app.handle())
                 .map_err(|e| e.to_string())?;
 
+            // 初始化 Obsidian vault 目录结构
+            let vault_config = commands::settings::load_config_for_collect()
+                .unwrap_or_default();
+            let vault_path = &vault_config.storage.vault_path;
+            if !vault_path.is_empty() {
+                match wb_storage::obsidian::VaultManager::new(vault_path) {
+                    Ok(_) => eprintln!("[vault] Initialized at: {}", vault_path),
+                    Err(e) => eprintln!("[vault] Failed to initialize: {}", e),
+                }
+            }
+
             // 初始化任务管理器
             commands::tasks::init_task_manager();
 
@@ -128,6 +140,35 @@ pub fn run() {
 
                 // 创建调度器并注册采集任务
                 let scheduler = commands::scheduler::get_scheduler();
+
+                // 注册执行日志回调：任务完成后写入 execution_logs 表
+                scheduler.set_on_complete(Arc::new(|result| {
+                    let status = match result.status {
+                        wb_scheduler::task::TaskStatus::Success => "Success",
+                        wb_scheduler::task::TaskStatus::Failed => "Failed",
+                        wb_scheduler::task::TaskStatus::Timeout => "Timeout",
+                        wb_scheduler::task::TaskStatus::Aborted => "Failed",
+                    };
+                    let record = ExecutionLogInsert {
+                        task_id: result.task_id.clone(),
+                        task_name: result.task_name.clone(),
+                        status: status.to_string(),
+                        started_at: result.started_at.to_rfc3339(),
+                        finished_at: result.finished_at.to_rfc3339(),
+                        duration_ms: result.duration_ms,
+                        output: Some(result.summary.clone()),
+                        error: result.error.clone(),
+                    };
+                    if let Some(store) = commands::audit::get_audit_log() {
+                        // 在新 tokio task 中执行异步写入，避免阻塞调度器
+                        tokio::spawn(async move {
+                            let guard = store.lock().await;
+                            if let Err(e) = guard.insert_execution_log(&record) {
+                                eprintln!("[audit] Failed to write execution log: {}", e);
+                            }
+                        });
+                    }
+                })).await;
 
                 // 按照产品设计注册采集任务
                 // 参考: docs/architecture/modules/scheduler.md
@@ -187,8 +228,11 @@ pub fn run() {
             commands::collectors::list_collectors,
             commands::collectors::enable_collector,
             commands::collectors::disable_collector,
+            commands::collectors::enable_collector_group,
+            commands::collectors::disable_collector_group,
             commands::collectors::check_collector_health,
             commands::collectors::get_collector_statuses,
+            commands::collectors::get_collector_groups,
             commands::scheduler::list_scheduled_tasks,
             commands::scheduler::pause_scheduler,
             commands::scheduler::resume_scheduler,

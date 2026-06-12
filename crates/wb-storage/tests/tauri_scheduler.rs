@@ -48,6 +48,7 @@ impl ScheduledTask for MockSuccessTask {
         let now = Utc::now();
         TaskResult {
             task_id: self.id.clone(),
+            task_name: self.name().to_string(),
             status: TaskStatus::Success,
             started_at: now,
             finished_at: now,
@@ -94,6 +95,7 @@ impl ScheduledTask for MockFailTask {
         let now = Utc::now();
         TaskResult {
             task_id: self.id.clone(),
+            task_name: self.name().to_string(),
             status: TaskStatus::Failed,
             started_at: now,
             finished_at: now,
@@ -141,6 +143,7 @@ impl ScheduledTask for MockSlowTask {
         let now = Utc::now();
         TaskResult {
             task_id: self.id.clone(),
+            task_name: self.name().to_string(),
             status: TaskStatus::Success,
             started_at: now,
             finished_at: now,

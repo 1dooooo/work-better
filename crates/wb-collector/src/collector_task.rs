@@ -45,14 +45,12 @@ impl CollectorTask {
 
 /// 执行日志记录器
 ///
-/// 用于将采集器执行结果写入执行日志。
-/// 这是一个简化版本，实际应该通过依赖注入获取 AuditLogStore。
+/// 将采集器执行结果输出到 stderr 用于调试。
+/// 主要的持久化日志由 Scheduler 的 on_task_complete 回调写入 execution_logs 表。
 struct ExecutionLogger;
 
 impl ExecutionLogger {
-    /// 记录执行日志到 stderr（临时方案）
-    ///
-    /// TODO: 后续应该写入 execution_logs 表
+    /// 记录执行日志到 stderr（调试用）
     fn log_execution(task_id: &str, result: &TaskResult) {
         let status = match &result.status {
             TaskStatus::Success => "✅",
@@ -113,6 +111,7 @@ impl ScheduledTask for CollectorTask {
         if !self.manager.is_enabled(&self.collector_id).await {
             let result = TaskResult {
                 task_id: task_id.clone(),
+                task_name: self.task_name.clone(),
                 status: TaskStatus::Success,
                 started_at,
                 finished_at: Utc::now(),
@@ -135,6 +134,7 @@ impl ScheduledTask for CollectorTask {
                 let count = events.len();
                 TaskResult {
                     task_id: task_id.clone(),
+                    task_name: self.task_name.clone(),
                     status: TaskStatus::Success,
                     started_at,
                     finished_at,
@@ -146,6 +146,7 @@ impl ScheduledTask for CollectorTask {
             }
             Some(Err(e)) => TaskResult {
                 task_id: task_id.clone(),
+                task_name: self.task_name.clone(),
                 status: TaskStatus::Failed,
                 started_at,
                 finished_at,
@@ -156,6 +157,7 @@ impl ScheduledTask for CollectorTask {
             },
             None => TaskResult {
                 task_id: task_id.clone(),
+                task_name: self.task_name.clone(),
                 status: TaskStatus::Failed,
                 started_at,
                 finished_at,
