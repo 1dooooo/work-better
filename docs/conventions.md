@@ -21,6 +21,7 @@ status: active
 | 类型 | 标识 | 存放位置 | 用途 |
 |------|------|---------|------|
 | structural | 结构性文档 | `docs/` 独立目录 | 产品定义、架构设计、模块总览 |
+| codemap | 代码地图 | `docs/CODEMAPS/` | 概念层→代码层桥梁，开发时首选入口 |
 | implementation | 实现文档 | `src/*/README.md` | 模块 API、组件说明、使用示例 |
 | decision | 决策记录 | `docs/decisions/` | ADR 格式的架构决策 |
 | guide | 操作指南 | `docs/guides/` | 开发流程、部署步骤、排错指南 |
@@ -31,6 +32,7 @@ status: active
 ```
 这个文档描述什么？
 ├── 产品/架构/模块总览 → docs/ 下对应目录（structural）
+├── 某个模块的代码文件导航和职责映射 → docs/CODEMAPS/（codemap）
 ├── 某个模块的 API/接口/使用 → src/模块名/README.md（implementation）
 ├── 一个架构决策及其推理过程 → docs/decisions/（decision）
 ├── 怎么做某件事的步骤 → docs/guides/（guide）
@@ -44,7 +46,7 @@ status: active
 ```yaml
 ---
 title: 文档标题
-type: structural | implementation | decision | guide | index
+type: structural | codemap | implementation | decision | guide | index
 domain: product | architecture | features | development | testing | conventions
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
@@ -90,6 +92,8 @@ draft → active → deprecated
 | 新增/移除功能 | 功能索引 + 对应模块文档 + 产品文档（如涉及方向变化） |
 | 架构变更 | 架构总览 + 对应模块文档 |
 | 新增/移除模块 | 架构总览 + docs/index.md |
+| 新增/移除/重命名源文件 | 对应 CODEMAP（docs/CODEMAPS/） |
+| 模块职责变更 | 对应 CODEMAP + 架构模块文档 |
 | 产品方向调整 | 产品文档 + agent.md 核心思想（如涉及原则变化） |
 | 数据模型变更 | 事件模型文档 + 对应模块文档 |
 | 多 Agent 协作流程变更 | workflow spec + multi-agent-collaboration.md + agent 定义文件 |
