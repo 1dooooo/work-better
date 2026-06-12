@@ -29,12 +29,14 @@ agents:
   dev-agent:
     role: developer
     description: 写代码 + 写 L1-L2 测试
+    config: .claude/agents/dev-agent.md
     outputs:
       - .workflow/artifacts/{task_id}/dev-output.json
 
   test-agent:
     role: tester
     description: 运行测试 + 从产品文档生成 L4-L5 测试
+    config: .claude/agents/test-agent.md
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:
@@ -43,6 +45,7 @@ agents:
   review-agent:
     role: reviewer
     description: 代码审查 + 生成 H3-H5 安全测试
+    config: .claude/agents/review-agent.md
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:

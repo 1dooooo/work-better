@@ -19,6 +19,23 @@
 | review-agent | 代码审查 + H3-H5 安全测试 |
 | workflow-runner | 流程编排 + 重试管理 + 报告 |
 
+### ⚠️ 强制触发规则
+
+**当你完成代码修改后，必须检查是否触发 workflow：**
+
+触发条件（满足任一即触发）：
+- 修改了 `crates/` 下的 Rust 代码
+- 修改了 `src/` 下的 TypeScript 代码
+- 修改了 `src-tauri/` 下的 Tauri 命令代码
+- 新增或删除了功能文件
+
+不触发：仅修改文档 (`docs/`)、配置文件 (`.config/`)、脚本 (`scripts/`)
+
+触发后必须执行：
+1. 告知用户"检测到代码变更，建议执行 workflow"
+2. 询问用户是否执行 `./scripts/create-dev-output.sh <task_id>` 和 `./scripts/run-workflow.sh <task_id>`
+3. 如果用户同意，执行并检查结果
+
 完整规范见 [多 Agent 协作开发规范](docs/development/multi-agent-collaboration.md)。
 Workflow 定义见 [.workflow/specs/dev-test-review.yaml](.workflow/specs/dev-test-review.yaml)。
 
