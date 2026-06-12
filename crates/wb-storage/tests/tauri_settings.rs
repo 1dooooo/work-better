@@ -29,6 +29,7 @@ fn b3_01_settings_roundtrip() {
             large_model: "claude-3-opus".to_string(),
             api_endpoint: "https://api.anthropic.com".to_string(),
             token_budget: 8192,
+            api_key: None,
         },
         storage: StorageConfig {
             vault_path: "/tmp/test-vault".to_string(),
