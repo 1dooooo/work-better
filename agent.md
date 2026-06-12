@@ -15,6 +15,7 @@
 | Agent | 职责 |
 |-------|------|
 | dev-agent | 功能开发 + L1-L2 测试 |
+| product-reviewer | 产品审查，判断功能是否符合预期，决策 bug/feature |
 | test-agent | 测试执行 + L4-L5 测试生成 |
 | review-agent | 代码审查 + H3-H5 安全测试 |
 | workflow-runner | 流程编排 + 重试管理 + 报告 |
