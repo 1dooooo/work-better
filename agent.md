@@ -30,7 +30,24 @@ Workflow 定义见 [.workflow/specs/dev-test-review.yaml](.workflow/specs/dev-te
 4. 文档超过 300 行 → 拆分
 5. 多 Agent 协作流程变更 → 更新 workflow spec + multi-agent-collaboration.md
 
+## 代码导航
+
+> **开发时先读 CODEMAP，再读源码。不要全量扫描代码。**
+
+| 模块 | 代码位置 | CODEMAP | 职责 |
+|------|---------|---------|------|
+| 核心类型 | `crates/wb-core/` | [wb-core.codemap.md](docs/CODEMAPS/wb-core.codemap.md) | Event、Task、WorkRecord |
+| 采集层 | `crates/wb-collector/` | [wb-collector.codemap.md](docs/CODEMAPS/wb-collector.codemap.md) | 飞书/系统/手动采集器 |
+| 处理层 | `crates/wb-processor/` | [wb-processor.codemap.md](docs/CODEMAPS/wb-processor.codemap.md) | 分类、提取、审核、报告 |
+| 存储层 | `crates/wb-storage/` | [wb-storage.codemap.md](docs/CODEMAPS/wb-storage.codemap.md) | Obsidian/SQLite/向量DB |
+| AI 适配 | `crates/wb-ai/` | [wb-ai.codemap.md](docs/CODEMAPS/wb-ai.codemap.md) | 模型路由、预算、适配器 |
+| 定时任务 | `crates/wb-scheduler/` | [wb-scheduler.codemap.md](docs/CODEMAPS/wb-scheduler.codemap.md) | 调度、依赖、重试 |
+| 前端 | `src/` + `src-tauri/` | [frontend.codemap.md](docs/CODEMAPS/frontend.codemap.md) | React UI + Tauri 命令 |
+
+**渐进式读取路径**：`agent.md` → CODEMAP → 目标源文件（最多读 3 层即可定位）
+
 ## 文档体系
 
 → [文档规范](docs/conventions.md) | [文档索引](docs/index.md) | [ADR 决策记录](docs/decisions/)
-→ [多 Agent 协作规范](docs/development/multi-agent-collaboration.md) | [Workflow Spec](.workflow/specs/dev-test-review.yaml)
+→ [CODEMAP 索引](docs/CODEMAPS/_index.md) | [多 Agent 协作规范](docs/development/multi-agent-collaboration.md)
+→ [Workflow Spec](.workflow/specs/dev-test-review.yaml)
