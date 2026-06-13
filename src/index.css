@@ -95,48 +95,10 @@
 /*
  * Dark Mode — applied via data-theme="dark" attribute.
  * Tailwind v4 uses @custom-variant for custom selectors.
+ * Dark tokens are overridden via CSS custom properties in [data-theme="dark"],
+ * because @theme does not support variant-scoped blocks.
  */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
-@theme dark {
-  --color-background: oklch(14% 0 0);
-  --color-foreground: oklch(93% 0 0);
-  --color-card: oklch(18% 0 0);
-  --color-card-foreground: oklch(93% 0 0);
-  --color-popover: oklch(18% 0 0);
-  --color-popover-foreground: oklch(93% 0 0);
-  --color-primary: oklch(60% 0.19 260);
-  --color-primary-foreground: oklch(14% 0 0);
-  --color-secondary: oklch(25% 0 0);
-  --color-secondary-foreground: oklch(93% 0 0);
-  --color-muted: oklch(22% 0 0);
-  --color-muted-foreground: oklch(55% 0 0);
-  --color-accent: oklch(25% 0 0);
-  --color-accent-foreground: oklch(93% 0 0);
-  --color-destructive: oklch(60% 0.2 25);
-  --color-destructive-foreground: oklch(14% 0 0);
-  --color-border: oklch(25% 0 0);
-  --color-input: oklch(28% 0 0);
-  --color-ring: oklch(60% 0.19 260);
-  --color-sidebar: oklch(16% 0 0);
-  --color-sidebar-foreground: oklch(93% 0 0);
-  --color-sidebar-primary: oklch(60% 0.19 260);
-  --color-sidebar-primary-foreground: oklch(14% 0 0);
-  --color-sidebar-accent: oklch(25% 0 0);
-  --color-sidebar-accent-foreground: oklch(93% 0 0);
-  --color-sidebar-border: oklch(25% 0 0);
-  --color-sidebar-ring: oklch(60% 0.19 260);
-  --color-success: oklch(70% 0.18 145);
-  --color-success-foreground: oklch(14% 0 0);
-  --color-warning: oklch(75% 0.16 80);
-  --color-warning-foreground: oklch(14% 0 0);
-  --color-info: oklch(70% 0.16 240);
-  --color-info-foreground: oklch(14% 0 0);
-  --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.15);
-  --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.2);
-  --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.3);
-  --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.4);
-}
 
 /*
  * Base layer — global reset and base typography.
@@ -155,5 +117,46 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Dark Mode token overrides */
+  [data-theme="dark"] {
+    --color-background: oklch(14% 0 0);
+    --color-foreground: oklch(93% 0 0);
+    --color-card: oklch(18% 0 0);
+    --color-card-foreground: oklch(93% 0 0);
+    --color-popover: oklch(18% 0 0);
+    --color-popover-foreground: oklch(93% 0 0);
+    --color-primary: oklch(60% 0.19 260);
+    --color-primary-foreground: oklch(14% 0 0);
+    --color-secondary: oklch(25% 0 0);
+    --color-secondary-foreground: oklch(93% 0 0);
+    --color-muted: oklch(22% 0 0);
+    --color-muted-foreground: oklch(55% 0 0);
+    --color-accent: oklch(25% 0 0);
+    --color-accent-foreground: oklch(93% 0 0);
+    --color-destructive: oklch(60% 0.2 25);
+    --color-destructive-foreground: oklch(14% 0 0);
+    --color-border: oklch(25% 0 0);
+    --color-input: oklch(28% 0 0);
+    --color-ring: oklch(60% 0.19 260);
+    --color-sidebar: oklch(16% 0 0);
+    --color-sidebar-foreground: oklch(93% 0 0);
+    --color-sidebar-primary: oklch(60% 0.19 260);
+    --color-sidebar-primary-foreground: oklch(14% 0 0);
+    --color-sidebar-accent: oklch(25% 0 0);
+    --color-sidebar-accent-foreground: oklch(93% 0 0);
+    --color-sidebar-border: oklch(25% 0 0);
+    --color-sidebar-ring: oklch(60% 0.19 260);
+    --color-success: oklch(70% 0.18 145);
+    --color-success-foreground: oklch(14% 0 0);
+    --color-warning: oklch(75% 0.16 80);
+    --color-warning-foreground: oklch(14% 0 0);
+    --color-info: oklch(70% 0.16 240);
+    --color-info-foreground: oklch(14% 0 0);
+    --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.15);
+    --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.2);
+    --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.3);
+    --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.4);
   }
 }

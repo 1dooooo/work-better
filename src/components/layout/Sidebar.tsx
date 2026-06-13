@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 
 export type ViewId = "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
 
@@ -52,34 +52,15 @@ interface SidebarProps {
   developerMode?: boolean;
 }
 
-function useTheme() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark" || stored === "light") return stored;
-    const attr = document.documentElement.dataset.theme;
-    if (attr === "dark" || attr === "light") return attr;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  });
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-
-  return { theme, toggle };
-}
-
 export default function Sidebar({
   activeView,
   onViewChange,
   unprocessedCount,
   developerMode = false,
 }: SidebarProps) {
-  const { theme, toggle } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const toggle = () => setTheme(isDark ? "light" : "dark");
 
   // M6: 使用更清晰的过滤逻辑
   const navItems = NAV_ITEMS.filter((item) => {
@@ -150,9 +131,9 @@ export default function Sidebar({
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={toggle}
-          title={theme === "dark" ? "切换到亮色" : "切换到暗色"}
+          title={isDark ? "切换到亮色" : "切换到暗色"}
         >
-          {theme === "dark" ? (
+          {isDark ? (
             <Sun className="h-3.5 w-3.5" />
           ) : (
             <Moon className="h-3.5 w-3.5" />

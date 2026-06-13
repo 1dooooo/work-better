@@ -143,6 +143,13 @@ impl ModelAdapter for OpenAIAdapter {
   "confidence": 0.0-1.0
 }}
 
+提取规则：
+- title 应反映事件的核心动作或意图，而非字面复述
+- 如果事件描述了某个任务的进展、完成或状态变更（如"已完成"、"开始做"、"推迟到"），
+  title 应以该任务为核心命名，而非以状态变更为核心
+- 例如："我今天下午6点要完成邮件发送给bob" 和 "我现在已经发送给bob邮件了"
+  都应该提取为同一个任务 "给Bob发送邮件"，因为它们描述的是同一事项的不同阶段
+
 只返回 JSON，不要其他内容。"#,
             event.event_type, event.source, event.content, event.raw_payload
         );

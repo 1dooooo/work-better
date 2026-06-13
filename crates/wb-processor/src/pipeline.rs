@@ -11,7 +11,7 @@ use wb_core::record::WorkRecord;
 
 use crate::classifier::{Classifier, ProcessingRoute};
 use crate::extraction::{EntityExtractor, ExtractedData};
-use crate::persist::PersistStep;
+use crate::persist::{Deduplicator, PersistStep};
 use crate::reviewer::ReviewAgent;
 
 use wb_ai::task_runner::TaskRunner;
@@ -50,6 +50,7 @@ pub struct ProcessingPipeline {
     task_runner: TaskRunner,
     reviewer: ReviewAgent,
     persistor: PersistStep,
+    deduplicator: Option<Deduplicator>,
 }
 
 impl ProcessingPipeline {
@@ -60,12 +61,19 @@ impl ProcessingPipeline {
             task_runner,
             reviewer: ReviewAgent::new(),
             persistor,
+            deduplicator: None,
         }
     }
 
     /// 使用自定义 ReviewAgent
     pub fn with_reviewer(mut self, reviewer: ReviewAgent) -> Self {
         self.reviewer = reviewer;
+        self
+    }
+
+    /// 启用语义去重
+    pub fn with_deduplicator(mut self, deduplicator: Deduplicator) -> Self {
+        self.deduplicator = Some(deduplicator);
         self
     }
 
@@ -123,6 +131,17 @@ impl ProcessingPipeline {
             record.obsidian_path = PersistStep::generate_path(&record);
         }
 
+        // Step 4.5: 语义去重（如果启用了 Deduplicator）
+        if let Some(ref dedup) = self.deduplicator {
+            if let Some(existing_id) = dedup.find_similar(&record).await {
+                // 将当前事件的 source_event_ids 合并到已有记录的路径
+                // 通过修改 obsidian_path 指向已有文件，触发 PersistStep 的 LCS 去重
+                record.obsidian_path = Self::find_existing_path_by_id(
+                    &self.persistor, &existing_id, &record.obsidian_path,
+                ).unwrap_or(record.obsidian_path);
+            }
+        }
+
         // Step 5: 审核
         let review_start = Instant::now();
         let review_result = self.reviewer.review(&record);
@@ -134,6 +153,11 @@ impl ProcessingPipeline {
             let persist_start = Instant::now();
             self.persistor.persist(&record)?;
             timings.persist_ms = persist_start.elapsed().as_millis() as u64;
+
+            // 持久化成功后索引到向量库（用于后续去重）
+            if let Some(ref dedup) = self.deduplicator {
+                dedup.index_record(&record).await;
+            }
         }
 
         Ok(ProcessedResult {
@@ -183,6 +207,37 @@ impl ProcessingPipeline {
             wb_core::event::Confidence::Medium => 0.7,
             wb_core::event::Confidence::Low => 0.4,
         }
+    }
+
+    /// 在 Obsidian vault 中查找包含指定 record_id 的已有文件路径
+    ///
+    /// 扫描目标目录下的 markdown 文件，检查 frontmatter 中的 id 字段。
+    fn find_existing_path_by_id(
+        persistor: &PersistStep,
+        record_id: &str,
+        new_path: &str,
+    ) -> Option<String> {
+        let vault_path = persistor.writer().vault_path();
+        let new_full = vault_path.join(new_path);
+        let parent = new_full.parent()?;
+
+        let entries = std::fs::read_dir(parent).ok()?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map_or(true, |e| e != "md") {
+                continue;
+            }
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                // 检查 frontmatter 中的 id 行
+                if content.lines().any(|l| l.trim() == format!("id: {}", record_id)) {
+                    // 返回相对于 vault 的路径
+                    if let Ok(rel) = path.strip_prefix(vault_path) {
+                        return Some(rel.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
