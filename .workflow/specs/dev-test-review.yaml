@@ -10,11 +10,10 @@
 # ============================================================
 
 name: dev-test-review
-version: "1.0"
+version: "2.0"
 description: >
-  开发-测试-审查 workflow。当开发任务启动时触发，
-  编排 dev-agent → test-agent → review-agent 的协作，
-  实现软件交付的自闭环。
+  开发-测试-审查 workflow（v2 并行版）。当开发任务启动时触发，
+  workflow-runner 编排：dev-agent 开发 → test-agent/review-agent/product-reviewer 并行审查。
 
 # ----------------------------------------------------------
 # Agent registry
@@ -23,7 +22,7 @@ agents:
   workflow-runner:
     role: orchestrator
     description: 轻量编排 agent，读取 artifacts 决定下一步调度
-    session: independent          # 独立会话，通过文件同步
+    session: independent
     config: .claude/agents/workflow-runner.md
 
   dev-agent:
@@ -116,110 +115,84 @@ gate_inference:
       gate: L2
 
 # ----------------------------------------------------------
-# Execution flow
+# Execution flow (v2 并行版)
+# ----------------------------------------------------------
+# 核心变化：dev-agent 完成后，test-agent/review-agent/product-reviewer
+# 三者并行执行，workflow-runner 汇总结果。
 # ----------------------------------------------------------
 flow:
-  start:
-    - step: read_dev_output
-      description: 读取 .workflow/artifacts/{task_id}/dev-output.json
+  # ---- 阶段 1：开发（顺序） ----
+  dev_phase:
+    - step: run_dev
+      description: >
+        触发 dev-agent 编写代码和 L1/L2 测试。
+        dev-agent 完成后写入 dev-output.json。
+      agent: dev-agent
+      timeout: 10m
+      outputs: dev-output.json
 
-    - step: infer_gate
-      description: 根据 changed_files 推断 gate level
+  # ---- 阶段 2：并行审查 ----
+  parallel_review_phase:
+    - step: run_test
+      description: >
+        触发 test-agent 执行测试 + 安全扫描。
+        读取 dev-output.json，根据 test_level 执行对应测试。
+      agent: test-agent
+      parallel_group: review   # 与同组 agent 并行
+      timeout: 5m
+      outputs: test-report.json
 
-    - step: product_review
-      description: 触发 product-reviewer 从产品定义角度审查功能
+    - step: run_review
+      description: >
+        触发 review-agent 代码审查 + 生成 H3-H5 安全测试建议。
+      agent: review-agent
+      parallel_group: review
+      timeout: 3m
+      outputs: review-report.json
+
+    - step: run_product_review
+      description: >
+        触发 product-reviewer 从产品定义角度审查功能实现。
       agent: product-reviewer
-      timeout: 1m
+      parallel_group: review
+      timeout: 2m
       outputs: product-review.json
 
-  check_product_review:
-    - condition: verdict_is [pass]
-      goto: run_L1_H
-    - condition: verdict_is [fail] and category_is [bug]
+  # ---- 阶段 3：结果检查 ----
+  check_results:
+    - condition: "all of test-report.json, review-report.json, product-review.json exist"
+      goto: evaluate_results
+    - condition: "any output missing"
+      goto: handle_failure
+      with:
+        reason: "并行 agent 未全部完成"
+
+  evaluate_results:
+    - step: check_product_review
+      description: 检查 product-review 结果
+      condition: "product-review.json.verdict == 'fail' and category == 'bug'"
       goto: handle_failure
       with:
         source: product-reviewer
-        reason: "功能实现不符合产品定义，需要修复"
-    - condition: verdict_is [fail] and category_is [new_feature, gap, design_debt]
-      goto: run_L1_H
-      with:
-        note: "产品问题已记录，不阻塞测试流程"
+        reason: "功能实现不符合产品定义"
 
-  run_L1_H:
-    - step: run_L1_H_tests
-      description: 触发 test-agent 运行 L1 单元测试 + H1-H2 安全扫描
-      agent: test-agent
-      parallel: true              # L1 和 H 并行
-      timeout: 2m
-      outputs: test-report.json
-
-  check_L1_H:
-    - condition: all_passed
-      goto: run_L2
-    - condition: has_failures
+    - step: check_test_results
+      description: 检查测试结果
+      condition: "test-report.json.result == 'fail'"
       goto: handle_failure
       with:
-        gate: L1
+        gate: inferred
         max_retries: 3
-        trend_stop: 2              # 同一 source_location 连续失败 2 次停止
 
-  run_L2:
-    - step: run_L2_tests
-      description: 触发 test-agent 运行 L2 集成测试
-      agent: test-agent
-      timeout: 30s
-      outputs: test-report.json
-
-  check_L2:
-    - condition: all_passed
-      goto: parallel_review_e2e    # L2 过了，review 和 L4/L5 并行
-    - condition: has_failures
-      goto: handle_failure
-      with:
-        gate: L2
-        max_retries: 2
-        trend_stop: 2
-
-  parallel_review_e2e:
-    - step: run_review
-      description: 触发 review-agent 代码审查 + 生成 H3-H5 安全测试
-      agent: review-agent
-      parallel_with: [run_L4_L5]
-      outputs: review-report.json
-
-    - step: run_L4_L5
-      description: 触发 test-agent 运行 L4 E2E + L5 验收（并行）
-      agent: test-agent
-      parallel_with: [run_review]
-      outputs: test-report.json
-
-  check_L4:
-    - condition: all_passed
-      goto: check_L5
-    - condition: has_failures
-      goto: handle_failure
-      with:
-        gate: L4
-        max_retries: 1
-        trend_stop: 1
-
-  check_L5:
-    - condition: all_passed
-      goto: check_review
-    - condition: has_failures
-      goto: escalate                # L5 失败直接上报，不重试
-      with:
-        reason: "验收测试失败，需要回到产品设计层面讨论"
-
-  check_review:
-    - condition: verdict_is [approve, approve_with_comments]
-      goto: done
-    - condition: verdict_is [request_changes, block]
+    - step: check_review_results
+      description: 检查代码审查结果
+      condition: "review-report.json.verdict == 'request_changes'"
       goto: handle_review_failure
 
-  # ----------------------------------------------------------
-  # Failure handling
-  # ----------------------------------------------------------
+    - condition: "all passed"
+      goto: done
+
+  # ---- 失败处理 ----
   handle_failure:
     - step: read_failure_location
       description: 从 test-report.json 读取 source_location
@@ -233,25 +206,24 @@ flow:
         判定 failure_type（code_bug / test_bug / env_issue），
         修复后写入新的 dev-output.json。
       agent: dev-agent
-    - step: re_run_gate
-      description: 回到对应 gate 重新运行测试
-      goto: start (with updated dev-output.json)
+    - step: re_run_parallel
+      description: 修复后回到并行审查阶段
+      goto: parallel_review_phase
 
   handle_review_failure:
     - step: trigger_dev_fix
       description: >
         触发 dev-agent 读取 review-report.json，修复审查发现的问题。
       agent: dev-agent
-    - step: re_run_from_L1
-      description: 修复后从 L1 开始重新运行
-      goto: start
+    - step: re_run_parallel
+      description: 修复后回到并行审查阶段
+      goto: parallel_review_phase
 
   escalate:
     - step: write_final_report
       description: >
         写入 final-report.json，status=blocked 或 escalated，
         包含 escalation_reason 和 uncovered_paths。
-        用户下次打开项目时会看到。
 
   done:
     - step: archive_artifacts
@@ -265,19 +237,19 @@ flow:
 retry:
   L1:
     max_retries: 3
-    trend_stop: 2                 # 同一 source_location 连续失败 2 次 → 停止
+    trend_stop: 2
     description: "单元测试修复成本低，多给机会"
   L2:
     max_retries: 2
-    trend_stop: 2                 # 同一测试用例连续失败 2 次 → 停止
+    trend_stop: 2
     description: "集成测试修复涉及模块间协调"
   L4:
     max_retries: 1
-    trend_stop: 1                 # 同一测试连续失败 1 次 → 停止
+    trend_stop: 1
     description: "E2E 修复成本高，一次修不好就上报"
   L5:
     max_retries: 0
-    trend_stop: 0                 # 首次失败即上报
+    trend_stop: 0
     description: "验收测试失败意味着产品需求不达标"
 
 # ----------------------------------------------------------

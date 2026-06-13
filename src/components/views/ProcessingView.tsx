@@ -69,7 +69,7 @@ export default function ProcessingView() {
     }
     if ("Approved" in status) {
       return (
-        <Badge variant="default" className="gap-1 bg-green-500">
+        <Badge variant="default" className="gap-1 bg-success">
           <CheckCircle2 className="h-3 w-3" />
           已批准
         </Badge>
@@ -99,7 +99,7 @@ export default function ProcessingView() {
           <div
             key={item.key}
             className={`flex items-center gap-1 text-xs ${
-              item.value ? "text-green-500" : "text-muted-foreground"
+              item.value ? "text-success" : "text-muted-foreground"
             }`}
           >
             <item.icon className="h-3 w-3" />

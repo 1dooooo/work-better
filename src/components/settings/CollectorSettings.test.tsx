@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import CollectorSettings from "./CollectorSettings";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -83,6 +83,10 @@ describe("CollectorSettings", () => {
     ]);
     render(<CollectorSettings />);
     await waitFor(() => {
+      expect(screen.getByText("飞书")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("飞书"));
+    await waitFor(() => {
       expect(screen.getByText("未启用")).toBeInTheDocument();
     });
   });
@@ -100,6 +104,10 @@ describe("CollectorSettings", () => {
       },
     ]);
     render(<CollectorSettings />);
+    await waitFor(() => {
+      expect(screen.getByText("飞书")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("飞书"));
     await waitFor(() => {
       expect(screen.getByText("异常")).toBeInTheDocument();
     });
@@ -119,6 +127,10 @@ describe("CollectorSettings", () => {
     ]);
     render(<CollectorSettings />);
     await waitFor(() => {
+      expect(screen.getByText("飞书")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("飞书"));
+    await waitFor(() => {
       expect(screen.getByText("正常")).toBeInTheDocument();
     });
   });
@@ -136,6 +148,10 @@ describe("CollectorSettings", () => {
       },
     ]);
     render(<CollectorSettings />);
+    await waitFor(() => {
+      expect(screen.getByText("飞书")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("飞书"));
     await waitFor(() => {
       expect(screen.getByText("降级")).toBeInTheDocument();
     });

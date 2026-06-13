@@ -54,8 +54,10 @@ interface SidebarProps {
 
 function useTheme() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const stored = document.documentElement.dataset.theme;
+    const stored = localStorage.getItem("theme");
     if (stored === "dark" || stored === "light") return stored;
+    const attr = document.documentElement.dataset.theme;
+    if (attr === "dark" || attr === "light") return attr;
     return window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
@@ -63,6 +65,7 @@ function useTheme() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));

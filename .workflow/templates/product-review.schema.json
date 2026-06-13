@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Product Review",
+  "type": "object",
+  "required": ["task_id", "verdict", "summary"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "与 dev-output.json 一致的任务标识"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail"],
+      "description": "功能是否符合产品定义"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["feature", "bug", "enhancement"],
+      "description": "变更类型"
+    },
+    "summary": {
+      "type": "string",
+      "description": "产品审查摘要"
+    },
+    "requirements_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["requirement", "status"],
+        "properties": {
+          "requirement": { "type": "string" },
+          "status": { "type": "string", "enum": ["met", "partial", "missing"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -189,7 +189,7 @@ export default function CollectorSettings() {
       <div className="space-y-2">
         <Label>采集器</Label>
         <div className="space-y-3">
-          {groups.map((group) => (
+          {(groups ?? []).map((group) => (
             <div
               key={group.id}
               className="rounded-lg border border-border overflow-hidden"

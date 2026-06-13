@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   Loader2,
   Inbox,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +42,19 @@ export default function EventsView() {
   const [filter, setFilter] = useState<FilterSource>("all");
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+
+  const toggleEvent = useCallback((id: string) => {
+    setExpandedEvents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -199,71 +214,101 @@ export default function EventsView() {
         ) : (
           filteredEvents.map((event) => {
             const typeConfig = getEventType(event.type);
+            const isExpanded = expandedEvents.has(event.id);
+            const contentStr =
+              typeof event.content === "string"
+                ? event.content
+                : JSON.stringify(event.content);
             return (
-              <div
-                key={event.id}
-                className="group flex items-center px-5 py-2 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"
-                onClick={() => !event.processed && handleMarkProcessed(event.id)}
-              >
-                {/* 状态指示器 */}
+              <div key={event.id} className="border-b border-border/50">
+                {/* Event row - clickable to toggle expand */}
                 <div
-                  className={`w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0 ${
-                    event.processed ? "bg-border" : "bg-primary"
-                  }`}
-                />
-
-                {/* 类型标签 */}
-                <span
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mr-2 flex-shrink-0 uppercase tracking-wider leading-none ${typeConfig.className}`}
+                  className="group flex items-center px-5 py-2 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"
+                  onClick={() => toggleEvent(event.id)}
                 >
-                  {typeConfig.label}
-                </span>
-
-                {/* 来源 */}
-                <span className="text-[11px] text-muted-foreground mr-3 flex-shrink-0 min-w-[80px]">
-                  {event.source}
-                </span>
-
-                {/* 内容摘要 */}
-                <span className="flex-1 text-xs text-foreground truncate mr-3">
-                  {truncateContent(
-                    typeof event.content === "string"
-                      ? event.content
-                      : JSON.stringify(event.content)
+                  {/* Chevron indicator */}
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3 text-muted-foreground mr-1.5 flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-muted-foreground mr-1.5 flex-shrink-0" />
                   )}
-                </span>
 
-                {/* 标签 */}
-                {event.tags.length > 0 && (
-                  <div className="flex gap-1 mr-3 flex-shrink-0">
-                    {event.tags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-[10px] px-1 py-0.5 bg-muted text-muted-foreground rounded"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                  {/* 状态指示器 */}
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0 ${
+                      event.processed ? "bg-border" : "bg-primary"
+                    }`}
+                  />
 
-                {/* 时间 */}
-                <span className="text-[10px] text-muted-foreground flex-shrink-0 min-w-[60px] text-right mr-3">
-                  {formatTime(event.timestamp)}
-                </span>
-
-                {/* 操作按钮 */}
-                {!event.processed && (
-                  <button
-                    className="flex items-center gap-1 text-[10px] px-2 py-1 bg-background border border-border rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary flex-shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMarkProcessed(event.id);
-                    }}
+                  {/* 类型标签 */}
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mr-2 flex-shrink-0 uppercase tracking-wider leading-none ${typeConfig.className}`}
                   >
-                    <CheckCircle2 className="h-3 w-3" />
-                    已处理
-                  </button>
+                    {typeConfig.label}
+                  </span>
+
+                  {/* 来源 */}
+                  <span className="text-[11px] text-muted-foreground mr-3 flex-shrink-0 min-w-[80px]">
+                    {event.source}
+                  </span>
+
+                  {/* 内容摘要 (80 chars when collapsed) */}
+                  <span className="flex-1 text-xs text-foreground truncate mr-3">
+                    {truncateContent(contentStr, 80)}
+                  </span>
+
+                  {/* 标签 */}
+                  {event.tags.length > 0 && (
+                    <div className="flex gap-1 mr-3 flex-shrink-0">
+                      {event.tags.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-1 py-0.5 bg-muted text-muted-foreground rounded"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 时间 */}
+                  <span className="text-[10px] text-muted-foreground flex-shrink-0 min-w-[60px] text-right mr-3">
+                    {formatTime(event.timestamp)}
+                  </span>
+
+                  {/* 操作按钮 */}
+                  {!event.processed && (
+                    <button
+                      className="flex items-center gap-1 text-[10px] px-2 py-1 bg-background border border-border rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkProcessed(event.id);
+                      }}
+                    >
+                      <CheckCircle2 className="h-3 w-3" />
+                      已处理
+                    </button>
+                  )}
+                </div>
+
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div className="bg-muted/30 rounded p-2 mx-5 mb-2 text-[11px]">
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                      <span className="text-muted-foreground">时间</span>
+                      <span className="text-foreground">
+                        {new Date(event.timestamp).toLocaleString("zh-CN")}
+                      </span>
+                      <span className="text-muted-foreground">ID</span>
+                      <span className="text-foreground font-mono text-[10px] break-all">
+                        {event.id}
+                      </span>
+                      <span className="text-muted-foreground">内容</span>
+                      <span className="text-foreground whitespace-pre-wrap break-words">
+                        {contentStr}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             );

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { getEvents, type Event } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RefreshCw, Loader2, Clock, Inbox } from "lucide-react";
+import { RefreshCw, Loader2, Clock, Inbox, ChevronRight, ChevronDown } from "lucide-react";
 
 interface TimeGroup {
   label: string;
@@ -28,6 +28,19 @@ function groupByHour(events: Event[]): TimeGroup[] {
 export default function TimelineView() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -85,23 +98,48 @@ export default function TimelineView() {
             {/* Vertical timeline line */}
             <div className="absolute left-[5px] top-1 bottom-1 w-px bg-border" />
 
-            {timeGroups.map((group) => (
+            {timeGroups.map((group) => {
+              const isExpanded = expandedGroups.has(group.label);
+              return (
               <div key={group.label} className="relative mb-4 last:mb-0">
                 {/* Time marker dot */}
                 <div className="absolute -left-5 top-0.5 flex h-3 w-3 items-center justify-center">
                   <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                 </div>
 
-                {/* Time label */}
-                <div className="mb-1.5 flex items-center gap-1.5">
+                {/* Time label - clickable to toggle */}
+                <div
+                  className="mb-1.5 flex items-center gap-1.5 cursor-pointer hover:bg-muted/50 rounded px-2 py-1 transition-colors"
+                  onClick={() => toggleGroup(group.label)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleGroup(group.label);
+                    }
+                  }}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  )}
                   <Clock className="h-3 w-3 text-muted-foreground" />
                   <span className="text-[11px] font-medium text-muted-foreground">
                     {group.label}
                   </span>
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                    {group.events.length} 条事件
+                  </span>
                 </div>
 
-                {/* Events in this time group */}
-                <div className="flex flex-col">
+                {/* Events in this time group - collapsible */}
+                <div
+                  className={`flex flex-col overflow-hidden transition-all duration-200 ease-in-out ${
+                    isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                >
                   {group.events.map((event) => (
                     <div
                       key={event.id}
@@ -128,7 +166,8 @@ export default function TimelineView() {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </ScrollArea>

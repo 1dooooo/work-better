@@ -1,3 +1,4 @@
+import { ThemeProvider } from "next-themes";
 import MainWindow from "./components/layout/MainWindow";
 import CaptureWindow from "./capture/CaptureWindow";
 import MenuBar from "./components/MenuBar";
@@ -13,7 +14,11 @@ function App() {
     return <MenuBar />;
   }
 
-  return <MainWindow />;
+  return (
+    <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+      <MainWindow />
+    </ThemeProvider>
+  );
 }
 
 export default App;
