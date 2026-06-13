@@ -1,7 +1,21 @@
 # Multi-Agent Workflow Rule
 
 本项目使用多 Agent 协作开发。当完成一个开发任务（写完代码、修复 bug、重构模块）时，
-你必须执行以下 workflow：
+你必须执行以下 workflow。
+
+## ⚠️ 强制约束
+
+**禁止主 Agent 直接派发子 Agent**（dev-agent、test-agent、review-agent、product-reviewer）。
+所有代码变更的子 Agent 调度必须通过 `workflow-runner` 进行。
+
+```
+✅ 正确：主 Agent → workflow-runner → workflow-runner 派发子 Agent
+❌ 禁止：主 Agent → dev-agent / test-agent / review-agent（直接调用）
+```
+
+workflow-runner 收到任务后自行判断是否需要多 Agent：
+- 简单变更 → workflow-runner 直接完成
+- 复杂变更 → 按 spec 派发子 Agent
 
 ## 触发条件
 

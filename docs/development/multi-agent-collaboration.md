@@ -22,12 +22,13 @@ status: active
 
 ## Agent 职责矩阵
 
-| Agent | 职责 | 写代码 | 写测试 | 审查代码 | 编排调度 |
-|-------|------|--------|--------|---------|---------|
-| **dev-agent** | 功能开发 + L1-L2 测试 | ✅ | ✅ (L1-L2) | ❌ | ❌ |
-| **test-agent** | 测试执行 + L4-L5 测试生成 | ❌ | ✅ (L4-L5) | ❌ | ❌ |
-| **review-agent** | 代码审查 + H3-H5 安全测试 | ❌ | ✅ (H3-H5) | ✅ | ❌ |
-| **workflow-runner** | 流程编排 + 重试管理 + 报告 | ❌ | ❌ | ❌ | ✅ |
+| Agent | 职责 | 写代码 | 写测试 | 审查代码 | 产品审查 | 编排调度 |
+|-------|------|--------|--------|---------|---------|---------|
+| **workflow-runner** | 流程编排 + 重试管理 + 报告 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **dev-agent** | 功能开发 + L1-L2 测试 | ✅ | ✅ (L1-L2) | ❌ | ❌ | ❌ |
+| **test-agent** | 测试执行 + L4-L5 测试生成 | ❌ | ✅ (L4-L5) | ❌ | ❌ | ❌ |
+| **review-agent** | 代码审查 + H3-H5 安全测试 | ❌ | ✅ (H3-H5) | ✅ | ❌ | ❌ |
+| **product-reviewer** | 产品定义符合性审查 | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### 职责边界规则
 
@@ -36,37 +37,31 @@ status: active
 - review-agent **不负责** 代码修改和功能测试
 - workflow-runner **不负责** 任何代码/测试/审查工作
 
-## 协作流程
+## 协作流程（v2 并行版）
 
 ```
 用户下达开发任务
     │
     ▼
-dev-agent（独立会话）
-    │ 写代码 + 写 L1-L2 测试
-    │ 写入 .workflow/artifacts/{task_id}/dev-output.json
+workflow-runner（编排入口）
     │
-    ▼ 触发 workflow-runner
+    │ 阶段 1：开发（顺序）
+    ├── 触发 dev-agent
+    │   └── 写代码 + 写 L1-L2 测试
+    │   └── 写入 dev-output.json
     │
-workflow-runner（独立会话）
+    │ 阶段 2：并行审查
+    ├── 同时触发 ─┬─ test-agent（测试 + 安全扫描）
+    │            ├─ review-agent（代码审查 + H3-H5）
+    │            └─ product-reviewer（产品符合性审查）
     │
-    ├── 读取 dev-output.json
-    ├── 推断 gate level
+    │ 阶段 3：汇总
+    ├── 收集三个 agent 的输出
+    ├── 检查结果
+    │   ├── 全部通过 → 写入 final-report.json (done)
+    │   └── 有失败 → 触发 dev-agent 修复 → 回到阶段 2
     │
-    ├── Gate 1: 触发 test-agent 运行 L1 + H1-H2
-    │   └── 失败 → 通知 dev-agent 修复（附 test-report）
-    │
-    ├── Gate 2: 触发 test-agent 运行 L2
-    │   └── 失败 → 通知 dev-agent 修复
-    │
-    ├── L2 通过后并行:
-    │   ├── 触发 review-agent（代码审查 + H3-H5）
-    │   └── 触发 test-agent（L4 + L5）
-    │
-    ├── 汇总结果
-    │   └── 有失败 → 按重试策略处理或上报
-    │
-    └── 写入 final-report.json
+    └── 重试超限 → escalate（上报用户）
 ```
 
 ## A2A 通信机制
@@ -77,9 +72,10 @@ workflow-runner（独立会话）
 
 | 文件 | 写入方 | 读取方 | Schema |
 |------|--------|--------|--------|
-| `dev-output.json` | dev-agent | workflow, test, review | [dev-output.schema.json](../../.workflow/templates/dev-output.schema.json) |
+| `dev-output.json` | dev-agent | workflow, test, review, product | [dev-output.schema.json](../../.workflow/templates/dev-output.schema.json) |
 | `test-report.json` | test-agent | workflow, dev | [test-report.schema.json](../../.workflow/templates/test-report.schema.json) |
 | `review-report.json` | review-agent | workflow | [review-report.schema.json](../../.workflow/templates/review-report.schema.json) |
+| `product-review.json` | product-reviewer | workflow, dev | [product-review.schema.json](../../.workflow/templates/product-review.schema.json) |
 | `final-report.json` | workflow-runner | 用户 | [final-report.schema.json](../../.workflow/templates/final-report.schema.json) |
 
 ### 通信规则

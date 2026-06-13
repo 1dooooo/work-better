@@ -99,6 +99,26 @@ function resolveInvoke(command: string) {
     save_feishu_mode: undefined,
     get_feishu_chat_id: "chat-abc-123",
     save_feishu_chat_id: undefined,
+    get_collector_groups: [
+      {
+        id: "feishu",
+        name: "飞书采集器",
+        enabled: true,
+        collectors: [
+          { id: "feishu", name: "飞书采集器", enabled: true, health_level: "healthy", health_message: null },
+        ],
+      },
+      {
+        id: "git",
+        name: "Git 采集器",
+        enabled: true,
+        collectors: [
+          { id: "git", name: "Git 采集器", enabled: true, health_level: "unhealthy", health_message: "不可用" },
+        ],
+      },
+    ],
+    enable_collector_group: undefined,
+    disable_collector_group: undefined,
     list_scheduled_tasks: MOCK_TASKS,
   };
   return map[command] ?? null;
@@ -278,16 +298,22 @@ describe("E1: Tauri invoke Integration", () => {
 
   describe("E1-06: getCollectorStatuses → displays collector health", () => {
     it("renders collector list with health indicators", async () => {
+      const user = userEvent.setup();
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
 
       await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith("get_collector_statuses");
+        expect(mockInvoke).toHaveBeenCalledWith("get_collector_groups");
       });
 
+      // Expand both groups to see collector-level health badges
       await waitFor(() => {
         expect(screen.getByText("飞书采集器")).toBeInTheDocument();
-        expect(screen.getByText("Git 采集器")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("飞书采集器"));
+      await user.click(screen.getByText("Git 采集器"));
+
+      await waitFor(() => {
         expect(screen.getByText("正常")).toBeInTheDocument();
         expect(screen.getByText("异常")).toBeInTheDocument();
       });
@@ -312,18 +338,23 @@ describe("E1: Tauri invoke Integration", () => {
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
 
-      // Wait for collectors to load
+      // Wait for collectors to load and expand the feishu group
       await waitFor(() => {
         expect(screen.getByText("飞书采集器")).toBeInTheDocument();
       });
+      await user.click(screen.getByText("飞书采集器"));
 
-      // All collectors are enabled in mock, so click to disable one first
+      // After expansion: switches[0] = feishu group, switches[1] = feishu collector
+      await waitFor(() => {
+        const switches = screen.getAllByRole("switch");
+        expect(switches.length).toBeGreaterThanOrEqual(2);
+      });
       const switches = screen.getAllByRole("switch");
-      const feishuSwitch = switches[0];
-      expect(feishuSwitch).toBeChecked();
+      const collectorSwitch = switches[1]; // collector-level switch
+      expect(collectorSwitch).toBeChecked();
 
-      // Click to disable
-      await user.click(feishuSwitch);
+      // Click to disable the collector
+      await user.click(collectorSwitch);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("disable_collector", { id: "feishu" });
@@ -339,17 +370,22 @@ describe("E1: Tauri invoke Integration", () => {
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
 
-      // Wait for collectors to load
+      // Wait for collectors to load and expand the feishu group
       await waitFor(() => {
         expect(screen.getByText("飞书采集器")).toBeInTheDocument();
       });
+      await user.click(screen.getByText("飞书采集器"));
 
-      // Find the switch for the Feishu collector (first switch, initially checked)
+      // After expansion: switches[0] = feishu group, switches[1] = feishu collector
+      await waitFor(() => {
+        const switches = screen.getAllByRole("switch");
+        expect(switches.length).toBeGreaterThanOrEqual(2);
+      });
       const switches = screen.getAllByRole("switch");
-      const feishuSwitch = switches[0];
-      expect(feishuSwitch).toBeChecked();
+      const collectorSwitch = switches[1]; // collector-level switch
+      expect(collectorSwitch).toBeChecked();
 
-      await user.click(feishuSwitch);
+      await user.click(collectorSwitch);
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith("disable_collector", { id: "feishu" });
@@ -368,8 +404,16 @@ describe("E1: Tauri invoke Integration", () => {
     });
 
     it("shows health status in CollectorSettings UI", async () => {
+      const user = userEvent.setup();
       const { default: CollectorSettings } = await import("../../src/components/settings/CollectorSettings");
       render(<CollectorSettings />);
+
+      // Expand both groups to see collector-level health badges
+      await waitFor(() => {
+        expect(screen.getByText("飞书采集器")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("飞书采集器"));
+      await user.click(screen.getByText("Git 采集器"));
 
       await waitFor(() => {
         // "正常" is the healthy indicator for feishu collector

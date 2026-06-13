@@ -25,7 +25,7 @@ status: active
 
 #### 现状
 
-`test/e2e/helpers.ts` 中的 `injectTauriMock()` 在浏览器里注入了完整的 `__TAURI_INTERNALS__` 假实现（约 200 行 switch-case）。所有 Playwright E2E 测试的 `invoke()` 调用都被这个 JS mock 拦截，真实 Rust 后端从未被执行。
+`tests/ts/e2e/helpers.ts` 中的 `injectTauriMock()` 在浏览器里注入了完整的 `__TAURI_INTERNALS__` 假实现（约 200 行 switch-case）。所有 Playwright E2E 测试的 `invoke()` 调用都被这个 JS mock 拦截，真实 Rust 后端从未被执行。
 
 #### 具体表现
 

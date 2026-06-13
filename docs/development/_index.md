@@ -13,3 +13,4 @@ status: active
 |------|------|
 | [setup.md](setup.md) | 开发环境搭建与工作流指引 |
 | [multi-agent-collaboration.md](multi-agent-collaboration.md) | 多 Agent 协作开发规范 |
+| [custom-agents.md](custom-agents.md) | 自定义 Agent 注册指南 |

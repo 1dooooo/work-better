@@ -23,4 +23,4 @@ status: active
 
 ## 废弃文档
 
-`*.deprecated.md` 文件保留供参考，不再维护。
+已移入 `deprecated/` 子目录，保留供参考，不再维护。

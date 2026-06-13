@@ -3,24 +3,26 @@ title: 测试文档索引
 type: index
 domain: testing
 created: 2026-06-06
-updated: 2026-06-07
+updated: 2026-06-12
 status: active
 ---
 
 # 测试文档索引
 
-## 架构与规范
+## 核心文档
 
 | 文档 | 说明 |
 |------|------|
-| [architecture.md](architecture.md) | 总体架构（顶层文档） |
+| [architecture.md](architecture.md) | 总体架构、框架选型、设计目标 |
 | [conventions.md](conventions.md) | 命名、组织、编写规范 |
-| [layers/overview.md](layers/overview.md) | 层级定义与边界划分 |
+| [implementation-progress.md](implementation-progress.md) | 测试实施进度 |
+| [test-effectiveness-audit.md](test-effectiveness-audit.md) | 测试有效性审计报告 |
 
 ## 层级指南
 
 | 文档 | 说明 |
 |------|------|
+| [layers/overview.md](layers/overview.md) | 层级定义与边界划分 |
 | [layers/unit-rust.md](layers/unit-rust.md) | Rust 单元测试 |
 | [layers/unit-frontend.md](layers/unit-frontend.md) | 前端单元测试 |
 | [layers/integration-rust.md](layers/integration-rust.md) | Rust 集成测试 |
@@ -39,42 +41,33 @@ status: active
 | [execution/parallelization.md](execution/parallelization.md) | 并行执行策略 |
 | [execution/migration.md](execution/migration.md) | 迁移与实施路线图 |
 
-## 多 Agent 协作
-
-| 文档 | 说明 |
-|------|------|
-| [../development/multi-agent-collaboration.md](../development/multi-agent-collaboration.md) | 多 Agent 协作开发规范 |
-| [../../.workflow/specs/dev-test-review.yaml](../../.workflow/specs/dev-test-review.yaml) | Workflow spec 定义 |
-
-## 测试运行指南
+## 测试运行
 
 | 门控 | 命令 | 耗时 |
 |------|------|------|
 | Fast | `cargo nextest run --workspace` | <2min |
 | Deep | `pnpm test` | <10min |
 | Full | `pnpm test:all` | <15min |
-| Nightly | CI scheduled pipeline | <20min |
 
-## 导航
+## 测试框架
 
-| 资源 | 位置 |
+| 侧 | 框架 | 用途 |
+|------|------|------|
+| Rust | rstest | 参数化测试 |
+| Rust | insta | 快照/契约测试 |
+| Rust | cucumber-rs | BDD 验收测试 |
+| TypeScript | Vitest | 单元/集成测试 |
+| TypeScript | Playwright | E2E 测试 |
+| TypeScript | @testing-library/react | 组件测试 |
+
+## 相关文档
+
+| 文档 | 位置 |
 |------|------|
 | 测试 Codemap | [CODEMAPS/testing.codemap.md](CODEMAPS/testing.codemap.md) |
-| CI 配置 | `.github/workflows/test.yml` |
-| Runbook | `.claude/plans/testing-redesign.md` |
-| Workflow Spec | `.workflow/specs/dev-test-review.yaml` |
-| Artifact Schemas | `.workflow/templates/` |
-
-## 当前状态（2026-06-07 验证）
-
-- 总测试函数数: 1383 通过 / 0 失败 / 11 跳过
-- Rust 侧: 1204 个测试函数（wb-ai:122, wb-collector:73, wb-core:48, wb-processor:387, wb-scheduler:71, wb-storage:131, 集成测试:~372）
-- TypeScript 侧: 164 个测试函数（vitest 18 个测试文件）
-- E2E (Playwright): 15 通过 / 11 跳过（F3 处理管线 UI + F5 调度器接入未实现）
-- H1-H2 安全扫描: 通过（npm audit 零漏洞，无敏感数据泄露）
-- H3-H5 安全测试: 设计完成，待实现
-- G 层验收场景: 182 个场景已定义（scenarios/catalog.md），cucumber-rs 实现有 regex 冲突待修复，详见 #fix-cucumber-regex
+| 多 Agent 协作 | [../development/multi-agent-collaboration.md](../development/multi-agent-collaboration.md) |
+| Workflow Spec | [../../.workflow/specs/dev-test-review.yaml](../../.workflow/specs/dev-test-review.yaml) |
 
 ## 废弃文档
 
-`*.deprecated.md` 文件保留供参考，详见各目录。
+`*.deprecated.md` 文件已移入各目录的 `deprecated/` 子目录，保留供参考，不再维护。

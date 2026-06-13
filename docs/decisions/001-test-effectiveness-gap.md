@@ -31,7 +31,7 @@ related:
 
 ### E2E 测试（L4）测的是 mock 行为
 
-`test/e2e/helpers.ts` 通过 `injectTauriMock()` 注入完整 `__TAURI_INTERNALS__` 假实现，所有 `invoke()` 被 JS mock 拦截，真实 Rust 命令从未执行。
+`tests/ts/e2e/helpers.ts` 通过 `injectTauriMock()` 注入完整 `__TAURI_INTERNALS__` 假实现，所有 `invoke()` 被 JS mock 拦截，真实 Rust 命令从未执行。
 
 ### 前端单元测试（L1-D）验证渲染而非行为
 

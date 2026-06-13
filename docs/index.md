@@ -15,7 +15,7 @@ status: active
 | 架构 | [architecture/index.md](architecture/index.md) | 四层架构、模块详情 |
 | CODEMAP | [CODEMAPS/_index.md](CODEMAPS/_index.md) | 概念层→代码层桥梁，开发时首选入口 |
 | 决策 | [decisions/index.md](decisions/index.md) | ADR 决策记录 |
-| 功能 | [features/index.md](features/index.md) | 功能清单与状态 |
+| 功能 | [features/index.md](features/index.md) | 功能清单与状态（108 个功能，F1-F6） |
 | 开发 | [development/setup.md](development/setup.md) | 环境搭建与工作流指引 |
 | 多 Agent 协作 | [development/multi-agent-collaboration.md](development/multi-agent-collaboration.md) | 多 Agent 协作开发规范 |
 | 自定义 Agent | [development/custom-agents.md](development/custom-agents.md) | 自定义 Agent 注册指南 |

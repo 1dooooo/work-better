@@ -8,15 +8,8 @@ status: active
 
 ## 概述
 
-本项目使用多 Agent 协作开发模式，需要以下自定义 agent：
-
-| Agent | 职责 |
-|-------|------|
-| dev-agent | 功能开发 + L1-L2 测试 |
-| product-reviewer | 产品审查，判断功能是否符合预期，决策 bug/feature |
-| test-agent | 测试执行 + L4-L5 测试生成 |
-| review-agent | 代码审查 + H3-H5 安全测试 |
-| workflow-runner | 流程编排 + 重试管理 + 报告 |
+本项目使用多 Agent 协作开发模式，需要注册 5 个自定义 agent（dev-agent、test-agent、review-agent、product-reviewer、workflow-runner）。
+角色定义见 [Agent Guide](/agent.md)。
 
 ## 注册方式
 

@@ -12,8 +12,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["./test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+    setupFiles: ["./tests/ts/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "tests/ts/**/*.test.{ts,tsx}"],
     reporters: ["json", "default"],
     outputFile: "./test-results/vitest-results.json",
   },
