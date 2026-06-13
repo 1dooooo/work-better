@@ -29,12 +29,23 @@ agents:
   dev-agent:
     role: developer
     description: 写代码 + 写 L1-L2 测试
+    config: .claude/agents/dev-agent.md
     outputs:
       - .workflow/artifacts/{task_id}/dev-output.json
+
+  product-reviewer:
+    role: product_owner
+    description: 产品审查，判断功能是否符合项目预期，决策 bug 还是 feature
+    config: .claude/agents/product-reviewer.md
+    inputs:
+      - .workflow/artifacts/{task_id}/dev-output.json
+    outputs:
+      - .workflow/artifacts/{task_id}/product-review.json
 
   test-agent:
     role: tester
     description: 运行测试 + 从产品文档生成 L4-L5 测试
+    config: .claude/agents/test-agent.md
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:
@@ -43,6 +54,7 @@ agents:
   review-agent:
     role: reviewer
     description: 代码审查 + 生成 H3-H5 安全测试
+    config: .claude/agents/review-agent.md
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:
@@ -114,7 +126,27 @@ flow:
     - step: infer_gate
       description: 根据 changed_files 推断 gate level
 
-    - step: run_L1_H
+    - step: product_review
+      description: 触发 product-reviewer 从产品定义角度审查功能
+      agent: product-reviewer
+      timeout: 1m
+      outputs: product-review.json
+
+  check_product_review:
+    - condition: verdict_is [pass]
+      goto: run_L1_H
+    - condition: verdict_is [fail] and category_is [bug]
+      goto: handle_failure
+      with:
+        source: product-reviewer
+        reason: "功能实现不符合产品定义，需要修复"
+    - condition: verdict_is [fail] and category_is [new_feature, gap, design_debt]
+      goto: run_L1_H
+      with:
+        note: "产品问题已记录，不阻塞测试流程"
+
+  run_L1_H:
+    - step: run_L1_H_tests
       description: 触发 test-agent 运行 L1 单元测试 + H1-H2 安全扫描
       agent: test-agent
       parallel: true              # L1 和 H 并行
@@ -257,8 +289,13 @@ artifacts:
     dev_output:
       path: dev-output.json
       writer: dev-agent
-      readers: [workflow-runner, test-agent, review-agent]
+      readers: [workflow-runner, product-reviewer, test-agent, review-agent]
       schema: .workflow/templates/dev-output.schema.json
+    product_review:
+      path: product-review.json
+      writer: product-reviewer
+      readers: [workflow-runner, dev-agent]
+      schema: .workflow/templates/product-review.schema.json
     test_report:
       path: test-report.json
       writer: test-agent

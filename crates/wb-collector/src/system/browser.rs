@@ -1,4 +1,6 @@
-//! Chrome 浏览历史采集器
+//! 浏览器历史采集器
+//!
+//! 支持 Chromium 系浏览器（Chrome、Edge、夸克、Chromium）的历史记录采集。
 
 use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
@@ -8,7 +10,7 @@ use wb_core::event::{Confidence, Event, EventType, Source};
 
 use crate::traits::{Collector, HealthStatus};
 
-/// Chrome 历史记录条目
+/// 浏览器历史记录条目
 #[derive(Debug, Serialize, Deserialize)]
 struct BrowserVisit {
     url: String,
@@ -16,13 +18,14 @@ struct BrowserVisit {
     visit_time: DateTime<Utc>,
 }
 
-/// Chrome 浏览历史采集器
+/// Chromium 浏览历史采集器
 ///
-/// 读取 Chrome 的 SQLite 历史数据库。
-/// 注意：Chrome 运行时数据库会被锁定，采集器会先复制到临时文件再读取。
+/// 读取 Chromium 系浏览器的 SQLite 历史数据库。
+/// 支持自动检测 Chrome、Edge、夸克等浏览器。
+/// 注意：浏览器运行时数据库会被锁定，采集器会先复制到临时文件再读取。
 /// URL 可能包含敏感信息，支持脱敏处理。
 pub struct BrowserHistoryCollector {
-    /// Chrome 数据库路径（默认 `~/Library/Application Support/Google/Chrome/Default/History`）
+    /// 浏览器数据库路径（自动检测或手动指定）
     db_path: String,
     /// 单次最大采集数量
     limit: u32,
@@ -37,17 +40,41 @@ impl Default for BrowserHistoryCollector {
 }
 
 impl BrowserHistoryCollector {
-    /// 创建真实采集器（使用默认 Chrome 路径）
+    /// 创建真实采集器（自动检测可用浏览器）
     pub fn new() -> Self {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
+        let db_path = Self::detect_browser_db();
         Self {
-            db_path: format!(
-                "{}/Library/Application Support/Google/Chrome/Default/History",
-                home
-            ),
+            db_path,
             limit: 100,
             mock: false,
         }
+    }
+
+    /// 自动检测可用的浏览器历史数据库
+    ///
+    /// 按优先级尝试：Chrome > Edge > 夸克 > Chromium
+    fn detect_browser_db() -> String {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
+
+        let candidates = vec![
+            // Chrome
+            format!("{}/Library/Application Support/Google/Chrome/Default/History", home),
+            // Edge
+            format!("{}/Library/Application Support/Microsoft Edge/Default/History", home),
+            // 夸克浏览器
+            format!("{}/Library/Application Support/Quark/Default/History", home),
+            // Chromium
+            format!("{}/Library/Application Support/Chromium/Default/History", home),
+        ];
+
+        for path in &candidates {
+            if std::path::Path::new(path).exists() {
+                return path.clone();
+            }
+        }
+
+        // 如果都没找到，返回 Chrome 路径（会在 collect 时返回空）
+        candidates[0].clone()
     }
 
     /// 创建 Mock 采集器（用于测试）
@@ -73,17 +100,22 @@ impl BrowserHistoryCollector {
         self
     }
 
-    /// 从 Chrome 历史数据库读取浏览记录
+    /// 从浏览器历史数据库读取浏览记录
     fn query_history(&self) -> Result<Vec<BrowserVisit>> {
         if self.mock {
             return Ok(Self::mock_visits());
         }
 
-        // 复制数据库到临时文件（Chrome 运行时会锁定数据库）
-        let tmp_path = format!("/tmp/wb-chrome-history-{}.db", std::process::id());
+        // 检查数据库文件是否存在，不存在则返回空列表
+        if !std::path::Path::new(&self.db_path).exists() {
+            return Ok(Vec::new());
+        }
+
+        // 复制数据库到临时文件（浏览器运行时会锁定数据库）
+        let tmp_path = format!("/tmp/wb-browser-history-{}.db", std::process::id());
         std::fs::copy(&self.db_path, &tmp_path).map_err(|e| {
             WbError::Collector(format!(
-                "Failed to copy Chrome history DB from {}: {}",
+                "Failed to copy browser history DB from {}: {}",
                 self.db_path, e
             ))
         })?;
@@ -92,7 +124,7 @@ impl BrowserHistoryCollector {
             &tmp_path,
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
         )
-        .map_err(|e| WbError::Collector(format!("Failed to open Chrome history DB: {}", e)))?;
+        .map_err(|e| WbError::Collector(format!("Failed to open browser history DB: {}", e)))?;
 
         let limit = self.limit as i64;
         let mut stmt = conn
@@ -105,17 +137,17 @@ impl BrowserHistoryCollector {
             )
             .map_err(|e| WbError::Collector(format!("Failed to prepare query: {}", e)))?;
 
-        // Chrome 使用 WebKit 时间戳（微秒，从 1601-01-01 开始）
+        // Chromium 系浏览器使用 WebKit 时间戳（微秒，从 1601-01-01 开始）
         let epoch_diff: i64 = 116_444_736_000_000_000; // 1601-01-01 到 1970-01-01 的微秒数
 
         let visits = stmt
             .query_map(rusqlite::params![limit], |row| {
                 let url: String = row.get(0)?;
                 let title: String = row.get(1)?;
-                let chrome_time: i64 = row.get(2)?;
+                let chromium_time: i64 = row.get(2)?;
 
-                // 转换 Chrome 时间戳为 Unix 时间戳（微秒）
-                let unix_micros = chrome_time - epoch_diff;
+                // 转换 Chromium 时间戳为 Unix 时间戳（微秒）
+                let unix_micros = chromium_time - epoch_diff;
                 let unix_secs = unix_micros / 1_000_000;
                 let visit_time = Utc.timestamp_opt(unix_secs, 0).single().unwrap_or_default();
 
@@ -154,6 +186,12 @@ impl BrowserHistoryCollector {
                 visit_time: Utc::now(),
             },
         ]
+    }
+
+    /// 获取当前使用的浏览器路径（用于调试）
+    #[allow(dead_code)]
+    pub fn db_path(&self) -> &str {
+        &self.db_path
     }
 
     /// 将 BrowserVisit 转换为 Event
@@ -195,7 +233,15 @@ impl Collector for BrowserHistoryCollector {
     }
 
     fn name(&self) -> &str {
-        "Chrome 浏览历史采集器"
+        "浏览器历史"
+    }
+
+    fn group_id(&self) -> &str {
+        "system"
+    }
+
+    fn group_name(&self) -> &str {
+        "系统"
     }
 
     fn version(&self) -> &str {
@@ -217,7 +263,7 @@ impl Collector for BrowserHistoryCollector {
         if std::path::Path::new(&self.db_path).exists() {
             HealthStatus::healthy()
         } else {
-            HealthStatus::unhealthy(format!("Chrome history DB not found: {}", self.db_path))
+            HealthStatus::degraded(format!("未找到浏览器历史数据库: {}", self.db_path))
         }
     }
 }
@@ -251,7 +297,9 @@ mod tests {
     fn test_collector_metadata() {
         let collector = BrowserHistoryCollector::mock();
         assert_eq!(collector.id(), "system.browser_history");
-        assert_eq!(collector.name(), "Chrome 浏览历史采集器");
+        assert_eq!(collector.name(), "浏览器历史");
+        assert_eq!(collector.group_id(), "system");
+        assert_eq!(collector.group_name(), "系统");
         assert_eq!(collector.version(), "0.1.0");
     }
 

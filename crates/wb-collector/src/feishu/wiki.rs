@@ -63,11 +63,19 @@ impl FeishuWikiCollector {
 #[async_trait]
 impl Collector for FeishuWikiCollector {
     fn id(&self) -> &str {
-        "feishu-wiki"
+        "feishu.wiki"
     }
 
     fn name(&self) -> &str {
-        "飞书知识库采集器"
+        "知识库"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

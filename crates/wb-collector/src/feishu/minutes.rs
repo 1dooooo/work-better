@@ -65,11 +65,19 @@ impl FeishuMinutesCollector {
 #[async_trait]
 impl Collector for FeishuMinutesCollector {
     fn id(&self) -> &str {
-        "feishu-minutes"
+        "feishu.minutes"
     }
 
     fn name(&self) -> &str {
-        "飞书妙记采集器"
+        "妙记"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

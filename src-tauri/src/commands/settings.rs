@@ -506,6 +506,7 @@ mod tests {
 
         let collectors = CollectorConfig {
             enabled,
+            group_enabled: HashMap::new(),
             feishu_mode: "cli".into(),
             feishu_chat_id: None,
         };
@@ -546,6 +547,7 @@ mod tests {
 
         let collectors = CollectorConfig {
             enabled,
+            group_enabled: HashMap::new(),
             feishu_mode: "cli".into(),
             feishu_chat_id: None,
         };

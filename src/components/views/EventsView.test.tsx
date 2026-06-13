@@ -25,6 +25,7 @@ vi.mock("../../lib/tauri", () => ({
       tags: ["test"],
       related_ids: [],
       attachments: [],
+      processed: false,
     },
   ]),
   markEventProcessed: vi.fn().mockResolvedValue(undefined),

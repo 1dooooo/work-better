@@ -49,6 +49,14 @@ impl Collector for MockCollector {
         &self.name
     }
 
+    fn group_id(&self) -> &str {
+        "test"
+    }
+
+    fn group_name(&self) -> &str {
+        "测试"
+    }
+
     fn version(&self) -> &str {
         "0.1.0"
     }

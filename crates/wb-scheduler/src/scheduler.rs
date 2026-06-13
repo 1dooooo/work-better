@@ -13,6 +13,12 @@ use crate::dependency::DependencyGraph;
 use crate::resource;
 use crate::task::{ScheduledTask, TaskResult, TaskStatus};
 
+/// 任务完成回调类型
+///
+/// 每次任务执行完成后（含重试），调度器会调用此回调。
+/// 回调在调度器的异步上下文中执行，不应阻塞太久。
+pub type OnTaskComplete = Arc<dyn Fn(&TaskResult) + Send + Sync>;
+
 /// Runtime state for a registered task.
 struct TaskState {
     task: Arc<dyn ScheduledTask>,
@@ -42,6 +48,7 @@ struct SharedState {
     paused: RwLock<bool>,
     dependency_graph: RwLock<DependencyGraph>,
     budget: RwLock<u32>,
+    on_task_complete: RwLock<Option<OnTaskComplete>>,
 }
 
 /// The central scheduler that manages and executes scheduled tasks.
@@ -59,9 +66,20 @@ impl Scheduler {
                 paused: RwLock::new(false),
                 dependency_graph: RwLock::new(DependencyGraph::new()),
                 budget: RwLock::new(100),
+                on_task_complete: RwLock::new(None),
             }),
             loop_handle: RwLock::new(None),
         }
+    }
+
+    /// Set a callback that fires after each task execution (including retries).
+    ///
+    /// The callback receives the final `TaskResult` and is called from the
+    /// scheduler's async context. Keep the callback lightweight to avoid
+    /// blocking subsequent task executions.
+    pub async fn set_on_complete(&self, callback: OnTaskComplete) {
+        let mut guard = self.state.on_task_complete.write().await;
+        *guard = Some(callback);
     }
 
     /// Register a task with a default 60-second execution interval.
@@ -153,6 +171,12 @@ impl Scheduler {
             let mut tick = tokio::time::interval(Duration::from_secs(1));
             loop {
                 tick.tick().await;
+
+                // Clone the callback for use in this tick
+                let on_complete: Option<OnTaskComplete> = {
+                    let guard = state.on_task_complete.read().await;
+                    guard.as_ref().map(Arc::clone)
+                };
 
                 // Skip if paused
                 {
@@ -248,11 +272,18 @@ impl Scheduler {
                     let result = execute_with_retry(&task, sla_ms, retry_limit).await;
 
                     // Update state
-                    let mut tasks_guard = state.tasks.write().await;
-                    if let Some(ts) = tasks_guard.get_mut(&id) {
-                        ts.last_run = Some(Utc::now());
-                        ts.last_status = Some(result.status.clone());
-                        ts.last_result = Some(result);
+                    {
+                        let mut tasks_guard = state.tasks.write().await;
+                        if let Some(ts) = tasks_guard.get_mut(&id) {
+                            ts.last_run = Some(Utc::now());
+                            ts.last_status = Some(result.status.clone());
+                            ts.last_result = Some(result.clone());
+                        }
+                    }
+
+                    // Fire the completion callback (outside the lock)
+                    if let Some(ref cb) = on_complete {
+                        cb(&result);
                     }
                 }
             }
@@ -330,11 +361,22 @@ impl Scheduler {
         let (task, sla_ms, retry_limit) = task?;
         let result = execute_with_retry(&task, sla_ms, retry_limit).await;
 
-        let mut tasks = self.state.tasks.write().await;
-        if let Some(ts) = tasks.get_mut(id) {
-            ts.last_run = Some(Utc::now());
-            ts.last_status = Some(result.status.clone());
-            ts.last_result = Some(result.clone());
+        {
+            let mut tasks = self.state.tasks.write().await;
+            if let Some(ts) = tasks.get_mut(id) {
+                ts.last_run = Some(Utc::now());
+                ts.last_status = Some(result.status.clone());
+                ts.last_result = Some(result.clone());
+            }
+        }
+
+        // Fire the completion callback
+        let on_complete: Option<OnTaskComplete> = {
+            let guard = self.state.on_task_complete.read().await;
+            guard.as_ref().map(Arc::clone)
+        };
+        if let Some(ref cb) = on_complete {
+            cb(&result);
         }
 
         Some(result)
@@ -389,6 +431,7 @@ async fn execute_once(task: &Arc<dyn ScheduledTask>, sla_ms: u64, retry_count: u
             let duration_ms = (finished_at - started_at).num_milliseconds().max(0) as u64;
             TaskResult {
                 task_id: task.id().to_string(),
+                task_name: task.name().to_string(),
                 status: TaskStatus::Timeout,
                 started_at,
                 finished_at,
@@ -453,6 +496,7 @@ mod tests {
             if attempt < self.max_failures {
                 TaskResult {
                     task_id: self.id.clone(),
+                    task_name: self.name().to_string(),
                     status: TaskStatus::Failed,
                     started_at: now,
                     finished_at: now,
@@ -464,6 +508,7 @@ mod tests {
             } else {
                 TaskResult {
                     task_id: self.id.clone(),
+                    task_name: self.name().to_string(),
                     status: TaskStatus::Success,
                     started_at: now,
                     finished_at: now,
@@ -506,6 +551,7 @@ mod tests {
             let now = Utc::now();
             TaskResult {
                 task_id: self.id.clone(),
+                task_name: self.name().to_string(),
                 status: TaskStatus::Success,
                 started_at: now,
                 finished_at: now,
@@ -547,6 +593,7 @@ mod tests {
             let now = Utc::now();
             TaskResult {
                 task_id: self.id.clone(),
+                task_name: self.name().to_string(),
                 status: TaskStatus::Failed,
                 started_at: now,
                 finished_at: now,
@@ -590,6 +637,7 @@ mod tests {
             let now = Utc::now();
             TaskResult {
                 task_id: self.id.clone(),
+                task_name: self.name().to_string(),
                 status: TaskStatus::Success,
                 started_at: now,
                 finished_at: now,

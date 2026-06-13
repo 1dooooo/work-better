@@ -66,11 +66,19 @@ impl FeishuMeetingCollector {
 #[async_trait]
 impl Collector for FeishuMeetingCollector {
     fn id(&self) -> &str {
-        "feishu-meeting"
+        "feishu.meetings"
     }
 
     fn name(&self) -> &str {
-        "飞书会议采集器"
+        "会议"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

@@ -15,9 +15,27 @@
 | Agent | 职责 |
 |-------|------|
 | dev-agent | 功能开发 + L1-L2 测试 |
+| product-reviewer | 产品审查，判断功能是否符合预期，决策 bug/feature |
 | test-agent | 测试执行 + L4-L5 测试生成 |
 | review-agent | 代码审查 + H3-H5 安全测试 |
 | workflow-runner | 流程编排 + 重试管理 + 报告 |
+
+### ⚠️ 强制触发规则
+
+**当你完成代码修改后，必须检查是否触发 workflow：**
+
+触发条件（满足任一即触发）：
+- 修改了 `crates/` 下的 Rust 代码
+- 修改了 `src/` 下的 TypeScript 代码
+- 修改了 `src-tauri/` 下的 Tauri 命令代码
+- 新增或删除了功能文件
+
+不触发：仅修改文档 (`docs/`)、配置文件 (`.config/`)、脚本 (`scripts/`)
+
+触发后必须执行：
+1. 告知用户"检测到代码变更，建议执行 workflow"
+2. 询问用户是否执行 `./scripts/create-dev-output.sh <task_id>` 和 `./scripts/run-workflow.sh <task_id>`
+3. 如果用户同意，执行并检查结果
 
 完整规范见 [多 Agent 协作开发规范](docs/development/multi-agent-collaboration.md)。
 Workflow 定义见 [.workflow/specs/dev-test-review.yaml](.workflow/specs/dev-test-review.yaml)。
@@ -51,3 +69,34 @@ Workflow 定义见 [.workflow/specs/dev-test-review.yaml](.workflow/specs/dev-te
 → [文档规范](docs/conventions.md) | [文档索引](docs/index.md) | [ADR 决策记录](docs/decisions/)
 → [CODEMAP 索引](docs/CODEMAPS/_index.md) | [多 Agent 协作规范](docs/development/multi-agent-collaboration.md)
 → [Workflow Spec](.workflow/specs/dev-test-review.yaml)
+
+## 自定义 Agent 注册
+
+本项目使用自定义 agent 来执行多 Agent 协作 workflow。由于 Claude Code 的限制，自定义 agent 需要通过以下方式注册：
+
+### 方式 1：启动时传入（推荐）
+
+```bash
+# 使用启动脚本
+./scripts/start-claude-with-agents.sh
+
+# 或手动传入
+claude --agents "$(cat ~/.claude/agents.json)"
+```
+
+### 方式 2：使用通用 agent + 角色 prompt
+
+当自定义 agent 不可用时，使用 `general-purpose` agent 并在 prompt 中指定角色：
+
+```
+Agent type: general-purpose
+prompt: "你是 [agent 角色]。职责：[具体职责]..."
+```
+
+### Agent 定义文件
+
+- `~/.claude/agents/dev-agent.md` — 开发者 agent
+- `~/.claude/agents/product-reviewer.md` — 产品审查者
+- `~/.claude/agents/test-agent.md` — 测试执行者
+- `~/.claude/agents/review-agent.md` — 代码审查者
+- `~/.claude/agents/workflow-runner.md` — 流程编排者

@@ -8,4 +8,4 @@ import type { Source } from "./Source";
 /**
  * 事件 —— 系统的原子单位，不可变
  */
-export type Event = { id: string, timestamp: string, collected_at: string, source: Source, source_confidence: Confidence, type: EventType, content: JsonValue, raw_payload: string, tags: Array<string>, related_ids: Array<string>, attachments: Array<Attachment>, };
+export type Event = { id: string, timestamp: string, collected_at: string, source: Source, source_confidence: Confidence, type: EventType, content: JsonValue, raw_payload: string, tags: Array<string>, related_ids: Array<string>, attachments: Array<Attachment>, processed: boolean, };

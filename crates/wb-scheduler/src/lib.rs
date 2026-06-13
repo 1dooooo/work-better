@@ -6,3 +6,6 @@ pub mod log;
 pub mod resource;
 pub mod scheduler;
 pub mod task;
+
+// Re-export callback type for convenience
+pub use scheduler::OnTaskComplete;

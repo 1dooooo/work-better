@@ -64,6 +64,7 @@ impl ScheduledTask for CounterTask {
         let now = Utc::now();
         TaskResult {
             task_id: self.id.clone(),
+            task_name: self.name().to_string(),
             status: TaskStatus::Success,
             started_at: now,
             finished_at: now,

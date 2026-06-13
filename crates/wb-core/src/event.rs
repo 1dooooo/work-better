@@ -86,6 +86,7 @@ pub struct Event {
     pub tags: Vec<String>,
     pub related_ids: Vec<String>,
     pub attachments: Vec<Attachment>,
+    pub processed: bool,
 }
 
 impl Event {
@@ -109,6 +110,7 @@ impl Event {
             tags: Vec::new(),
             related_ids: Vec::new(),
             attachments: Vec::new(),
+            processed: false,
         }
     }
 }
@@ -168,6 +170,7 @@ mod tests {
         assert!(event.tags.is_empty());
         assert!(event.related_ids.is_empty());
         assert!(event.attachments.is_empty());
+        assert!(!event.processed, "new event should default to unprocessed");
     }
 
     #[test]

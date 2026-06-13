@@ -13,6 +13,7 @@ export interface Event {
   tags: string[];
   related_ids: string[];
   attachments: unknown[];
+  processed: boolean;
 }
 
 export async function getEvents(limit?: number): Promise<Event[]> {
@@ -47,13 +48,25 @@ export interface CollectorStatus {
   id: string;
   name: string;
   enabled: boolean;
-  healthy: boolean;
+  health_level: string; // "healthy" | "degraded" | "unhealthy" | "unknown"
+  health_message: string | null;
+}
+
+export interface CollectorGroup {
+  id: string;
+  name: string;
+  enabled: boolean;
+  collectors: CollectorStatus[];
 }
 
 export interface CollectorHealth {
   level: string;
   message: string | null;
   error_count: number;
+}
+
+export async function getCollectorGroups(): Promise<CollectorGroup[]> {
+  return invoke<CollectorGroup[]>("get_collector_groups");
 }
 
 export async function getCollectorStatuses(): Promise<CollectorStatus[]> {
@@ -70,6 +83,14 @@ export async function enableCollector(id: string): Promise<void> {
 
 export async function disableCollector(id: string): Promise<void> {
   return invoke("disable_collector", { id });
+}
+
+export async function enableCollectorGroup(groupId: string): Promise<void> {
+  return invoke("enable_collector_group", { groupId });
+}
+
+export async function disableCollectorGroup(groupId: string): Promise<void> {
+  return invoke("disable_collector_group", { groupId });
 }
 
 export async function checkCollectorHealth(

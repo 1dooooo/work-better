@@ -1,78 +1,161 @@
 #!/bin/bash
-# ============================================================
-# create-dev-output.sh
-# dev-agent 完成开发后调用，生成 .workflow/artifacts/{task_id}/dev-output.json
-# 用法: ./scripts/create-dev-output.sh [task_id]
-# ============================================================
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TASK_ID="${1:-$(date +%Y%m%d-%H%M%S)}"
-ARTIFACT_DIR="$PROJECT_ROOT/.workflow/artifacts/$TASK_ID"
-mkdir -p "$ARTIFACT_DIR"
+# =============================================================================
+# create-dev-output.sh
+# 生成 dev-output.json，供 workflow-runner 读取
+# =============================================================================
 
-# 获取变更文件列表（相对于项目根目录）
-CHANGED_FILES=$(cd "$PROJECT_ROOT" && git diff --name-only HEAD~1 2>/dev/null || echo "")
-if [ -z "$CHANGED_FILES" ]; then
-  CHANGED_FILES=$(cd "$PROJECT_ROOT" && git diff --name-only --cached 2>/dev/null || echo "")
+TASK_ID="${1:?用法: $0 <task_id>}"
+ARTIFACTS_DIR=".workflow/artifacts/${TASK_ID}"
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# 检查是否在 git 仓库中
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    log_error "不在 git 仓库中"
+    exit 1
 fi
 
-# 推断 affected_modules
-MODULES=""
-for f in $CHANGED_FILES; do
-  case "$f" in
-    crates/wb-core/*) MODULES="$MODULES wb-core" ;;
-    crates/wb-processor/*) MODULES="$MODULES wb-processor" ;;
-    crates/wb-ai/*) MODULES="$MODULES wb-ai" ;;
-    crates/wb-storage/*) MODULES="$MODULES wb-storage" ;;
-    crates/wb-scheduler/*) MODULES="$MODULES wb-scheduler" ;;
-    crates/wb-collector/*) MODULES="$MODULES wb-collector" ;;
-    src-tauri/*) MODULES="$MODULES src-tauri" ;;
-    src/*) MODULES="$MODULES frontend" ;;
-  esac
-done
-MODULES=$(echo "$MODULES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+# 创建 artifacts 目录
+mkdir -p "$ARTIFACTS_DIR"
 
-# 构建 changed_files JSON 数组
-CHANGED_JSON="["
-FIRST=true
-for f in $CHANGED_FILES; do
-  if [ "$FIRST" = true ]; then FIRST=false; else CHANGED_JSON="$CHANGED_JSON,"; fi
-  # 判断 change_type
-  if git show HEAD~1:"$f" >/dev/null 2>&1; then
-    if [ ! -f "$PROJECT_ROOT/$f" ]; then
-      CT="deleted"
+# 获取变更的文件列表
+# 优先使用 staged files，其次使用 unstaged files，最后使用 HEAD~1
+if git diff --cached --name-only --diff-filter=ACMR | grep -q .; then
+    CHANGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+    log_info "使用 staged files"
+elif git diff --name-only --diff-filter=ACMR | grep -q .; then
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR)
+    log_info "使用 unstaged files"
+else
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD~1 2>/dev/null || echo "")
+    if [ -z "$CHANGED_FILES" ]; then
+        log_warn "未检测到变更文件，生成空 dev-output.json"
+        CHANGED_FILES=""
     else
-      CT="modified"
+        log_info "使用 HEAD~1 的变更"
     fi
-  else
-    CT="added"
-  fi
-  CHANGED_JSON="$CHANGED_JSON{\"path\":\"$f\",\"change_type\":\"$CT\"}"
-done
-CHANGED_JSON="$CHANGED_JSON]"
+fi
 
-# 构建 modules JSON 数组
-MOD_JSON="["
-FIRST=true
-for m in $MODULES; do
-  if [ "$FIRST" = true ]; then FIRST=false; else MOD_JSON="$MOD_JSON,"; fi
-  MOD_JSON="$MOD_JSON\"$m\""
-done
-MOD_JSON="$MOD_JSON]"
+# 过滤出代码文件（排除 docs/、.config/、scripts/）
+CODE_FILES=$(echo "$CHANGED_FILES" | grep -E '^(crates/|src/|src-tauri/)' || true)
 
-# 写入 dev-output.json
-cat > "$ARTIFACT_DIR/dev-output.json" << EOF
+if [ -z "$CODE_FILES" ]; then
+    log_warn "没有 crates/、src/、src-tauri/ 下的代码变更"
+    log_warn "workflow 通常不需要执行，但继续生成 dev-output.json"
+fi
+
+# 推断 test_level
+infer_test_level() {
+    local files="$1"
+    local level=1
+
+    # 检查是否修改了核心模块（wb-core、公共类型、配置）
+    if echo "$files" | grep -qE '^crates/wb-core/|^crates/.*/config\.rs$|^Cargo\.toml$'; then
+        level=3
+    fi
+
+    # 检查是否修改了多个 crate
+    local crate_count
+    crate_count=$(echo "$files" | grep -E '^crates/' | cut -d'/' -f2 | sort -u | wc -l | tr -d ' ')
+    if [ "$crate_count" -gt 1 ] && [ "$level" -lt 3 ]; then
+        level=2
+    fi
+
+    # 检查是否修改了公共接口（lib.rs、mod.rs）
+    if echo "$files" | grep -qE 'lib\.rs$|mod\.rs$'; then
+        [ "$level" -lt 2 ] && level=2
+    fi
+
+    # 检查是否涉及安全敏感代码
+    if echo "$files" | grep -qE 'auth|token|secret|password|crypto'; then
+        [ "$level" -lt 3 ] && level=3
+    fi
+
+    # 检查是否涉及 E2E（前端 + 后端同时修改）
+    local has_frontend=false
+    local has_backend=false
+    echo "$files" | grep -qE '^src/|^src-tauri/' && has_frontend=true
+    echo "$files" | grep -qE '^crates/' && has_backend=true
+    if $has_frontend && $has_backend; then
+        level=3
+    fi
+
+    echo "$level"
+}
+
+TEST_LEVEL=$(infer_test_level "$CODE_FILES")
+log_info "推断的 test_level: $TEST_LEVEL"
+
+# 推断 required_agents
+infer_required_agents() {
+    local level="$1"
+    local agents='["dev-agent"]'
+
+    # Level >= 2 需要 test-agent
+    if [ "$level" -ge 2 ]; then
+        agents='["dev-agent","test-agent"]'
+    fi
+
+    # Level >= 3 需要 review-agent
+    if [ "$level" -ge 3 ]; then
+        agents='["dev-agent","test-agent","review-agent"]'
+    fi
+
+    echo "$agents"
+}
+
+REQUIRED_AGENTS=$(infer_required_agents "$TEST_LEVEL")
+log_info "required_agents: $REQUIRED_AGENTS"
+
+# 将变更文件转为 JSON 数组
+files_to_json_array() {
+    local files="$1"
+    if [ -z "$files" ]; then
+        echo "[]"
+        return
+    fi
+    echo "$files" | jq -R -s 'split("\n") | map(select(length > 0))'
+}
+
+CHANGED_FILES_JSON=$(files_to_json_array "$CHANGED_FILES")
+CODE_FILES_JSON=$(files_to_json_array "$CODE_FILES")
+
+# 生成 dev-output.json
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+cat > "${ARTIFACTS_DIR}/dev-output.json" << EOF
 {
-  "task_id": "$TASK_ID",
-  "task_type": "feature",
-  "changed_files": $CHANGED_JSON,
-  "affected_modules": $MOD_JSON,
-  "new_tests": [],
-  "acceptance_criteria": [],
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  "task_id": "${TASK_ID}",
+  "timestamp": "${TIMESTAMP}",
+  "changed_files": ${CHANGED_FILES_JSON},
+  "code_changed_files": ${CODE_FILES_JSON},
+  "test_level": ${TEST_LEVEL},
+  "summary": "Auto-generated by create-dev-output.sh",
+  "required_agents": ${REQUIRED_AGENTS},
+  "gate_config": {
+    "max_retries": 2,
+    "timeout_seconds": 300,
+    "fail_fast": false
+  }
 }
 EOF
 
-echo "dev-output.json written to $ARTIFACT_DIR/dev-output.json"
-echo "Task ID: $TASK_ID"
+log_info "已生成 ${ARTIFACTS_DIR}/dev-output.json"
+log_info "task_id: ${TASK_ID}"
+log_info "changed_files: $(echo "$CHANGED_FILES" | wc -l | tr -d ' ') 个文件"
+log_info "code_changed_files: $(echo "$CODE_FILES" | wc -l | tr -d ' ') 个文件"
+log_info "test_level: ${TEST_LEVEL}"
+log_info "required_agents: ${REQUIRED_AGENTS}"
+
+echo ""
+echo "下一步: ./scripts/run-workflow.sh ${TASK_ID}"

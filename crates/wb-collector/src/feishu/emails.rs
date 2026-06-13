@@ -64,11 +64,19 @@ impl FeishuEmailCollector {
 #[async_trait]
 impl Collector for FeishuEmailCollector {
     fn id(&self) -> &str {
-        "feishu-email"
+        "feishu.emails"
     }
 
     fn name(&self) -> &str {
-        "飞书邮件采集器"
+        "邮箱"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

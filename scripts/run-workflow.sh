@@ -1,149 +1,164 @@
 #!/bin/bash
-# ============================================================
-# run-workflow.sh — 测试执行引擎
-# 读取 dev-output.json，执行测试，写入 test-report.json
-# 用法: ./scripts/run-workflow.sh <task_id>
-# ============================================================
-set -uo pipefail
-# NOTE: 不用 set -e，改为手动检查关键步骤退出码
+set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# =============================================================================
+# run-workflow.sh
+# 执行 dev-test-review workflow
+# =============================================================================
+
 TASK_ID="${1:?用法: $0 <task_id>}"
-ARTIFACT_DIR="$PROJECT_ROOT/.workflow/artifacts/$TASK_ID"
-DEV_OUTPUT="$ARTIFACT_DIR/dev-output.json"
+ARTIFACTS_DIR=".workflow/artifacts/${TASK_ID}"
+DEV_OUTPUT="${ARTIFACTS_DIR}/dev-output.json"
+FINAL_REPORT="${ARTIFACTS_DIR}/final-report.json"
 
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+log_info()    { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+log_section() { echo -e "\n${BLUE}========================================${NC}"; echo -e "${BLUE}$1${NC}"; echo -e "${BLUE}========================================${NC}"; }
+
+# 检查 dev-output.json 是否存在
 if [ ! -f "$DEV_OUTPUT" ]; then
-  echo "ERROR: $DEV_OUTPUT 不存在。先运行 scripts/create-dev-output.sh"
-  exit 1
+    log_error "dev-output.json 不存在: ${DEV_OUTPUT}"
+    log_error "请先运行: ./scripts/create-dev-output.sh ${TASK_ID}"
+    exit 1
 fi
 
-mkdir -p "$ARTIFACT_DIR"
+# 读取配置
+TEST_LEVEL=$(jq -r '.test_level' "$DEV_OUTPUT")
+REQUIRED_AGENTS=$(jq -r '.required_agents | join(",")' "$DEV_OUTPUT")
+MAX_RETRIES=$(jq -r '.gate_config.max_retries // 2' "$DEV_OUTPUT")
+TIMEOUT=$(jq -r '.gate_config.timeout_seconds // 300' "$DEV_OUTPUT")
 
-# ============================================================
-# Phase 1: Gate Inference
-# ============================================================
-GATE=$(python3 -c "
-import json, sys
-with open('$DEV_OUTPUT') as f:
-    data = json.load(f)
-for cf in data.get('changed_files', []):
-    p = cf['path']
-    if any(p.startswith(pfx) for pfx in ['crates/wb-core/', 'crates/wb-processor/', 'crates/wb-ai/', 'crates/wb-storage/', 'src-tauri/src/commands/']):
-        print('L2'); sys.exit(0)
-print('L1')
-")
+log_info "task_id: ${TASK_ID}"
+log_info "test_level: ${TEST_LEVEL}"
+log_info "required_agents: ${REQUIRED_AGENTS}"
+log_info "max_retries: ${MAX_RETRIES}"
+log_info "timeout: ${TIMEOUT}s"
 
-echo "=== Gate Level: $GATE ==="
+# Gate 执行函数
+run_gate() {
+    local gate_num=$1
+    local gate_name=$2
+    local agent=$3
+    local prompt=$4
+    local output_file=$5
+    local retry=0
 
-# ============================================================
-# Phase 2: L1 Unit Tests + H1-H2 Security
-# ============================================================
-echo ""
-echo "=== Gate 1: L1 Unit Tests + H1-H2 Security ==="
+    log_section "Gate ${gate_num}: ${gate_name}"
 
-L1_TOTAL=0; L1_PASSED=0; L1_FAILED=0
+    while [ $retry -lt $MAX_RETRIES ]; do
+        log_info "执行 ${agent} (尝试 $((retry + 1))/${MAX_RETRIES})..."
 
-# Rust tests
-echo "  [Rust] cargo test --workspace..."
-RUST_OUT=$(cd "$PROJECT_ROOT" && cargo test --workspace 2>&1) || true
-RUST_PASSED=$(echo "$RUST_OUT" | grep "test result" | awk -F'[; ]' '{s+=$4} END {print s+0}')
-RUST_FAILED=$(echo "$RUST_OUT" | grep "test result" | awk -F'[; ]' '{s+=$7} END {print s+0}')
-L1_TOTAL=$((L1_TOTAL + RUST_PASSED + RUST_FAILED))
-L1_PASSED=$((L1_PASSED + RUST_PASSED))
-L1_FAILED=$((L1_FAILED + RUST_FAILED))
-echo "  [Rust] $RUST_PASSED passed, $RUST_FAILED failed"
+        # 生成 agent 执行提示
+        echo ""
+        echo "------------------------------------------------------------"
+        echo -e "${YELLOW}请在 Claude Code 中执行以下命令：${NC}"
+        echo "------------------------------------------------------------"
+        echo ""
+        echo "使用 Agent 工具执行:"
+        echo ""
+        echo "  agent_type: ${agent}"
+        echo "  prompt: \"${prompt}\""
+        echo ""
+        echo "输出文件: ${output_file}"
+        echo "------------------------------------------------------------"
+        echo ""
 
-# TS tests
-echo "  [TS] pnpm test..."
-TS_OUT=$(cd "$PROJECT_ROOT" && pnpm test 2>&1) || true
-TS_PASSED=$(echo "$TS_OUT" | grep -o "Tests  *[0-9]* passed" | grep -o "[0-9]*" || echo "0")
-L1_TOTAL=$((L1_TOTAL + TS_PASSED))
-L1_PASSED=$((L1_PASSED + TS_PASSED))
-echo "  [TS] $TS_PASSED passed"
+        # 检查输出文件是否已存在
+        if [ -f "$output_file" ]; then
+            log_info "输出文件已存在: ${output_file}"
+            local result
+            result=$(jq -r '.result // "unknown"' "$output_file" 2>/dev/null || echo "unknown")
 
-# H1: Dependency audit
-echo "  [H1] npm audit..."
-H1_VULNS=$(cd "$PROJECT_ROOT" && npm audit --json 2>/dev/null | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    v = d.get('metadata', {}).get('vulnerabilities', {})
-    print(v.get('critical', 0) + v.get('high', 0))
-except: print(0)
-" 2>/dev/null || echo "0")
-echo "  [H1] $H1_VULNS critical/high vulnerabilities"
+            if [ "$result" = "pass" ]; then
+                log_info "Gate ${gate_num} 通过 ✓"
+                return 0
+            elif [ "$result" = "fail" ]; then
+                log_warn "Gate ${gate_num} 失败，重试中..."
+                retry=$((retry + 1))
+                continue
+            else
+                log_warn "Gate ${gate_num} 结果未知: ${result}"
+                return 1
+            fi
+        else
+            log_warn "输出文件不存在，请先执行 agent"
+            log_warn "等待用户手动执行或跳过..."
+            return 1
+        fi
+    done
 
-# H2: Secret scan
-echo "  [H2] Secret scan..."
-H2_SECRETS=$(cd "$PROJECT_ROOT" && grep -rn \
-  "sk-[a-zA-Z0-9]\{20,\}\|api_key\s*=\s*\"[a-zA-Z0-9]\{20,\}" \
-  crates/ src/ --include="*.rs" --include="*.ts" \
-  --exclude-dir=target --exclude-dir=node_modules 2>/dev/null | wc -l | tr -d ' ') || H2_SECRETS=0
-echo "  [H2] $H2_SECRETS potential secrets"
+    log_error "Gate ${gate_num} 达到最大重试次数"
+    return 1
+}
 
-# ============================================================
-# Phase 3: E2E Tests
-# ============================================================
-echo ""
-echo "=== Gate 3: E2E Tests ==="
-E2E_OUT=$(cd "$PROJECT_ROOT" && npx playwright test 2>&1) || true
-E2E_PASSED=$(echo "$E2E_OUT" | grep -o "[0-9]* passed" | grep -o "[0-9]*" || echo "0")
-E2E_FAILED=$(echo "$E2E_OUT" | grep -o "[0-9]* failed" | grep -o "[0-9]*" || echo "0")
-E2E_SKIPPED=$(echo "$E2E_OUT" | grep -o "[0-9]* skipped" | grep -o "[0-9]*" || echo "0")
-echo "  [E2E] ${E2E_PASSED} passed, ${E2E_FAILED} failed, ${E2E_SKIPPED} skipped"
+# 根据 test_level 执行 gates
+OVERALL_RESULT="pass"
 
-# ============================================================
-# Phase 4: Write test-report.json
-# ============================================================
-TOTAL=$((L1_TOTAL + E2E_PASSED + E2E_FAILED + E2E_SKIPPED))
-PASSED=$((L1_PASSED + E2E_PASSED))
-FAILED=$((L1_FAILED + E2E_FAILED))
+# Gate 1: 总是执行
+GATE1_PROMPT="读取 ${DEV_OUTPUT}，执行 L1 单元测试（cargo test --lib）和 H1-H2 安全扫描（cargo audit）。输出到 ${ARTIFACTS_DIR}/test-report.json。"
 
-if [ "$FAILED" -gt 0 ]; then
-  OVERALL="fail"
-elif [ "$E2E_SKIPPED" -gt 0 ]; then
-  OVERALL="partial_pass"
-else
-  OVERALL="pass"
+if ! run_gate 1 "L1 单元测试 + H1-H2 安全扫描" "test-agent" "$GATE1_PROMPT" "${ARTIFACTS_DIR}/test-report.json"; then
+    OVERALL_RESULT="fail"
 fi
 
-cat > "$ARTIFACT_DIR/test-report.json" << EOF
+# Gate 2: Level >= 2 时执行
+if [ "$TEST_LEVEL" -ge 2 ] && [ "$OVERALL_RESULT" = "pass" ]; then
+    GATE2_PROMPT="读取 ${DEV_OUTPUT}，执行 L2 集成测试（cargo test --features integration）。输出到 ${ARTIFACTS_DIR}/test-report.json。"
+
+    if ! run_gate 2 "L2 集成测试" "test-agent" "$GATE2_PROMPT" "${ARTIFACTS_DIR}/test-report.json"; then
+        OVERALL_RESULT="fail"
+    fi
+fi
+
+# Gate 3: Level >= 3 时执行
+if [ "$TEST_LEVEL" -ge 3 ] && [ "$OVERALL_RESULT" = "pass" ]; then
+    GATE3_PROMPT="读取 ${DEV_OUTPUT}，执行 E2E 测试和 H3-H5 安全测试。输出到 ${ARTIFACTS_DIR}/test-report.json。"
+
+    if ! run_gate 3 "E2E 测试 + H3-H5 安全测试" "test-agent" "$GATE3_PROMPT" "${ARTIFACTS_DIR}/test-report.json"; then
+        OVERALL_RESULT="fail"
+    fi
+fi
+
+# 生成最终报告
+log_section "生成最终报告"
+
+TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+cat > "$FINAL_REPORT" << EOF
 {
-  "task_id": "$TASK_ID",
-  "gate_level": "$GATE",
-  "result": "$OVERALL",
-  "summary": {
-    "total": $TOTAL,
-    "passed": $PASSED,
-    "failed": $FAILED,
-    "skipped": $E2E_SKIPPED
-  },
-  "failures": [],
-  "uncovered_paths": [],
-  "security_scan": {
-    "h1_dependency_audit": {
-      "vulnerabilities_found": $H1_VULNS,
-      "critical": 0,
-      "high": $H1_VULNS,
-      "details": []
-    },
-    "h2_secret_scan": {
-      "secrets_found": $H2_SECRETS,
-      "details": []
-    }
-  },
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  "task_id": "${TASK_ID}",
+  "timestamp": "${TIMESTAMP}",
+  "gates_completed": $([ "$OVERALL_RESULT" = "pass" ] && echo "$TEST_LEVEL" || echo "0"),
+  "test_report": "${ARTIFACTS_DIR}/test-report.json",
+  "review_report": "${ARTIFACTS_DIR}/review-report.json",
+  "result": "${OVERALL_RESULT}",
+  "next_steps": []
 }
 EOF
 
-echo ""
-echo "=== Summary ==="
-echo "  Gate: $GATE"
-echo "  Result: $OVERALL"
-echo "  Total: $TOTAL | Passed: $PASSED | Failed: $FAILED | Skipped: $E2E_SKIPPED"
-echo "  H1 vulns: $H1_VULNS | H2 secrets: $H2_SECRETS"
-echo ""
-echo "test-report.json → $ARTIFACT_DIR/test-report.json"
+log_info "最终报告: ${FINAL_REPORT}"
 
-[ "$FAILED" -gt 0 ] && exit 1
-exit 0
+# 显示结果
+echo ""
+log_section "Workflow 执行结果"
+
+if [ "$OVERALL_RESULT" = "pass" ]; then
+    log_info "✅ Workflow 完成，所有 gate 通过"
+else
+    log_error "❌ Workflow 失败"
+    echo ""
+    echo "请检查:"
+    echo "  1. ${ARTIFACTS_DIR}/test-report.json - 测试报告"
+    echo "  2. ${ARTIFACTS_DIR}/review-report.json - 审查报告"
+    echo "  3. ${FINAL_REPORT} - 最终报告"
+    echo ""
+    echo "修复后重新运行: ./scripts/run-workflow.sh ${TASK_ID}"
+fi

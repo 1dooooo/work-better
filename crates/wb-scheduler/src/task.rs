@@ -12,6 +12,7 @@ pub enum TaskStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskResult {
     pub task_id: String,
+    pub task_name: String,
     pub status: TaskStatus,
     pub started_at: chrono::DateTime<chrono::Utc>,
     pub finished_at: chrono::DateTime<chrono::Utc>,

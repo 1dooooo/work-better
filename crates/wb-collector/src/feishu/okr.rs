@@ -65,11 +65,19 @@ impl FeishuOkrCollector {
 #[async_trait]
 impl Collector for FeishuOkrCollector {
     fn id(&self) -> &str {
-        "feishu-okr"
+        "feishu.okr"
     }
 
     fn name(&self) -> &str {
-        "飞书 OKR 采集器"
+        "OKR"
+    }
+
+    fn group_id(&self) -> &str {
+        "feishu"
+    }
+
+    fn group_name(&self) -> &str {
+        "飞书"
     }
 
     fn version(&self) -> &str {

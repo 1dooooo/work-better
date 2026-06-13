@@ -85,6 +85,7 @@ pub fn create_test_event_fixed() -> Event {
         tags: vec!["test".to_string()],
         related_ids: vec![],
         attachments: vec![],
+        processed: false,
     }
 }
 

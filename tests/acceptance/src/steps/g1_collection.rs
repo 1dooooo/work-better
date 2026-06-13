@@ -23,6 +23,8 @@ impl MockCollector {
 impl Collector for MockCollector {
     fn id(&self) -> &str { &self.id }
     fn name(&self) -> &str { &self.id }
+    fn group_id(&self) -> &str { "test" }
+    fn group_name(&self) -> &str { "测试" }
     fn version(&self) -> &str { "0.1.0-mock" }
     async fn collect(&self) -> wb_core::error::Result<Vec<Event>> { Ok(vec![]) }
     async fn health_check(&self) -> HealthStatus { HealthStatus::healthy() }
@@ -38,6 +40,8 @@ impl FaultyCollector {
 impl Collector for FaultyCollector {
     fn id(&self) -> &str { &self.id }
     fn name(&self) -> &str { &self.id }
+    fn group_id(&self) -> &str { "test" }
+    fn group_name(&self) -> &str { "测试" }
     fn version(&self) -> &str { "0.1.0-faulty" }
     async fn collect(&self) -> wb_core::error::Result<Vec<Event>> {
         Err(wb_core::error::WbError::Collector("mock failure".into()))
