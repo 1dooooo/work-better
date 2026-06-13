@@ -111,7 +111,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
-            commands::events::init_event_log(app.handle());
+            commands::events::init_event_log(app.handle())
+                .map_err(|e| e.to_string())?;
             commands::audit::init_audit_log(app.handle())
                 .map_err(|e| e.to_string())?;
 

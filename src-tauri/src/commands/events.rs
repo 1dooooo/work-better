@@ -54,28 +54,18 @@ static EVENT_LOG: OnceLock<Mutex<SqliteEventLog>> = OnceLock::new();
 /// 在 Tauri setup 阶段初始化 EventLog，使用文件数据库持久化。
 ///
 /// 必须在任何 Tauri 命令调用之前执行。
-pub fn init_event_log(app: &tauri::AppHandle) {
-    use tauri::Manager;
+pub fn init_event_log(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let path_str = super::db::resolve_db_path(app)?;
+    eprintln!("[events] DB path: {}", path_str);
 
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .expect("Failed to resolve app data dir");
-
-    std::fs::create_dir_all(&data_dir)
-        .expect("Failed to create app data directory");
-
-    let db_path = data_dir.join("work-better.db");
-    let path_str = db_path
-        .to_str()
-        .expect("DB path contains invalid UTF-8");
-
-    let log = SqliteEventLog::new(path_str)
-        .expect("Failed to initialize EventLog from file");
+    let log = SqliteEventLog::new(&path_str)
+        .map_err(|e| format!("Failed to initialize EventLog from file: {}", e))?;
 
     if EVENT_LOG.set(Mutex::new(log)).is_err() {
-        panic!("EventLog already initialized");
+        return Err("EventLog already initialized".into());
     }
+
+    Ok(())
 }
 
 /// 获取全局 EventLog 实例的引用。

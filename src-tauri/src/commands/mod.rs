@@ -4,6 +4,7 @@ pub mod audit;
 pub mod capture;
 pub mod collect;
 pub mod collectors;
+pub mod db;
 pub mod events;
 pub mod notify;
 pub mod scheduler;

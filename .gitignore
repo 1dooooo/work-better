@@ -65,6 +65,9 @@ test-results/vitest-results.json
 # .claude/ 下的 gitignore 由 .claude/.gitignore 管理
 # （ECC 插件产物、settings、sessions 等）
 
+# 本地开发数据（数据库、缓存等）
+data/
+
 # === Brainstorming ===
 .brainstorming/
 

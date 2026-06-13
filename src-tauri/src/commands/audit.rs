@@ -14,21 +14,8 @@ static AUDIT_LOG: OnceLock<Mutex<AuditLogStore>> = OnceLock::new();
 /// 注意：此函数会打开独立的数据库连接（与 SqliteEventLog 分开）。
 /// SQLite 支持多连接并发读取，写操作通过各自的 Mutex 串行化。
 pub fn init_audit_log(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    use tauri::Manager;
-
-    let data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to resolve app data dir: {}", e))?;
-
-    // 确保目录存在（避免隐式依赖 init_event_log 的调用顺序）
-    std::fs::create_dir_all(&data_dir)
-        .map_err(|e| format!("Failed to create app data directory: {}", e))?;
-
-    let db_path = data_dir.join("work-better.db");
-    let path_str = db_path
-        .to_str()
-        .ok_or("DB path contains invalid UTF-8")?;
+    let path_str = super::db::resolve_db_path(app)?;
+    eprintln!("[audit] DB path: {}", path_str);
 
     let conn = rusqlite::Connection::open(path_str)
         .map_err(|e| format!("Failed to open database for audit log: {}", e))?;
