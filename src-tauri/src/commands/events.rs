@@ -258,6 +258,23 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
     // 尝试构建真实 TaskRunner
     let runner_opt = build_task_runner_from_config()?;
 
+    // ── 任务发现：提取事件文本 ──
+    let event_text = match &event.content {
+        serde_json::Value::Object(obj) => {
+            obj.get("text")
+                .or_else(|| obj.get("title"))
+                .or_else(|| obj.get("subject"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string()
+        }
+        serde_json::Value::String(s) => s.clone(),
+        _ => String::new(),
+    };
+
+    let discovery = super::tasks::get_task_discovery();
+    let mut disc = discovery.lock().await;
+
     let (category, confidence, processing_path, model_used, token_input, token_output, step_output) =
         if let Some(mut runner) = runner_opt {
             // ── 真实大模型调用 ──
@@ -287,6 +304,13 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
                         }
                     };
 
+                    // 任务发现：委托给 discover_with_ai
+                    if !event_text.is_empty() {
+                        if let Some(adapter) = runner.default_adapter() {
+                            let _tasks = disc.discover_with_ai(&event_text, adapter, event.source.clone()).await;
+                        }
+                    }
+
                     let combined_output = serde_json::json!({
                         "classify": classify_output.content,
                         "extract": extract_output,
@@ -305,6 +329,10 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
                         "category": cat,
                         "confidence": conf,
                     });
+                    // 降级到关键词匹配
+                    if !event_text.is_empty() {
+                        let _tasks = disc.discover_from_message(&event_text);
+                    }
                     (cat, conf, path, "keyword-fallback".to_string(), 0u32, 0u32, fallback_output.to_string())
                 }
             }
@@ -317,66 +345,12 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
                 "category": cat,
                 "confidence": conf,
             });
+            // 降级到关键词匹配
+            if !event_text.is_empty() {
+                let _tasks = disc.discover_from_message(&event_text);
+            }
             (cat, conf, path, "keyword-fallback".to_string(), 0u32, 0u32, fallback_output.to_string())
         };
-
-    // ── 任务发现：AI 优先，正则兜底 ──
-    let event_text = match &event.content {
-        serde_json::Value::Object(obj) => {
-            obj.get("text")
-                .or_else(|| obj.get("title"))
-                .or_else(|| obj.get("subject"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string()
-        }
-        serde_json::Value::String(s) => s.clone(),
-        _ => String::new(),
-    };
-
-    let discovery = super::tasks::get_task_discovery();
-    let mut disc = discovery.lock().await;
-
-    let mut ai_found_task = false;
-
-    // 来源 1：从 AI extract 结果创建 pending task
-    if processing_path == "ai-model" {
-        if let Ok(extract_val) = serde_json::from_str::<serde_json::Value>(&step_output) {
-            if let Some(extract_str) = extract_val.get("extract").and_then(|v| v.as_str()) {
-                if let Ok(extraction) = serde_json::from_str::<serde_json::Value>(extract_str) {
-                    let title = extraction.get("title").and_then(|v| v.as_str()).unwrap_or("");
-                    let due_date = extraction.get("due_date").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    let people: Vec<String> = extraction.get("people")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-                        .unwrap_or_default();
-
-                    if !title.is_empty() {
-                        let description = if people.is_empty() {
-                            None
-                        } else {
-                            Some(format!("涉及人员: {}", people.join(", ")))
-                        };
-                        let task = wb_processor::task::discovery::PendingTask::new(
-                            title,
-                            description.as_deref(),
-                            wb_processor::task::model::TaskSource::Message,
-                            wb_processor::task::model::TaskPriority::P2,
-                            due_date,
-                            &event_text,
-                        );
-                        disc.add_pending(task);
-                        ai_found_task = true;
-                    }
-                }
-            }
-        }
-    }
-
-    // 来源 2：正则匹配关键词（仅当 AI 未发现任务时使用）
-    if !ai_found_task && !event_text.is_empty() {
-        let _tasks = disc.discover_from_message(&event_text);
-    }
 
     let review_status = if confidence >= 0.7 {
         ReviewStatus::Approved
@@ -421,8 +395,6 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
             cost_estimate,
         });
     }
-
-
 
     Ok(ProcessResult {
         event_id: event_id.to_string(),
