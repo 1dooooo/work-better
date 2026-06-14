@@ -106,6 +106,18 @@ impl ObsidianWriter {
             out.push('\n');
         }
 
+        // 双向链接（Obsidian wiki links）
+        let has_links = !record.people.is_empty() || record.project.is_some();
+        if has_links {
+            out.push_str("\n## 关联\n\n");
+            if let Some(ref project) = record.project {
+                out.push_str(&format!("- 项目: [[{}]]\n", project));
+            }
+            for person in &record.people {
+                out.push_str(&format!("- 人员: [[{}]]\n", person));
+            }
+        }
+
         // 来源追溯
         if !record.source_event_ids.is_empty() {
             out.push_str("\n---\n");
@@ -165,6 +177,10 @@ mod tests {
         assert!(rendered.contains("confidence: 0.92"));
         assert!(rendered.contains("# 测试会议记录"));
         assert!(rendered.contains("> 讨论了 Q3 产品路线图"));
+        // 双向链接
+        assert!(rendered.contains("[[project-alpha]]"));
+        assert!(rendered.contains("[[张三]]"));
+        assert!(rendered.contains("[[李四]]"));
     }
 
     #[test]

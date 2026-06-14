@@ -68,6 +68,7 @@ fn ensure_vault_dir(world: &mut AcceptanceWorld) -> PathBuf {
 
 #[given(regex = r"^WorkRecord 持久化$")]
 fn given_work_record_persist(world: &mut AcceptanceWorld) {
+    init_vector_store(world);
     let record = make_test_work_record(
         "测试任务",
         vec!["工作", "任务"],
@@ -481,7 +482,17 @@ async fn view_location(world: &mut AcceptanceWorld) {
 
 #[when(regex = r"^配置$")]
 async fn configure(world: &mut AcceptanceWorld) {
-    world.processing_result = Some("configured".into());
+    let vault_path = ensure_vault_dir(world);
+    let writer = ObsidianWriter::new(&vault_path);
+    let record = world.work_record.as_ref().expect("work_record should be set");
+    match writer.write_record(record) {
+        Ok(path) => {
+            world.written_files.push(path.clone());
+            world.storage_path = Some(path);
+            world.processing_result = Some("configured".into());
+        }
+        Err(e) => world.error = Some(e.to_string()),
+    }
 }
 
 #[when(regex = r"^成功$")]
@@ -644,7 +655,7 @@ async fn freshness_compare(world: &mut AcceptanceWorld) {
     let vault_path = ensure_vault_dir(world);
     let sync_task = SyncTask::new(&vault_path);
     let issues = sync_task.task_status_sync().unwrap();
-    world.state.insert("sync_issues_count".into(), issues.len().to_string());
+    world.state.insert("task_sync_issues".into(), issues.len().to_string());
     world.processing_result = Some("freshness_compared".into());
 }
 
@@ -699,6 +710,11 @@ async fn daily_check(world: &mut AcceptanceWorld) {
     if ctx == "飞书任务标记完成" {
         let issues = sync_task.task_status_sync().unwrap();
         world.state.insert("task_sync_issues".into(), issues.len().to_string());
+    }
+    if ctx == "双向链接指向已删除文件" {
+        let integrity_task = IntegrityTask::new(&vault_path);
+        let issues = integrity_task.link_integrity_check().unwrap();
+        world.state.insert("broken_links_count".into(), issues.len().to_string());
     }
     world.processing_result = Some("daily_check".into());
 }
