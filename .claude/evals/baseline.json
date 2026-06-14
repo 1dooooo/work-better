@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "created": "2026-06-14",
+  "description": "Eval baseline - 各功能的基准状态",
+  "evals": {
+    "manual-capture": {
+      "capability": {
+        "open-window": "PASS",
+        "input-text": "PASS",
+        "select-type": "PASS",
+        "write-sqlite": "PASS",
+        "persist-data": "PASS"
+      },
+      "regression": {
+        "shortcut-change": "PASS",
+        "no-interference": "PASS",
+        "large-input": "PASS"
+      },
+      "pass_at_1": 1.0,
+      "pass_at_3": 1.0
+    },
+    "event-processing": {
+      "capability": {
+        "classify": "PASS",
+        "extract": "PASS",
+        "review": "PASS",
+        "report": "PASS"
+      },
+      "regression": {
+        "accuracy": "PASS",
+        "latency": "PASS",
+        "no-overwrite": "PASS"
+      },
+      "pass_at_1": 1.0,
+      "pass_at_3": 1.0
+    },
+    "obsidian-sync": {
+      "capability": {
+        "sync-to-vault": "PASS",
+        "markdown-format": "PASS",
+        "file-naming": "PASS",
+        "incremental": "PASS"
+      },
+      "regression": {
+        "speed": "PASS",
+        "no-delete": "PASS",
+        "vault-structure": "PASS"
+      },
+      "pass_at_1": 1.0,
+      "pass_at_3": 1.0
+    },
+    "settings-propagation": {
+      "capability": {
+        "modify-settings": "PASS",
+        "immediate-effect": "PASS",
+        "persist": "PASS",
+        "restart-survive": "PASS"
+      },
+      "regression": {
+        "no-interference": "PASS",
+        "invalid-reject": "PASS",
+        "default-load": "PASS"
+      },
+      "pass_at_1": 1.0,
+      "pass_at_3": 1.0
+    }
+  }
+}
