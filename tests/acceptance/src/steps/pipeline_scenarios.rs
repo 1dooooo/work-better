@@ -157,6 +157,8 @@ async fn when_pipeline_process(world: &mut AcceptanceWorld) {
                 project: None,
                 due_date: None,
                 confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
             });
         let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
         match pipeline.process(&event).await {
@@ -183,6 +185,8 @@ async fn when_pipeline_process(world: &mut AcceptanceWorld) {
                 project: None,
                 due_date: None,
                 confidence: 0.85,
+                is_status_update: false,
+                related_task_id: None,
             });
         let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
         match pipeline.process(&event).await {
@@ -219,6 +223,8 @@ async fn when_pipeline_process(world: &mut AcceptanceWorld) {
                     None
                 },
                 confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
             });
         let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
         match pipeline.process(&event).await {
@@ -241,6 +247,8 @@ async fn when_pipeline_process(world: &mut AcceptanceWorld) {
                 project: None,
                 due_date: None,
                 confidence: 0.85,
+                is_status_update: false,
+                related_task_id: None,
             });
         let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
         match pipeline.process(&event).await {

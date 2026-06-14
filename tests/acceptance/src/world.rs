@@ -12,6 +12,8 @@ use wb_processor::task::discovery::PendingTask;
 use wb_processor::task::TaskManager;
 use wb_scheduler::scheduler::Scheduler;
 use wb_storage::SqliteEventLog;
+use wb_storage::freshness::FreshnessReport;
+use wb_storage::vector::{InMemoryVectorStore, MockEmbedding, VectorSync};
 
 /// Acceptance test world — holds all mutable state across Given/When/Then steps.
 #[derive(cucumber::World)]
@@ -21,6 +23,13 @@ pub struct AcceptanceWorld {
     pub task_manager: Arc<TaskManager>,
     pub collector_manager: Arc<CollectorManager>,
     pub scheduler: Arc<Scheduler>,
+
+    // ── Storage layer components (G3) ──────────────────────
+    pub tmp_vault_dir: Option<tempfile::TempDir>,
+    pub vector_store: Option<Arc<InMemoryVectorStore>>,
+    pub vector_sync: Option<VectorSync<InMemoryVectorStore>>,
+    pub freshness_report: Option<FreshnessReport>,
+    pub written_files: Vec<PathBuf>,
 
     // ── Pending event (created in Given, appended in When) ─
     pub pending_event: Option<Event>,
@@ -73,6 +82,12 @@ impl Default for AcceptanceWorld {
             task_manager: Arc::new(TaskManager::new()),
             collector_manager: Arc::new(CollectorManager::new()),
             scheduler: Arc::new(Scheduler::new()),
+            // Storage layer components
+            tmp_vault_dir: None,
+            vector_store: None,
+            vector_sync: None,
+            freshness_report: None,
+            written_files: Vec::new(),
             pending_event: None,
             last_event_id: None,
             // Real component outputs

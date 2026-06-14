@@ -245,6 +245,8 @@ async fn a1_feishu_message_full_pipeline() {
             project: None,
             due_date: Some("明天下午5点".to_string()),
             confidence: 0.92,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -309,6 +311,8 @@ async fn a2_normal_message_aggregate_route() {
             project: None,
             due_date: None,
             confidence: 0.4, // 低置信度，避免 Task Discovery 误判为任务
+            is_status_update: false,
+            related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -383,6 +387,8 @@ async fn a4_approval_message_instant_route() {
             project: None,
             due_date: None,
             confidence: 0.95,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -430,6 +436,8 @@ async fn a5_meeting_message_meeting_category() {
             project: None,
             due_date: None,
             confidence: 0.88,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -481,6 +489,8 @@ async fn a6_email_message_with_task() {
             project: None,
             due_date: Some("周五".to_string()),
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -528,6 +538,8 @@ async fn b1_message_discovers_task() {
             project: None,
             due_date: Some("明天下午5点".to_string()),
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -665,6 +677,8 @@ async fn c2_document_uses_small_model_review() {
             project: None,
             due_date: None,
             confidence: 0.85,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     // 创建带 TieredReview 的 ReviewAgent
@@ -711,6 +725,8 @@ async fn c3_long_review_uses_large_model_review() {
             project: None,
             due_date: None,
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     // 创建带 TieredReview + LargeModelReview 的 ReviewAgent
@@ -757,6 +773,8 @@ async fn c4_involving_others_creates_confirm_request() {
             project: None,
             due_date: None,
             confidence: 0.88,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     // 创建带 TieredReview 的 ReviewAgent（涉及他人会触发 small_model）
@@ -925,6 +943,8 @@ async fn d4_large_model_review_degrades_gracefully() {
             project: None,
             due_date: None,
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     // 创建带 TieredReview + LargeModelReview 的 ReviewAgent
@@ -986,6 +1006,8 @@ async fn e1_obsidian_file_content_integrity() {
             project: Some("work-better".to_string()),
             due_date: None,
             confidence: 0.92,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -1039,6 +1061,8 @@ async fn e2_obsidian_file_path_uniqueness() {
             project: None,
             due_date: None,
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
     let mut pipeline1 = make_pipeline_with_adapter(tmp.path(), adapter1);
     let event1 = make_event(
@@ -1060,6 +1084,8 @@ async fn e2_obsidian_file_path_uniqueness() {
             project: None,
             due_date: None,
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
     let mut pipeline2 = make_pipeline_with_adapter(tmp.path(), adapter2);
     let event2 = make_event(
@@ -1107,6 +1133,8 @@ async fn e3_work_record_fields_complete() {
             project: Some("test-project".to_string()),
             due_date: Some("明天".to_string()),
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -1230,6 +1258,8 @@ async fn f2_very_long_content_message() {
             project: None,
             due_date: None,
             confidence: 0.9,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -1342,6 +1372,8 @@ async fn f5_concurrent_processing_10_messages() {
                     project: None,
                     due_date: None,
                     confidence: 0.9,
+                    is_status_update: false,
+                    related_task_id: None,
                 });
 
             let mut pipeline = make_pipeline_with_adapter(&path, adapter);

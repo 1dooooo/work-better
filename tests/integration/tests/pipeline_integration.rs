@@ -87,6 +87,8 @@ async fn l3_task_message_full_pipeline() {
             project: None,
             due_date: Some("明天下午5点".to_string()),
             confidence: 0.92,
+                is_status_update: false,
+                related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
@@ -166,6 +168,8 @@ async fn l3_normal_message_aggregate_route() {
             project: None,
             due_date: None,
             confidence: 0.3, // 低于 AI_CONFIDENCE_THRESHOLD(0.5) → 不触发任务发现
+            is_status_update: false,
+            related_task_id: None,
         });
 
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
