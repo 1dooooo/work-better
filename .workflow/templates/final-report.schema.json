@@ -44,6 +44,42 @@
       "type": ["string", "null"],
       "description": "上报原因（status=blocked 或 escalated 时）"
     },
+    "metrics": {
+      "type": ["object", "null"],
+      "description": "workflow 执行指标，用于追踪效率和成本",
+      "properties": {
+        "total_duration_seconds": {
+          "type": "integer",
+          "description": "workflow 总耗时（秒）"
+        },
+        "agent_invocations": {
+          "type": "object",
+          "description": "各 agent 调用次数",
+          "properties": {
+            "dev_agent": { "type": "integer" },
+            "test_agent": { "type": "integer" },
+            "review_agent": { "type": "integer" },
+            "product_reviewer": { "type": "integer" }
+          }
+        },
+        "total_retries": {
+          "type": "integer",
+          "description": "总重试次数"
+        },
+        "retry_details": {
+          "type": "array",
+          "description": "每次重试的详情",
+          "items": {
+            "type": "object",
+            "properties": {
+              "retry_number": { "type": "integer" },
+              "trigger": { "type": "string", "description": "触发重试的原因（test_fail / review_fail / product_fail）" },
+              "source_location": { "type": "string", "description": "触发重试的代码位置" }
+            }
+          }
+        }
+      }
+    },
     "timestamp": { "type": "string", "format": "date-time" }
   }
 }

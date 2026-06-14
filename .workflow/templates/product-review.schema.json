@@ -37,6 +37,21 @@
     "suggestions": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "suggested_action": {
+      "type": ["object", "null"],
+      "description": "给 workflow-runner 的下一步建议",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["fix_code", "new_feature", "design_debt", "escalate", "none"],
+          "description": "建议的下一步动作"
+        },
+        "reason": {
+          "type": "string",
+          "description": "建议原因"
+        }
+      }
     }
   }
 }

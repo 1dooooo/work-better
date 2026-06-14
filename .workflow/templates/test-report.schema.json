@@ -78,6 +78,54 @@
         }
       }
     },
+    "suggested_action": {
+      "type": ["object", "null"],
+      "description": "给 workflow-runner 的下一步建议，减少 LLM 推理负担",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["fix_code", "fix_test", "investigate_env", "retry", "escalate", "none"],
+          "description": "建议的下一步动作"
+        },
+        "target_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "需要修复的目标文件路径"
+        },
+        "reason": {
+          "type": "string",
+          "description": "建议原因，一行摘要"
+        }
+      }
+    },
+    "execution_path_verification": {
+      "type": "object",
+      "description": "执行路径验证结果，标记测试覆盖的代码路径是否与生产执行一致",
+      "properties": {
+        "verified": {
+          "type": "boolean",
+          "description": "测试覆盖的代码路径是否与生产执行一致"
+        },
+        "mismatches": {
+          "type": "array",
+          "description": "不一致的执行路径列表",
+          "items": {
+            "type": "object",
+            "required": ["path", "description"],
+            "properties": {
+              "path": { "type": "string", "description": "不一致的代码路径" },
+              "test_coverage": { "type": "string", "description": "测试中的执行路径描述" },
+              "production_path": { "type": "string", "description": "生产环境的实际执行路径" },
+              "description": { "type": "string", "description": "不一致原因说明" }
+            }
+          }
+        },
+        "details": {
+          "type": "string",
+          "description": "执行路径验证的补充说明"
+        }
+      }
+    },
     "timestamp": { "type": "string", "format": "date-time" }
   }
 }

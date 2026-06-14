@@ -81,6 +81,14 @@ triggers:
     method: user_manual
     description: 用户手动触发 workflow-runner（兜底）
 
+  - priority: 0
+    method: error_response
+    description: >
+      当用户明确指出错误时触发（最高优先级）。
+      优先于所有其他触发条件和重试策略。
+      workflow-runner 执行错误响应协议，记录现象、反思流程、
+      定位根因、制定改进、执行修复，输出 error-response.json。
+
 # ----------------------------------------------------------
 # Gate level inference
 # ----------------------------------------------------------
@@ -121,6 +129,38 @@ gate_inference:
 # 三者并行执行，workflow-runner 汇总结果。
 # ----------------------------------------------------------
 flow:
+  # ---- 阶段 0：错误响应（最高优先级，按需触发） ----
+  error_response_phase:
+    description: >
+      错误响应协议：当用户明确指出错误时触发。
+      优先于所有重试策略，workflow-runner 直接执行以下流程。
+      完成后写入 error-response.json，再决定后续走向。
+    trigger: "error_response trigger fires"
+    steps:
+      - step: record_phenomenon
+        description: >
+          记录用户反馈的错误现象，包括：错误描述、复现路径、
+          影响范围、相关上下文（日志、截图、对话片段）。
+      - step: reflect_process
+        description: >
+          反思当前工作流执行过程，检查：是否有被忽略的信号、
+          是否有跳过的检查、是否有假设未被验证。
+      - step: locate_root_cause
+        description: >
+          定位根因：结合现象和流程反思，确定错误的根本原因。
+          区分 code_bug / test_bug / env_issue / workflow_gap。
+      - step: formulate_improvement
+        description: >
+          制定改进方案：针对根因提出修复措施，同时评估是否需要
+          更新 workflow spec、测试用例、或文档。
+      - step: execute_fix
+        description: >
+          执行修复：触发 dev-agent 完成实际修复，修复后回到
+          相应阶段重新验证。
+    on_complete:
+      goto: evaluate_results
+    output: error-response.json
+
   # ---- 阶段 1：开发（顺序） ----
   dev_phase:
     - step: run_dev
@@ -168,6 +208,13 @@ flow:
         reason: "并行 agent 未全部完成"
 
   evaluate_results:
+    - step: merge_suggested_actions
+      description: >
+        合并三个 agent 的 suggested_action 字段，
+        确定修复目标，避免多次重试只修一个问题。
+        合并策略：test fail + review request_changes → 合并为一次修复；
+        product fail (bug) → 优先级最高。
+
     - step: check_product_review
       description: 检查 product-review 结果
       condition: "product-review.json.verdict == 'fail' and category == 'bug'"
@@ -175,19 +222,23 @@ flow:
       with:
         source: product-reviewer
         reason: "功能实现不符合产品定义"
+        priority: highest
 
     - step: check_test_results
-      description: 检查测试结果
+      description: 检查测试结果（参考 suggested_action）
       condition: "test-report.json.result == 'fail'"
       goto: handle_failure
       with:
         gate: inferred
         max_retries: 3
+        suggested_action: "test-report.json.suggested_action"
 
     - step: check_review_results
-      description: 检查代码审查结果
+      description: 检查代码审查结果（参考 suggested_action）
       condition: "review-report.json.verdict == 'request_changes'"
       goto: handle_review_failure
+      with:
+        suggested_action: "review-report.json.suggested_action"
 
     - condition: "all passed"
       goto: done
@@ -195,25 +246,42 @@ flow:
   # ---- 失败处理 ----
   handle_failure:
     - step: read_failure_location
-      description: 从 test-report.json 读取 source_location
+      description: >
+        从 test-report.json 读取 source_location 和 suggested_action。
+        如有 review-report.json 的 suggested_action，一并读取。
     - step: check_trend
       description: >
         对比历史 test-report，检查同一 source_location 是否连续失败。
         超过 trend_stop 次 → escalate。
+    - step: evaluate_env_issue
+      description: >
+        如果 suggested_action.action == "investigate_env"，
+        检查是否影响关键路径：
+        - 影响关键路径 → escalate，说明环境问题阻塞了验证
+        - 不影响关键路径 → 记录 + 隔离，继续流程
     - step: trigger_dev_fix
       description: >
-        触发 dev-agent 修复代码。dev-agent 读取 test-report.json，
-        判定 failure_type（code_bug / test_bug / env_issue），
+        触发 dev-agent 修复代码。将 test-report.json 和 review-report.json
+        （如有）一起传递给 dev-agent，实现一次修复多类问题。
+        dev-agent 读取后判定 failure_type（code_bug / test_bug / env_issue），
         修复后写入新的 dev-output.json。
       agent: dev-agent
+      inputs:
+        - test-report.json
+        - review-report.json
     - step: re_run_parallel
       description: 修复后回到并行审查阶段
       goto: parallel_review_phase
 
   handle_review_failure:
+    - step: check_merge_with_test
+      description: >
+        检查是否有同时存在的 test 失败。如果有，合并到 handle_failure 流程，
+        避免 dev-agent 分两次修复。如果没有，单独处理 review 问题。
     - step: trigger_dev_fix
       description: >
         触发 dev-agent 读取 review-report.json，修复审查发现的问题。
+        传递 suggested_action.target_files 作为修复指引。
       agent: dev-agent
     - step: re_run_parallel
       description: 修复后回到并行审查阶段
@@ -234,6 +302,9 @@ flow:
 # ----------------------------------------------------------
 # Retry strategy
 # ----------------------------------------------------------
+# 注意：error_response_phase（错误响应协议）优先于所有重试策略。
+# 当用户明确指出错误时，workflow-runner 跳过重试逻辑，
+# 直接进入错误响应流程，执行根因分析和改进。
 retry:
   L1:
     max_retries: 3
@@ -258,6 +329,11 @@ retry:
 artifacts:
   base_dir: .workflow/artifacts/{task_id}/
   files:
+    error_response:
+      path: error-response.json
+      writer: workflow-runner
+      readers: [dev-agent, user]
+      description: 错误响应协议输出，记录现象、根因、改进措施和修复结果
     dev_output:
       path: dev-output.json
       writer: dev-agent
@@ -289,21 +365,47 @@ artifacts:
 # ----------------------------------------------------------
 uncovered_paths_detection:
   description: >
-    检测变更路径是否被测试覆盖。采用两阶段策略：
-    脚本粗筛（文件级）+ LLM 细检（函数级）。
+    检测变更路径是否被测试覆盖。采用三阶段策略：
+    脚本粗筛（文件级）+ 代码复用检查（函数签名级）+ LLM 细检（函数级 + 执行路径验证）。
   stage_1_script:
     description: "文件级粗筛：对比 changed_files 与测试文件映射"
     tool: scripts/test-impact.sh
+    detection_method: script
     method: >
       运行 scripts/test-impact.sh 获取受影响的测试组，
       对比 dev-output.json 中的 changed_files，
       标记无对应测试文件的路径。
+    output: 写入 test-report.json 的 uncovered_files 字段
+  stage_1_5_reuse:
+    description: "代码复用粗筛：检测同一功能的多处实现"
     detection_method: script
+    method: >
+      对比 changed_files 中新增/修改的函数签名与项目已有实现。
+      提取 diff 中的函数名和参数签名，
+      在 crates/、src/ 目录下搜索相同或相似签名的现有函数，
+      标记可能存在重复实现的路径。
+      相似度阈值：函数名匹配 + 参数类型一致视为潜在重复。
+    output: 写入 test-report.json 的 code_reuse_warnings 字段
+    severity_rules:
+      - condition: "完全相同签名 + 不同文件"
+        severity: high
+        action: "建议合并或复用已有实现"
+      - condition: "相似签名（名称相似 + 参数子集重叠）"
+        severity: medium
+        action: "建议人工确认是否为有意区分"
   stage_2_llm:
-    description: "函数级细检：LLM 分析变更函数是否有对应测试用例"
+    description: >
+      函数级细检 + 执行路径一致性验证：
+      LLM 分析变更函数是否有对应测试用例，
+      并验证测试覆盖的代码路径与生产执行的代码路径一致。
+    detection_method: llm
     method: >
       test-agent 读取 changed_files 的 diff，
       识别新增/修改的函数签名，
       检查是否有对应的测试函数覆盖。
-    detection_method: llm
-    output: 写入 test-report.json 的 uncovered_paths 字段
+      同时追踪函数的调用链和分支路径，
+      对比测试中实际执行的路径与生产环境的预期执行路径，
+      识别测试未覆盖的关键分支。
+    output:
+      uncovered_paths: 写入 test-report.json 的 uncovered_paths 字段
+      execution_path_verification: 写入 test-report.json 的 execution_path_verification 字段

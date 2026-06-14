@@ -25,10 +25,65 @@
         }
       }
     },
+    "suggested_action": {
+      "type": ["object", "null"],
+      "description": "给 workflow-runner 的下一步建议",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["fix_code", "fix_test", "request_changes", "approve", "escalate", "none"],
+          "description": "建议的下一步动作"
+        },
+        "target_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "需要修复的目标文件路径"
+        },
+        "critical_findings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "关键发现摘要（仅 critical/high 级别）"
+        },
+        "reason": {
+          "type": "string",
+          "description": "建议原因"
+        }
+      }
+    },
     "security_tests_generated": {
       "type": "array",
       "items": { "type": "string" },
       "description": "review-agent 生成的 H3-H5 安全测试文件路径"
+    },
+    "code_reuse_issues": {
+      "type": "array",
+      "description": "代码复用问题，如同一功能的多处实现",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "file", "description"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "title": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "description": { "type": "string" },
+          "existing_function": { "type": "string", "description": "已有可复用的函数名" }
+        }
+      }
+    },
+    "execution_path_mismatches": {
+      "type": "array",
+      "description": "执行路径不一致问题，如测试覆盖的代码路径与生产执行不一致",
+      "items": {
+        "type": "object",
+        "required": ["severity", "title", "file", "description"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "title": { "type": "string" },
+          "file": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
     },
     "timestamp": { "type": "string", "format": "date-time" }
   }

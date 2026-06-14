@@ -50,6 +50,16 @@
       "items": { "type": "string" },
       "description": "产品验收条件（如有），test-agent 用于生成 L4-L5 测试"
     },
+    "reused_functions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "dev-agent 复用的已有函数列表，如 ['discover_with_ai', 'process_event']"
+    },
+    "new_implementations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "dev-agent 新增的实现，用于审查是否可以复用已有实现"
+    },
     "timestamp": {
       "type": "string",
       "format": "date-time"
