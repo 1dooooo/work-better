@@ -25,7 +25,7 @@ use crate::world::AcceptanceWorld;
 // ─── 辅助函数 ──────────────────────────────────────────────
 
 /// 创建测试用 WorkRecord
-fn make_test_work_record(title: &str, tags: Vec<&str>, people: Vec<&str>) -> WorkRecord {
+pub(crate) fn make_test_work_record(title: &str, tags: Vec<&str>, people: Vec<&str>) -> WorkRecord {
     WorkRecord {
         id: format!("test-{}", uuid::Uuid::new_v4()),
         created_at: chrono::Utc::now(),
@@ -49,7 +49,7 @@ fn make_test_work_record(title: &str, tags: Vec<&str>, people: Vec<&str>) -> Wor
 }
 
 /// 初始化向量存储
-fn init_vector_store(world: &mut AcceptanceWorld) {
+pub(crate) fn init_vector_store(world: &mut AcceptanceWorld) {
     let embedding = Arc::new(MockEmbedding::new(128));
     let store = Arc::new(InMemoryVectorStore::new(embedding.clone()));
     world.vector_store = Some(store.clone());
@@ -57,7 +57,7 @@ fn init_vector_store(world: &mut AcceptanceWorld) {
 }
 
 /// 确保有临时 vault 目录
-fn ensure_vault_dir(world: &mut AcceptanceWorld) -> PathBuf {
+pub(crate) fn ensure_vault_dir(world: &mut AcceptanceWorld) -> PathBuf {
     if world.tmp_vault_dir.is_none() {
         world.tmp_vault_dir = Some(tempdir().expect("Failed to create temp dir"));
     }
