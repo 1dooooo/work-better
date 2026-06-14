@@ -452,7 +452,7 @@ fn assert_non_intrusive(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
 
-#[then(regex = r"^显示待确认$")]
+#[then(regex = r"^显示待确认")]
 fn assert_show_confirm(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
@@ -462,7 +462,7 @@ fn assert_two_clicks(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
 
-#[then(regex = r"^一屏可见$")]
+#[then(regex = r"^一屏可见")]
 fn assert_one_screen(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
@@ -472,7 +472,7 @@ fn assert_redirect_main(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
 
-#[then(regex = r"^时间轴$")]
+#[then(regex = r"^时间轴")]
 fn assert_timeline(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
@@ -507,7 +507,7 @@ fn assert_open_original(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
 
-#[then(regex = r"^(API 端点|飞书凭据|Obsidian 路径|自定义组合键|频率和策略)$")]
+#[then(regex = r"^(API 端点|飞书凭据|Obsidian 路径|自定义组合键|频率和策略)")]
 fn assert_config_saved(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
@@ -549,7 +549,7 @@ fn assert_deferred(world: &mut AcceptanceWorld) {
     assert_eq!(world.processing_result.as_deref(), Some("low_prio_deferred"));
 }
 
-#[then(regex = r"^所有定时任务停止$")]
+#[then(regex = r"^所有定时任务停止")]
 async fn assert_all_paused(world: &mut AcceptanceWorld) {
     assert!(world.scheduler.is_paused().await, "调度器应已暂停");
 }
@@ -564,12 +564,12 @@ fn assert_backlog_executed(world: &mut AcceptanceWorld) {
     assert_eq!(world.processing_result.as_deref(), Some("scheduler_resumed"));
 }
 
-#[then(regex = r"^显示 ID/名称$")]
+#[then(regex = r"^显示 ID/名称")]
 fn assert_task_list_visible(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
 
-#[then(regex = r"^显示状态/时长$")]
+#[then(regex = r"^显示状态/时长")]
 fn assert_log_details(world: &mut AcceptanceWorld) {
     assert!(world.processing_result.is_some());
 }
