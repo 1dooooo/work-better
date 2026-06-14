@@ -7,6 +7,7 @@ use tokio::sync::Mutex;
 use wb_processor::task::discovery::{PendingTask, TaskDiscovery};
 use wb_processor::task::model::{Task, TaskFilter, TaskPriority, TaskSource, TaskStatus};
 use wb_processor::task::TaskManager;
+use super::CommandError;
 
 /// 全局 TaskManager 实例
 static TASK_MANAGER: OnceLock<Mutex<TaskManager>> = OnceLock::new();
@@ -94,7 +95,7 @@ impl From<&PendingTask> for PendingTaskDto {
 pub async fn discover_tasks_from_text(
     text: String,
     source: String,
-) -> Result<Vec<PendingTaskDto>, String> {
+) -> Result<Vec<PendingTaskDto>, CommandError> {
     let mut discovery = get_task_discovery().lock().await;
 
     let tasks = match source.as_str() {
@@ -109,7 +110,7 @@ pub async fn discover_tasks_from_text(
 
 /// 获取所有待确认任务
 #[tauri::command]
-pub async fn get_pending_tasks() -> Result<Vec<PendingTaskDto>, String> {
+pub async fn get_pending_tasks() -> Result<Vec<PendingTaskDto>, CommandError> {
     let discovery = get_task_discovery().lock().await;
     let pending = discovery.pending();
     Ok(pending.iter().map(|p| PendingTaskDto::from(*p)).collect())
@@ -117,11 +118,11 @@ pub async fn get_pending_tasks() -> Result<Vec<PendingTaskDto>, String> {
 
 /// 确认待确认任务（创建为正式任务）
 #[tauri::command]
-pub async fn confirm_pending_task(pending_id: String) -> Result<TaskDto, String> {
+pub async fn confirm_pending_task(pending_id: String) -> Result<TaskDto, CommandError> {
     // 先从 discovery 中确认
     let confirmed = {
         let mut discovery = get_task_discovery().lock().await;
-        discovery.confirm(&pending_id).map_err(|e| e.to_string())?
+        discovery.confirm(&pending_id)?
     };
 
     // 创建正式任务（确认后直接设为 Open，用户已确认无需再 Pending）
@@ -129,20 +130,20 @@ pub async fn confirm_pending_task(pending_id: String) -> Result<TaskDto, String>
     let task = manager
         .create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone())
         .await
-        .map_err(|e| e.to_string())?;
+        ?;
     let task = manager
         .transition(&task.id, TaskStatus::Open)
         .await
-        .map_err(|e| e.to_string())?;
+        ?;
 
     Ok(TaskDto::from(&task))
 }
 
 /// 拒绝待确认任务
 #[tauri::command]
-pub async fn reject_pending_task(pending_id: String) -> Result<(), String> {
+pub async fn reject_pending_task(pending_id: String) -> Result<(), CommandError> {
     let mut discovery = get_task_discovery().lock().await;
-    discovery.reject(&pending_id).map_err(|e| e.to_string())?;
+    discovery.reject(&pending_id)?;
     Ok(())
 }
 
@@ -151,7 +152,7 @@ pub async fn reject_pending_task(pending_id: String) -> Result<(), String> {
 pub async fn list_tasks(
     status: Option<String>,
     priority: Option<String>,
-) -> Result<Vec<TaskDto>, String> {
+) -> Result<Vec<TaskDto>, CommandError> {
     let manager = get_task_manager().lock().await;
     let filter = TaskFilter {
         status: status.and_then(|s| match s.as_str() {
@@ -172,7 +173,7 @@ pub async fn list_tasks(
         ..TaskFilter::default()
     };
 
-    let tasks = manager.list(filter).await.map_err(|e| e.to_string())?;
+    let tasks = manager.list(filter).await?;
     Ok(tasks.iter().map(TaskDto::from).collect())
 }
 
@@ -181,7 +182,7 @@ pub async fn list_tasks(
 pub async fn create_task(
     title: String,
     priority: Option<String>,
-) -> Result<TaskDto, String> {
+) -> Result<TaskDto, CommandError> {
     let p = match priority.as_deref() {
         Some("P0") => TaskPriority::P0,
         Some("P1") => TaskPriority::P1,
@@ -194,28 +195,28 @@ pub async fn create_task(
     let task = manager
         .create(&title, p, TaskSource::Manual)
         .await
-        .map_err(|e| e.to_string())?;
+        ?;
 
     Ok(TaskDto::from(&task))
 }
 
 /// 更新任务状态
 #[tauri::command]
-pub async fn update_task_status(task_id: String, new_status: String) -> Result<TaskDto, String> {
+pub async fn update_task_status(task_id: String, new_status: String) -> Result<TaskDto, CommandError> {
     let status = match new_status.as_str() {
         "Pending" => TaskStatus::Pending,
         "Open" => TaskStatus::Open,
         "InProgress" => TaskStatus::InProgress,
         "Done" => TaskStatus::Done,
         "Archived" => TaskStatus::Archived,
-        _ => return Err(format!("无效的状态: {}", new_status)),
+        _ => return Err(CommandError::BadRequest(format!("无效的状态: {}", new_status))),
     };
 
     let manager = get_task_manager().lock().await;
     let task = manager
         .transition(&task_id, status)
         .await
-        .map_err(|e| e.to_string())?;
+        ?;
 
     Ok(TaskDto::from(&task))
 }
