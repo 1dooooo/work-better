@@ -123,7 +123,9 @@ pub fn run() {
             if !vault_path.is_empty() {
                 // 展开 ~ 符号为用户主目录
                 let expanded_path = if vault_path.starts_with("~") {
-                    let home = std::env::var("HOME").unwrap_or_default();
+                    let home = std::env::var("WORK_BETTER_HOME")
+                        .or_else(|_| std::env::var("HOME"))
+                        .unwrap_or_default();
                     vault_path.replacen("~", &home, 1)
                 } else {
                     vault_path.clone()

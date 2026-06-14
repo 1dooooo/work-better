@@ -2,6 +2,7 @@
 
 pub mod create;
 pub mod discovery;
+pub mod discovery_ai;
 pub mod discovery_confirm;
 pub mod discovery_email;
 pub mod discovery_meeting;

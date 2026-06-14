@@ -5,7 +5,10 @@
 use chrono::Utc;
 use uuid::Uuid;
 use wb_core::error::Result;
+use wb_core::event::Source;
+use wb_ai::ModelAdapter;
 
+use super::discovery_ai;
 use super::discovery_confirm::ConfirmationFlow;
 use super::discovery_email;
 use super::discovery_meeting;
@@ -72,6 +75,26 @@ impl TaskDiscovery {
     /// 从聊天消息中发现任务
     pub fn discover_from_message(&mut self, text: &str) -> Vec<PendingTask> {
         let tasks = discovery_message::discover_from_message(text);
+        self.confirm_flow.add_batch(tasks.clone());
+        tasks
+    }
+
+    /// 从聊天消息中发现任务（AI 驱动版本）
+    ///
+    /// AI 优先：调用 adapter.extract() 分析消息内容，识别潜在任务。
+    /// AI 返回有效候选则使用 AI 结果，否则降级到关键词匹配。
+    ///
+    /// # Arguments
+    /// - `text`: 待分析文本
+    /// - `adapter`: AI 模型适配器
+    /// - `source`: 事件来源类型（M5: 参数化替代硬编码）
+    pub async fn discover_with_ai(
+        &mut self,
+        text: &str,
+        adapter: &dyn ModelAdapter,
+        source: Source,
+    ) -> Vec<PendingTask> {
+        let tasks = discovery_ai::discover_with_ai(text, adapter, source).await;
         self.confirm_flow.add_batch(tasks.clone());
         tasks
     }
@@ -217,6 +240,85 @@ mod tests {
         let mut discovery = TaskDiscovery::new();
         let tasks = discovery.discover_from_meeting("普通文本没有关键词");
         assert!(tasks.is_empty());
+        assert_eq!(discovery.pending_count(), 0);
+    }
+
+    // ─── AI 驱动的 Task Discovery 测试 ─────────────────────────────
+
+    #[tokio::test]
+    async fn test_discover_with_ai_returns_ai_result() {
+        use wb_ai::{Extraction, MockAdapter};
+        use wb_core::event::Source;
+
+        let mut discovery = TaskDiscovery::new();
+        let adapter = MockAdapter::new().with_extraction(Extraction {
+            title: "完成报告".to_string(),
+            summary: "明天完成报告".to_string(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: Some("明天".to_string()),
+            confidence: 0.9,
+        });
+
+        let tasks = discovery
+            .discover_with_ai("请帮忙明天完成报告", &adapter, Source::FeishuMessage)
+            .await;
+        assert_eq!(tasks.len(), 1, "AI 应发现 1 个任务");
+        assert_eq!(tasks[0].title, "完成报告");
+        assert_eq!(discovery.pending_count(), 1, "应添加到 pending 列表");
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_ai_fallback_to_keywords() {
+        use wb_ai::MockAdapter;
+        use wb_core::event::Source;
+
+        // MockAdapter 默认返回高置信度结果，但标题是 "Mock Title"
+        // 我们使用一个会返回低置信度的 adapter 来触发 fallback
+        let adapter = MockAdapter::new().with_extraction(wb_ai::Extraction {
+            title: String::new(), // 空标题 → AI 认为不是任务
+            summary: String::new(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.2, // 低置信度
+        });
+
+        let mut discovery = TaskDiscovery::new();
+        let tasks = discovery
+            .discover_with_ai("请你帮忙检查一下登录接口", &adapter, Source::FeishuMessage)
+            .await;
+        // AI 返回空 → 降级到关键词匹配 → 应发现任务
+        assert_eq!(tasks.len(), 1, "应降级到关键词匹配发现任务");
+        assert_eq!(discovery.pending_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_discover_with_ai_no_match() {
+        use wb_ai::{Extraction, MockAdapter};
+        use wb_core::event::Source;
+
+        let adapter = MockAdapter::new().with_extraction(Extraction {
+            title: String::new(),
+            summary: String::new(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.2,
+        });
+
+        let mut discovery = TaskDiscovery::new();
+        let tasks = discovery
+            .discover_with_ai("今天天气真好", &adapter, Source::FeishuMessage)
+            .await;
+        // AI 无结果 + 关键词无匹配 → 空
+        assert!(tasks.is_empty(), "非任务文本应返回空");
         assert_eq!(discovery.pending_count(), 0);
     }
 }

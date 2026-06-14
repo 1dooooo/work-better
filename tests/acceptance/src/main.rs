@@ -4,6 +4,11 @@
 mod world;
 mod steps;
 
+/// 测试公共模块（wiremock 基础设施等）
+/// 通过 #[path] 引入项目级 tests/common/ 下的模块
+#[path = "../../common/mod.rs"]
+pub mod common;
+
 use cucumber::World;
 
 #[tokio::main]

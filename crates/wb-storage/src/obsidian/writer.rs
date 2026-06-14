@@ -139,6 +139,7 @@ mod tests {
             tags: vec!["会议".to_string(), "产品".to_string()],
             task_status: None,
             task_due: None,
+            task_priority: None,
             task_progress: None,
             model_used: "claude-sonnet-4-6".to_string(),
             confidence: 0.92,

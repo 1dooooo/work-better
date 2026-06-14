@@ -1,13 +1,56 @@
 //! G2 智能处理 — 分类路由、模型升级、SLA、预算、ReviewAgent
+//!
+//! 已接入真实组件：Classifier、EntityExtractor、ReviewAgent、TaskRunner (MockAdapter)
 
 use cucumber::{given, when, then};
+use wb_ai::ModelAdapter;
+use wb_core::event::{Confidence, Event, EventType, Source};
+use wb_core::record::Category;
+use wb_processor::classifier::{Classifier, ProcessingRoute};
+use wb_processor::extraction::EntityExtractor;
+use wb_processor::reviewer::ReviewAgent;
+
 use crate::world::AcceptanceWorld;
 
 // ── Given ──────────────────────────────────────────────────
 
 #[given(regex = r"^(task_update|approval|meeting|message.*@mention|manual_note|message.*一般|doc_change|browsing|app_activity|低置信度 事件|需要长期分析的事件)")]
 fn setup_event_type(world: &mut AcceptanceWorld, event_desc: String) {
-    if event_desc.contains("task_update") || event_desc.contains("approval") || event_desc.contains("meeting") || event_desc.contains("@mention") || event_desc.contains("manual_note") {
+    // Build a real Event based on the description
+    let (source, event_type, confidence, content) = if event_desc.contains("task_update") {
+        (Source::FeishuProject, EventType::TaskUpdate, Confidence::High,
+         serde_json::json!({"status": "done", "task_id": "t-001"}))
+    } else if event_desc.contains("approval") {
+        (Source::FeishuApproval, EventType::Approval, Confidence::High,
+         serde_json::json!({"approved": true, "request_id": "a-001"}))
+    } else if event_desc.contains("meeting") {
+        (Source::FeishuMeeting, EventType::Meeting, Confidence::High,
+         serde_json::json!({"meeting_id": "meet-001", "title": "项目周会"}))
+    } else if event_desc.contains("@mention") {
+        (Source::FeishuMessage, EventType::Message, Confidence::Medium,
+         serde_json::json!({"text": "@张三 请review一下这个PR"}))
+    } else if event_desc.contains("manual_note") {
+        (Source::UserCapture, EventType::ManualNote, Confidence::High,
+         serde_json::json!({"text": "记一下今天的进展"}))
+    } else if event_desc.contains("低置信度") {
+        (Source::SystemAppSwitch, EventType::AppActivity, Confidence::Low,
+         serde_json::json!({"app": "Safari", "duration_min": 5}))
+    } else if event_desc.contains("长期分析") {
+        (Source::FeishuOkr, EventType::OkrUpdate, Confidence::High,
+         serde_json::json!({"okr_id": "okr-001", "quarter": "Q2"}))
+    } else {
+        // 一般消息：无 @mention
+        (Source::FeishuMessage, EventType::Message, Confidence::Medium,
+         serde_json::json!({"text": "收到了，我看一下"}))
+    };
+
+    let event = Event::new(source, confidence, event_type, content, "{}".to_string());
+    world.pending_event = Some(event);
+
+    // Backward compat: set priority for non-classification scenarios
+    if event_desc.contains("task_update") || event_desc.contains("approval")
+        || event_desc.contains("meeting") || event_desc.contains("@mention")
+        || event_desc.contains("manual_note") {
         world.priority = Some("P0_P1".into());
     } else if event_desc.contains("低置信度") {
         world.confidence = Some(0.3);
@@ -144,6 +187,10 @@ fn p3_event(world: &mut AcceptanceWorld) {
 
 #[when(regex = r"^分类$")]
 fn classify(world: &mut AcceptanceWorld) {
+    if let Some(ref event) = world.pending_event {
+        let route = Classifier::classify(event);
+        world.route = Some(route);
+    }
     world.processing_result = Some("classified".into());
 }
 
@@ -154,6 +201,23 @@ fn process(world: &mut AcceptanceWorld) {
 
 #[when(regex = r"^处理完成$")]
 fn done(world: &mut AcceptanceWorld) {
+    // Run extraction + review using real components with MockAdapter
+    if let Some(ref event) = world.pending_event {
+        let adapter = wb_ai::MockAdapter::new();
+        let extraction = tokio::runtime::Handle::current().block_on(adapter.extract(event));
+        if let Ok(ext) = extraction {
+            let data = wb_processor::extraction::EntityExtractor::extract(
+                &serde_json::to_string(&ext).unwrap_or_default(),
+                &Category::Task,
+            );
+            let record = EntityExtractor::to_work_record(&data, event, "mock-model");
+            let agent = ReviewAgent::new();
+            let review = agent.review(&record);
+            world.review_result = Some(review);
+            world.extraction = Some(ext);
+            world.work_record = Some(record);
+        }
+    }
     world.processing_result = Some("done".into());
 }
 
@@ -201,23 +265,41 @@ fn threshold_reached(world: &mut AcceptanceWorld) {
 
 #[then(regex = r"^即时处理")]
 fn assert_instant(world: &mut AcceptanceWorld) {
-    let prio = world.priority.as_deref().unwrap_or("");
-    assert!(prio.contains("P0") || prio.contains("P1") || prio == "P0_P1", "应即时处理");
+    // Primary: assert on real Classifier output
+    if let Some(ref route) = world.route {
+        assert_eq!(*route, ProcessingRoute::Instant, "Classifier 应返回 Instant 路由");
+    } else {
+        // Fallback for steps that don't use classification
+        let prio = world.priority.as_deref().unwrap_or("");
+        assert!(prio.contains("P0") || prio.contains("P1") || prio == "P0_P1", "应即时处理");
+    }
 }
 
 #[then(regex = r"^聚合处理")]
 fn assert_aggregate(world: &mut AcceptanceWorld) {
-    assert_eq!(world.priority.as_deref(), Some("P2"), "应聚合处理");
+    if let Some(ref route) = world.route {
+        assert_eq!(*route, ProcessingRoute::Aggregate, "Classifier 应返回 Aggregate 路由");
+    } else {
+        assert_eq!(world.priority.as_deref(), Some("P2"), "应聚合处理");
+    }
 }
 
 #[then(regex = r"^模式分析")]
 fn assert_pattern(world: &mut AcceptanceWorld) {
-    assert_eq!(world.priority.as_deref(), Some("P3"), "应模式分析");
+    if let Some(ref route) = world.route {
+        assert_eq!(*route, ProcessingRoute::Pattern, "Classifier 应返回 Pattern 路由");
+    } else {
+        assert_eq!(world.priority.as_deref(), Some("P3"), "应模式分析");
+    }
 }
 
 #[then(regex = r"^直接归档$")]
 fn assert_archive(world: &mut AcceptanceWorld) {
-    assert!(world.confidence.unwrap_or(1.0) < 0.5, "低置信度应直接归档");
+    if let Some(ref route) = world.route {
+        assert_eq!(*route, ProcessingRoute::Archive, "Classifier 应返回 Archive 路由");
+    } else {
+        assert!(world.confidence.unwrap_or(1.0) < 0.5, "低置信度应直接归档");
+    }
 }
 
 #[then(regex = r"^升级大模型$")]
@@ -232,7 +314,19 @@ fn assert_use_llm_directly(world: &mut AcceptanceWorld) {
 
 #[then(regex = r"^进入 ReviewAgent$")]
 fn assert_enter_review(world: &mut AcceptanceWorld) {
-    assert!(world.confidence.unwrap_or(0.0) >= 0.7, "置信度达标应进入 ReviewAgent");
+    // Primary: assert that ReviewAgent was invoked
+    if let Some(ref result) = world.review_result {
+        // ReviewAgent should have produced a verdict
+        assert!(
+            matches!(result.verdict, wb_core::audit::ReviewVerdict::Approved
+                | wb_core::audit::ReviewVerdict::NeedsReview(_)),
+            "高置信度输入应通过或需审核，实际: {:?}",
+            result.verdict
+        );
+    } else {
+        // Fallback: assert on confidence
+        assert!(world.confidence.unwrap_or(0.0) >= 0.7, "置信度达标应进入 ReviewAgent");
+    }
 }
 
 #[then(regex = r"^标记.*需手动处理.*通知$")]

@@ -36,6 +36,7 @@ fn make_record(title: &str, path: &str) -> WorkRecord {
         tags: vec!["meeting".to_string(), "test".to_string()],
         task_status: None,
         task_due: None,
+        task_priority: None,
         task_progress: None,
         model_used: "test-model".to_string(),
         confidence: 0.9,

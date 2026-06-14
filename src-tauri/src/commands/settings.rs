@@ -48,9 +48,12 @@ pub struct StorageConfig {
 }
 
 /// 配置文件路径：~/.work-better/config.json
+///
+/// 支持 `WORK_BETTER_HOME` 环境变量覆盖（dev.sh 使用）。
 fn config_path() -> Result<PathBuf, String> {
-    let home =
-        std::env::var("HOME").map_err(|e| format!("无法获取 HOME 环境变量: {e}"))?;
+    let home = std::env::var("WORK_BETTER_HOME")
+        .or_else(|_| std::env::var("HOME"))
+        .map_err(|e| format!("无法获取 HOME 环境变量: {e}"))?;
     Ok(PathBuf::from(home).join(".work-better").join("config.json"))
 }
 

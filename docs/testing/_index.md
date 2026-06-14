@@ -3,7 +3,7 @@ title: 测试文档索引
 type: index
 domain: testing
 created: 2026-06-06
-updated: 2026-06-12
+updated: 2026-06-13
 status: active
 ---
 
@@ -17,6 +17,11 @@ status: active
 | [conventions.md](conventions.md) | 命名、组织、编写规范 |
 | [implementation-progress.md](implementation-progress.md) | 测试实施进度 |
 | [test-effectiveness-audit.md](test-effectiveness-audit.md) | 测试有效性审计报告 |
+| [product-acceptance.md](product-acceptance.md) | 产品验收报告（AI Pipeline 阶段三） |
+| [phase3-test-report.md](phase3-test-report.md) | 阶段三测试报告（1425/1425 通过） |
+| [e2e-test-report.md](e2e-test-report.md) | L5 E2E 测试验证报告（30/30 通过） |
+| [acceptance-criteria-phase2.md](acceptance-criteria-phase2.md) | Phase 2 验收标准（F2.1.1/F2.4.2/F2.4.3） |
+| [acceptance-criteria-template.md](acceptance-criteria-template.md) | 验收标准模板 |
 
 ## 层级指南
 
@@ -40,6 +45,17 @@ status: active
 | [execution/triggering.md](execution/triggering.md) | 分级触发与执行策略 |
 | [execution/parallelization.md](execution/parallelization.md) | 并行执行策略 |
 | [execution/migration.md](execution/migration.md) | 迁移与实施路线图 |
+
+## 验收测试
+
+| 文档 | 说明 |
+|------|------|
+| [acceptance-test-migration-plan.md](acceptance-test-migration-plan.md) | 验收测试迁移计划 |
+| [acceptance-test-migration-summary.md](acceptance-test-migration-summary.md) | 验收测试迁移总结 |
+| [real-backend-test-plan.md](real-backend-test-plan.md) | 真实后端测试计划 |
+| [real-backend-test-summary.md](real-backend-test-summary.md) | 真实后端测试总结 |
+| [f1-f5-completion-plan.md](f1-f5-completion-plan.md) | F1-F5 功能完成计划 |
+| [f1-f5-completion-summary.md](f1-f5-completion-summary.md) | F1-F5 功能完成总结 |
 
 ## 测试运行
 

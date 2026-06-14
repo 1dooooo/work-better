@@ -3,7 +3,7 @@ title: 功能索引
 type: structural
 domain: features
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-13
 status: active
 ---
 
@@ -79,7 +79,7 @@ status: active
 
 | ID | 功能 | 说明 | 状态 |
 |----|------|------|------|
-| F2.1.1 | 分类器 | 规则引擎 + 小模型判断事件类型和路由 | ✅ |
+| F2.1.1 | 分类器 | 规则引擎 + AI 辅助判断事件类型和路由 | ✅ (阶段三) |
 | F2.1.2 | 即时处理路由 | 任务变更、审批决策等高优先级事件 | ✅ |
 | F2.1.3 | 聚合处理路由 | 按时间窗口批量处理的事件 | 🟡 |
 | F2.1.4 | 模式分析路由 | 长周期深度分析的事件 | 🟡 |
@@ -110,8 +110,8 @@ status: active
 | ID | 功能 | 说明 | 状态 |
 |----|------|------|------|
 | F2.4.1 | 规则层审核 | 格式校验、必填字段、状态流转合法性 | ✅ |
-| F2.4.2 | 小模型审核 | 一致性检查、关键信息覆盖度 | ✅ |
-| F2.4.3 | 大模型审核 | 复杂摘要的语义审核 | ✅ |
+| F2.4.2 | 小模型审核 | 一致性检查、关键信息覆盖度 | ✅ (阶段三) |
+| F2.4.3 | 大模型审核 | 复杂摘要的语义审核 | ✅ (阶段三) |
 | F2.4.4 | 分层审核策略 | 按输出类型决定审核力度 | ✅ |
 | F2.4.5 | 用户确认推送 | 涉及共享数据时推送用户确认 | ✅ |
 
@@ -292,6 +292,72 @@ status: active
 | F4 任务管理 | 13 | 12 | 1 | 0 | 0 |
 | F5 报告生成 | 11 | 5 | 6 | 0 | 0 |
 | F6 系统能力 | 18 | 10 | 2 | 4 | 2 |
-| **合计** | **113** | **76** | **25** | **8** | **4** |
+| **合计** | **113** | **79** | **25** | **5** | **4** |
 
 > **说明**：2026-06-11 按照 [功能完成标准](completion-criteria.md) 重新评估。F1/F5 模块 L2 集成测试补全后，功能完成度显著提升。
+
+### 阶段三完成说明 (2026-06-14)
+
+AI Pipeline 修复计划阶段三完成。以下功能经 L1/L2 测试验证、代码审查、产品验收确认，标记为 `✅ 已完成`：
+
+| 功能 | 验证内容 | 测试数 | 测试报告 |
+|------|----------|--------|----------|
+| F2.1.1 分类器 | AI 辅助分类集成、降级策略、审计记录 | 20 | [阶段三测试报告](../testing/phase3-test-report.md) |
+| F2.4.2 小模型审核 | 一致性检查、覆盖度验证、涉及他人推送 | 10 | [阶段三测试报告](../testing/phase3-test-report.md) |
+| F2.4.3 大模型审核 | 长内容/多人触发大模型审核、降级策略 | 5 | [阶段三测试报告](../testing/phase3-test-report.md) |
+
+验收标准详见 [Phase 2 验收标准](../testing/acceptance-criteria-phase2.md)。
+
+### Phase 4 最终确认 (2026-06-14)
+
+AI Pipeline 修复计划 Phase 4（质量打磨）完成。M2/M4/M5 修复已验证，M1/M3 遗留为 design_debt。
+
+| 功能 | Phase 4 修复 | 最终状态 |
+|------|-------------|---------|
+| F2.1.1 分类器 | M4: AI due_date 输入净化（截断 100 字符） | ✅ 已完成 |
+| F2.4.2 小模型审核 | M2: 涉及他人推送错误处理（match + warn） | ✅ 已完成 |
+| F2.4.3 大模型审核 | 无额外修复需求 | ✅ 已完成 |
+
+遗留 design_debt（不阻塞发布）：
+- M1: pipeline.rs / reviewer.rs 文件长度超限，需拆分测试代码
+- M3: find_existing_path_by_id 无界目录扫描，vault 规模可控时不影响
+
+产品审查报告：`.workflow/artifacts/fix-ai-pipeline-phase4/product-review.json`
+
+### 暗黑模式修复 + 任务去重增强 (2026-06-14)
+
+commit 41b5818 完成两项修复：
+
+**暗黑模式修复**（前端）：
+- Tailwind v4 不支持 `@theme dark {}` 语法，改为 `@layer base` 中的 `[data-theme=dark]` 选择器
+- Sidebar 移除自定义 `useTheme` hook，统一使用 `next-themes`
+- 影响：`src/index.css`、`src/components/layout/Sidebar.tsx`
+
+**任务去重增强**（后端）：
+- 三层去重防护：prompt 一致性规则 + LCS 标题相似度（阈值 0.6）+ 语义向量去重
+- `PersistStep` 新增 `find_similar` + `merge_into_existing`，同目录相似标题自动合并
+- `Deduplicator` 基于 `SemanticSearch`，persist 后自动索引到向量库
+- AI 提取 prompt 增加任务连续性规则，同一任务不同阶段生成一致 title
+- 影响：`crates/wb-processor/src/persist.rs`、`crates/wb-processor/src/pipeline.rs`、`crates/wb-ai/src/anthropic.rs`、`crates/wb-ai/src/openai.rs`
+
+| 功能 | 增强内容 | 状态 |
+|------|----------|------|
+| F3.4.4 重复检测 | 新增 LCS 标题去重 + 语义向量去重，三层防护 | ✅ 已完成 |
+
+遗留 design_debt（不阻塞发布）：
+- DD-001: `find_existing_path_by_id` 无界目录扫描，vault 规模大时需优化为索引查询
+
+产品审查报告：`.workflow/artifacts/fix-dark-mode-dedup/product-review.json`
+
+### Phase 5 L5 E2E 测试覆盖 (2026-06-13)
+
+30 个 L5 E2E 测试完成，覆盖 AI Pipeline 修复计划全部功能需求。
+
+| 功能 | E2E 测试覆盖 | 测试数 |
+|------|-------------|--------|
+| F2.1.1 分类器 | A1-A6（6 种消息类型分类路由）+ D1（AI 分类降级到规则） | 7 |
+| F2.4.2 小模型审核 | C1（普通任务仅规则审核）+ C2（文档类小模型审核）+ C4（涉及他人审核） | 3 |
+| F2.4.3 大模型审核 | C3（长内容触发大模型审核）+ D4（大模型审核降级） | 2 |
+
+测试文件：`tests/e2e/tests/pipeline_e2e.rs`
+产品审查报告：`.workflow/artifacts/fix-ai-pipeline-phase5/product-review.json`

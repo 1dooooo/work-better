@@ -268,6 +268,7 @@ mod tests {
             tags: vec![],
             task_status: None,
             task_due: None,
+            task_priority: None,
             task_progress: None,
             model_used: "test-model".to_string(),
             confidence: 0.9,

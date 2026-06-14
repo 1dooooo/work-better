@@ -35,6 +35,7 @@ pub struct WorkRecord {
     pub task_status: Option<String>,
     #[ts(type = "string | null")]
     pub task_due: Option<DateTime<Utc>>,
+    pub task_priority: Option<String>,
     pub task_progress: Option<String>,
     pub model_used: String,
     pub confidence: f64,
@@ -66,6 +67,7 @@ impl WorkRecord {
             tags: Vec::new(),
             task_status: None,
             task_due: None,
+            task_priority: None,
             task_progress: None,
             model_used,
             confidence,
