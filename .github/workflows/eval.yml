@@ -1,0 +1,46 @@
+name: Eval Suite
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'src/**'
+      - 'src-tauri/**'
+      - '.claude/evals/**'
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'src/**'
+      - 'src-tauri/**'
+      - '.claude/evals/**'
+
+jobs:
+  eval:
+    name: 🔍 Run Evals
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run evals
+        run: |
+          chmod +x scripts/run-evals.sh
+          ./scripts/run-evals.sh
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: .claude/evals/results/
+          retention-days: 30

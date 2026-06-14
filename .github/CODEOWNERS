@@ -1,0 +1,20 @@
+# Default owners for everything in the repo
+* @ido
+
+# Rust crates
+crates/ @ido
+
+# Frontend
+src/ @ido
+
+# Tauri commands
+src-tauri/ @ido
+
+# Documentation
+docs/ @ido
+
+# CI/CD
+.github/ @ido
+
+# Workflow definitions
+.workflow/ @ido
