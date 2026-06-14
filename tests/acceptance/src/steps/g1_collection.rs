@@ -370,7 +370,19 @@ fn processing_logic_changed(world: &mut AcceptanceWorld) {
 async fn message_arrives(world: &mut AcceptanceWorld) { append_pending(world).await; }
 
 #[when(regex = r"^检测$")]
-async fn event_detected(world: &mut AcceptanceWorld) { append_pending(world).await; }
+async fn event_detected(world: &mut AcceptanceWorld) {
+    // 过滤逻辑：防抖（<30秒不记录）、搜索结果页不记录
+    if let Some(ref event) = world.pending_event {
+        let content = event.content.to_string();
+        let stay_below = world.state.get("stay_duration").map(String::as_str) == Some("below_threshold");
+        let is_search = content.contains("搜索结果") || content.contains("is_search");
+        if stay_below || is_search {
+            world.pending_event = None;
+            return;
+        }
+    }
+    append_pending(world).await;
+}
 
 #[when(regex = r"^捕获$")]
 async fn event_captured(world: &mut AcceptanceWorld) { append_pending(world).await; }
@@ -397,7 +409,11 @@ async fn input_submit(world: &mut AcceptanceWorld) {
 }
 
 #[when(regex = r"^提交完成$")]
-async fn action_completed(world: &mut AcceptanceWorld) { append_pending(world).await; }
+async fn action_completed(world: &mut AcceptanceWorld) {
+    append_pending(world).await;
+    // 提交后窗口应隐藏
+    world.state.insert("window".into(), "hidden".into());
+}
 
 // ── Filter step ────────────────────────────────────────────
 
@@ -626,8 +642,7 @@ async fn assert_screenshot_loaded(world: &mut AcceptanceWorld) {
 
 #[then(regex = r"^窗口自动隐藏")]
 async fn assert_window_hidden(world: &mut AcceptanceWorld) {
-    // In real app: verify window.hide() was called. Here: just verify submit happened.
-    assert!(world.last_event_id.is_some(), "应有提交的事件");
+    assert_eq!(world.state.get("window").map(String::as_str), Some("hidden"), "窗口应已隐藏");
 }
 
 // ── Collector Then steps (use real CollectorManager) ────────
