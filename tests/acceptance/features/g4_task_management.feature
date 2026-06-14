@@ -22,15 +22,15 @@ Feature: G4 任务管理 (20 scenarios)
     When todo→in_progress
     Then 合法并持久化
 
-  Scenario: G4-05 →blocked 合法
+  Scenario: G4-05 →blocked 非法（无 Blocked 状态，同状态转换）
     Given in_progress
     When →blocked
-    Then 合法
+    Then 拒绝
 
-  Scenario: G4-06 blocked→in_progress 合法
+  Scenario: G4-06 blocked→in_progress 非法（无 Blocked 状态，同状态转换）
     Given blocked
     When →in_progress
-    Then 合法
+    Then 拒绝
 
   Scenario: G4-07 →cancelled 合法
     Given in_progress
@@ -47,10 +47,10 @@ Feature: G4 任务管理 (20 scenarios)
     When →in_progress
     Then 拒绝
 
-  Scenario: G4-10 blocked→done 非法
+  Scenario: G4-10 blocked→done 合法（InProgress→Done 是合法转换）
     Given blocked
     When 直接→done
-    Then 拒绝
+    Then 合法
 
   Scenario: G4-11 标记 done 设置 completed_at
     Given 标记 done
