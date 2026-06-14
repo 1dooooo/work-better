@@ -246,7 +246,7 @@ async fn when_pipeline_process(world: &mut AcceptanceWorld) {
                 tags: vec![],
                 project: None,
                 due_date: None,
-                confidence: 0.85,
+                confidence: 0.0, // 低于 AI_CONFIDENCE_THRESHOLD → 不触发任务发现
                 is_status_update: false,
                 related_task_id: None,
             });
