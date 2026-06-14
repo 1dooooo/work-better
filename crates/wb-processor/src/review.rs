@@ -348,6 +348,11 @@ impl TieredReview {
         }
     }
 
+    /// 获取小模型审核器（供直接调用场景使用）
+    pub fn small_reviewer(&self) -> &SmallModelReview {
+        &self.small_reviewer
+    }
+
     /// 根据输出类型选择审核策略并执行
     pub fn review(&self, output: &ProcessorOutput) -> ReviewResult {
         match output.output_type {

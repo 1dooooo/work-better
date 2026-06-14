@@ -5,3 +5,4 @@ pub mod g4_task;
 pub mod g5_report;
 pub mod g6_system;
 pub mod g7_cross_cutting;
+pub mod pipeline_scenarios;

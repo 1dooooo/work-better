@@ -22,6 +22,7 @@ fn create_test_record(title: &str, status: &str) -> WorkRecord {
         tags: vec!["test".to_string()],
         task_status: Some(status.to_string()),
         task_due: None,
+        task_priority: None,
         task_progress: None,
         model_used: "test-model".to_string(),
         confidence: 0.9,

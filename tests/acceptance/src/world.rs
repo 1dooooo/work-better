@@ -2,8 +2,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use wb_ai::Extraction;
 use wb_collector::manager::CollectorManager;
+use wb_core::audit::ReviewResult;
 use wb_core::event::Event;
+use wb_core::record::WorkRecord;
+use wb_processor::classifier::ProcessingRoute;
+use wb_processor::task::discovery::PendingTask;
 use wb_processor::task::TaskManager;
 use wb_scheduler::scheduler::Scheduler;
 use wb_storage::SqliteEventLog;
@@ -20,6 +25,13 @@ pub struct AcceptanceWorld {
     // ── Pending event (created in Given, appended in When) ─
     pub pending_event: Option<Event>,
     pub last_event_id: Option<String>,
+
+    // ── Processing pipeline results (real component outputs) ─
+    pub route: Option<ProcessingRoute>,
+    pub extraction: Option<Extraction>,
+    pub work_record: Option<WorkRecord>,
+    pub review_result: Option<ReviewResult>,
+    pub discovery_result: Option<Vec<PendingTask>>,
 
     // ── Existing fields (backward compat with G2-G7 steps) ─
     pub event_type: Option<String>,
@@ -63,6 +75,13 @@ impl Default for AcceptanceWorld {
             scheduler: Arc::new(Scheduler::new()),
             pending_event: None,
             last_event_id: None,
+            // Real component outputs
+            route: None,
+            extraction: None,
+            work_record: None,
+            review_result: None,
+            discovery_result: None,
+            // Backward compat fields
             event_type: None,
             event_content: None,
             confidence: None,

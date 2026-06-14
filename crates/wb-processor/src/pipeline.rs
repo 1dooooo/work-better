@@ -6,13 +6,14 @@ use std::time::Instant;
 
 use wb_core::audit::{ReviewResult, ReviewVerdict};
 use wb_core::error::Result;
-use wb_core::event::Event;
+use wb_core::event::{Event, EventType};
 use wb_core::record::WorkRecord;
 
 use crate::classifier::{Classifier, ProcessingRoute};
 use crate::extraction::{EntityExtractor, ExtractedData};
 use crate::persist::{Deduplicator, PersistStep};
 use crate::reviewer::ReviewAgent;
+use crate::task::discovery::TaskDiscovery;
 
 use wb_ai::task_runner::TaskRunner;
 
@@ -51,6 +52,7 @@ pub struct ProcessingPipeline {
     reviewer: ReviewAgent,
     persistor: PersistStep,
     deduplicator: Option<Deduplicator>,
+    task_discovery: TaskDiscovery,
 }
 
 impl ProcessingPipeline {
@@ -62,6 +64,7 @@ impl ProcessingPipeline {
             reviewer: ReviewAgent::new(),
             persistor,
             deduplicator: None,
+            task_discovery: TaskDiscovery::new(),
         }
     }
 
@@ -88,9 +91,44 @@ impl ProcessingPipeline {
         let total_start = Instant::now();
         let mut timings = StepTimings::default();
 
-        // Step 1: 分类
+        // Step 1: 规则分类
         let classify_start = Instant::now();
-        let route = Classifier::classify(event);
+        let rule_route = Classifier::classify(event);
+
+        // Step 1.5: AI 二次分类（非 Archive 路由）
+        let route = if rule_route == ProcessingRoute::Archive {
+            rule_route
+        } else {
+            let initial_confidence = Self::event_initial_confidence(event);
+            match self
+                .task_runner
+                .run_classify(event, initial_confidence)
+                .await
+            {
+                Ok(ai_output) => {
+                    if let Ok(classification) =
+                        serde_json::from_str::<wb_ai::Classification>(&ai_output.content)
+                    {
+                        let ai_route = Self::category_to_route(&classification.category);
+                        if ai_route != rule_route {
+                            tracing::info!(
+                                "classify_ai_override: rule={:?} ai={:?}",
+                                rule_route,
+                                ai_route
+                            );
+                        }
+                        ai_route
+                    } else {
+                        tracing::info!("classify_ai_fallback");
+                        rule_route
+                    }
+                }
+                Err(_) => {
+                    tracing::info!("classify_ai_fallback");
+                    rule_route
+                }
+            }
+        };
         timings.classify_ms = classify_start.elapsed().as_millis() as u64;
 
         // Step 2 & 3: 模型提取（Archive 路由跳过）
@@ -106,20 +144,31 @@ impl ProcessingPipeline {
                     tags: vec![],
                     task_status: None,
                     confidence: 0.4,
+                    due_date: None,
                 };
                 (data, "archive-skip".to_string())
             }
             _ => {
                 let extract_start = Instant::now();
-                let output = self
+                let category = Self::map_event_to_category(event);
+                match self
                     .task_runner
                     .run_extract(event, Self::event_initial_confidence(event))
-                    .await?;
-                timings.extract_ms = extract_start.elapsed().as_millis() as u64;
-
-                let category = Self::map_event_to_category(event);
-                let data = EntityExtractor::extract(&output.content, &category);
-                (data, output.model_used)
+                    .await
+                {
+                    Ok(output) => {
+                        timings.extract_ms = extract_start.elapsed().as_millis() as u64;
+                        let data = EntityExtractor::extract(&output.content, &category);
+                        (data, output.model_used)
+                    }
+                    Err(e) => {
+                        tracing::info!("extract_ai_fallback: {:?}", e);
+                        timings.extract_ms = extract_start.elapsed().as_millis() as u64;
+                        // 降级：从事件内容直接构建提取数据
+                        let data = Self::fallback_extract_from_event(event, &category);
+                        (data, "extract-fallback".to_string())
+                    }
+                }
             }
         };
 
@@ -131,7 +180,33 @@ impl ProcessingPipeline {
             record.obsidian_path = PersistStep::generate_path(&record);
         }
 
-        // Step 4.5: 语义去重（如果启用了 Deduplicator）
+        // Step 4.5: Task Discovery（AI 驱动，检查是否包含任务）
+        // 仅对文本类事件运行任务发现，避免对 Approval、Browsing 等产生误报
+        if Self::is_text_rich_event(event) {
+            let event_text = Self::extract_text_from_event(event);
+            let discovery_tasks = if let Some(adapter) = self.task_runner.default_adapter() {
+                // AI 优先：调用 AI 分析消息内容
+                // M5: 传递事件的 source 而非硬编码
+                self.task_discovery
+                    .discover_with_ai(&event_text, adapter, event.source.clone())
+                    .await
+            } else {
+                // 降级到关键词匹配
+                self.task_discovery.discover_from_message(&event_text)
+            };
+            if let Some(candidate) = discovery_tasks.first() {
+                record.category = wb_core::record::Category::Task;
+                if let Some(ref due) = candidate.due_date {
+                    let sanitized_due = sanitize_text_input(due, 100);
+                    record.task_due = crate::extraction::parse_due_date_from_text(&sanitized_due);
+                }
+                // TaskPriority 是 Rust 枚举，format!("{:?}", ...) 始终产生合法值
+                record.task_priority = Some(format!("{:?}", candidate.priority));
+                tracing::info!("task_discovered: title={}", candidate.title);
+            }
+        }
+
+        // Step 4.6: 语义去重（如果启用了 Deduplicator）
         if let Some(ref dedup) = self.deduplicator {
             if let Some(existing_id) = dedup.find_similar(&record).await {
                 // 将当前事件的 source_event_ids 合并到已有记录的路径
@@ -169,6 +244,35 @@ impl ProcessingPipeline {
         })
     }
 
+    /// 降级提取：当模型提取失败时，从事件内容直接构建 ExtractedData
+    fn fallback_extract_from_event(event: &Event, category: &wb_core::record::Category) -> ExtractedData {
+        let title = Self::extract_title_from_event(event);
+        let content_str = match &event.content {
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Object(obj) => {
+                obj.get("text")
+                    .or_else(|| obj.get("title"))
+                    .or_else(|| obj.get("subject"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string()
+            }
+            _ => serde_json::to_string(&event.content).unwrap_or_default(),
+        };
+        ExtractedData {
+            title,
+            summary: content_str.clone(),
+            detail: content_str,
+            category: category.clone(),
+            project: None,
+            people: vec![],
+            tags: vec![],
+            task_status: None,
+            confidence: 0.7,
+            due_date: None,
+        }
+    }
+
     /// 从事件内容中提取标题（Archive 路由使用）
     fn extract_title_from_event(event: &Event) -> String {
         match &event.content {
@@ -197,6 +301,44 @@ impl ProcessingPipeline {
             EventType::Approval => wb_core::record::Category::Decision,
             EventType::OkrUpdate | EventType::Browsing => wb_core::record::Category::Planning,
             EventType::AppActivity => wb_core::record::Category::Research,
+        }
+    }
+
+    /// 将 AI 分类标签映射为 ProcessingRoute
+    fn category_to_route(category: &str) -> ProcessingRoute {
+        match category {
+            "task" | "approval" | "manual_note" | "meeting" | "calendar" | "email" => {
+                ProcessingRoute::Instant
+            }
+            "message" | "document" | "browsing" | "app_activity" => ProcessingRoute::Aggregate,
+            "okr" => ProcessingRoute::Pattern,
+            _ => ProcessingRoute::Aggregate,
+        }
+    }
+
+    /// 判断事件是否为文本丰富的类型（适合运行任务发现）
+    ///
+    /// 仅对 Message、Email、ManualNote 运行任务发现，
+    /// 避免对 Approval、Browsing、AppActivity 等产生误报。
+    fn is_text_rich_event(event: &Event) -> bool {
+        matches!(
+            event.event_type,
+            EventType::Message | EventType::Email | EventType::ManualNote
+        )
+    }
+
+    /// 从事件内容中提取文本（用于 TaskDiscovery）
+    fn extract_text_from_event(event: &Event) -> String {
+        match &event.content {
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Object(obj) => obj
+                .get("text")
+                .or_else(|| obj.get("title"))
+                .or_else(|| obj.get("subject"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            _ => serde_json::to_string(&event.content).unwrap_or_default(),
         }
     }
 
@@ -241,310 +383,14 @@ impl ProcessingPipeline {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-    use std::collections::HashMap;
-    use tempfile::tempdir;
-    use wb_ai::{
-        budget::TokenBudget,
-        router::ModelRouter,
-        task_runner::{ModelSize, TaskRunner},
-        MockAdapter, ModelAdapter,
-    };
-    use wb_core::event::{Confidence, EventType, Source};
-
-    fn make_event(
-        source: Source,
-        confidence: Confidence,
-        event_type: EventType,
-        content: serde_json::Value,
-    ) -> Event {
-        Event::new(source, confidence, event_type, content, "raw".to_string())
-    }
-
-    fn make_pipeline(tmp_dir: &std::path::Path) -> ProcessingPipeline {
-        let router = ModelRouter::new();
-        let budget = TokenBudget::new(100_000);
-        let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
-        adapters.insert(ModelSize::Small, Box::new(MockAdapter::new()));
-        adapters.insert(
-            ModelSize::Large,
-            Box::new(MockAdapter::new().with_model_name("mock-large".to_string())),
-        );
-        let mut adapter_names = HashMap::new();
-        adapter_names.insert(ModelSize::Small, "mock-small".to_string());
-        adapter_names.insert(ModelSize::Large, "mock-large".to_string());
-
-        let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-        let persistor = PersistStep::new(tmp_dir);
-
-        ProcessingPipeline::new(runner, persistor)
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_process_instant_route() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuProject,
-            Confidence::High,
-            EventType::TaskUpdate,
-            json!({"status": "done", "title": "Fix bug"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.route, ProcessingRoute::Instant);
-        assert!(!result.work_record.title.is_empty());
-        assert!(result.processing_time_ms < 10_000);
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_process_archive_route() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::SystemAppSwitch,
-            Confidence::Low,
-            EventType::AppActivity,
-            json!({"app": "Safari"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.route, ProcessingRoute::Archive);
-        assert_eq!(result.work_record.model_used, "archive-skip");
-        // Archive 路由不调用模型，extract_ms 应为 0
-        assert_eq!(result.step_timings.extract_ms, 0);
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_process_aggregate_route() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuMessage,
-            Confidence::Medium,
-            EventType::Message,
-            json!({"text": "普通消息"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.route, ProcessingRoute::Aggregate);
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_persists_approved_record() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuProject,
-            Confidence::High,
-            EventType::TaskUpdate,
-            json!({"status": "done"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        // MockAdapter 返回高置信度提取 → 应该通过审核
-        // 检查是否有持久化耗时（>0 表示执行了持久化）
-        if !matches!(result.review_result.verdict, ReviewVerdict::NeedsFix(_)) {
-            assert!(result.step_timings.persist_ms > 0 || result.step_timings.persist_ms == 0);
-            // 至少记录应该有有效的 obsidian_path
-            assert!(!result.work_record.obsidian_path.is_empty());
-        }
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_needs_fix_does_not_persist() {
-        let tmp = tempdir().unwrap();
-        let router = ModelRouter::new();
-        let budget = TokenBudget::new(100_000);
-        let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
-
-        // 创建返回低置信度提取的 adapter
-        let low_conf_adapter = MockAdapter::new().with_extraction(wb_ai::Extraction {
-            title: "".to_string(), // 空标题 → 触发 RequiredFieldsRule
-            summary: "".to_string(),
-            detail: "".to_string(),
-            people: vec![],
-            tags: vec![],
-            project: None,
-            due_date: None,
-            confidence: 0.3,
-        });
-        adapters.insert(ModelSize::Small, Box::new(low_conf_adapter));
-        adapters.insert(ModelSize::Large, Box::new(MockAdapter::new()));
-        let mut adapter_names = HashMap::new();
-        adapter_names.insert(ModelSize::Small, "mock-small".to_string());
-        adapter_names.insert(ModelSize::Large, "mock-large".to_string());
-
-        let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-        let persistor = PersistStep::new(tmp.path());
-        let mut pipeline = ProcessingPipeline::new(runner, persistor);
-
-        let event = make_event(
-            Source::FeishuProject,
-            Confidence::High,
-            EventType::TaskUpdate,
-            json!({"status": "done"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        // 空标题 → NeedsFix → 不应持久化
-        assert!(matches!(
-            result.review_result.verdict,
-            ReviewVerdict::NeedsFix(_)
-        ));
-        assert_eq!(result.step_timings.persist_ms, 0);
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_meeting_category_mapping() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuMeeting,
-            Confidence::High,
-            EventType::Meeting,
-            json!({"meeting_id": "m-001", "title": "Standup"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(
-            result.work_record.category,
-            wb_core::record::Category::Meeting
-        );
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_email_category_mapping() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuEmail,
-            Confidence::Medium,
-            EventType::Email,
-            json!({"subject": "Project update"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(
-            result.work_record.category,
-            wb_core::record::Category::Communication
-        );
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_approval_category_mapping() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuApproval,
-            Confidence::High,
-            EventType::Approval,
-            json!({"approved": true}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(
-            result.work_record.category,
-            wb_core::record::Category::Decision
-        );
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_step_timings_populated() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuProject,
-            Confidence::High,
-            EventType::TaskUpdate,
-            json!({"title": "Test"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        // classify_ms 应该 > 0（即使非常快，也有微小耗时）
-        // 至少总处理时间应该 >= 各步骤之和
-        let sum = result.step_timings.classify_ms
-            + result.step_timings.extract_ms
-            + result.step_timings.review_ms
-            + result.step_timings.persist_ms;
-        assert!(
-            result.processing_time_ms >= sum,
-            "total {} should be >= sum of steps {}",
-            result.processing_time_ms,
-            sum
-        );
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_with_custom_reviewer() {
-        let tmp = tempdir().unwrap();
-        let router = ModelRouter::new();
-        let budget = TokenBudget::new(100_000);
-        let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
-        adapters.insert(ModelSize::Small, Box::new(MockAdapter::new()));
-        adapters.insert(ModelSize::Large, Box::new(MockAdapter::new()));
-        let mut adapter_names = HashMap::new();
-        adapter_names.insert(ModelSize::Small, "mock-small".to_string());
-        adapter_names.insert(ModelSize::Large, "mock-large".to_string());
-
-        let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-        let persistor = PersistStep::new(tmp.path());
-        // 自定义 ReviewAgent（默认配置）
-        let reviewer = ReviewAgent::new();
-        let mut pipeline = ProcessingPipeline::new(runner, persistor).with_reviewer(reviewer);
-
-        let event = make_event(
-            Source::FeishuProject,
-            Confidence::High,
-            EventType::TaskUpdate,
-            json!({"status": "done"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.review_result.reviewer, "rule");
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_archive_extracts_title_from_text() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::SystemBrowser,
-            Confidence::Low,
-            EventType::Browsing,
-            json!({"text": "浏览了技术文档", "url": "https://example.com"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.route, ProcessingRoute::Archive);
-        assert_eq!(result.work_record.title, "浏览了技术文档");
-    }
-
-    #[tokio::test]
-    async fn test_pipeline_source_event_ids_preserved() {
-        let tmp = tempdir().unwrap();
-        let mut pipeline = make_pipeline(tmp.path());
-
-        let event = make_event(
-            Source::FeishuMessage,
-            Confidence::High,
-            EventType::Message,
-            json!({"text": "@test message"}),
-        );
-
-        let result = pipeline.process(&event).await.unwrap();
-        assert_eq!(result.work_record.source_event_ids, vec![event.id.clone()]);
-    }
+/// 净化文本输入：按字符截断到指定最大长度
+///
+/// 用于防止 AI 生成的过长内容污染 WorkRecord。
+/// 使用 `chars().take(max_len)` 确保按 Unicode 字符截断，不破坏字符边界。
+fn sanitize_text_input(text: &str, max_chars: usize) -> String {
+    text.chars().take(max_chars).collect()
 }
+
+#[cfg(test)]
+#[path = "pipeline_tests.rs"]
+mod tests;

@@ -70,3 +70,6 @@ test-results/vitest-results.json
 
 # === Workflow artifacts (runtime, not committed) ===
 .workflow/artifacts/
+
+# === Dev 本地数据（与用户数据隔离） ===
+.dev-data/

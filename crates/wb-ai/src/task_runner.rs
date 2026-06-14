@@ -97,6 +97,19 @@ impl TaskRunner {
         self.adapters.get(size).map(|a| a.as_ref())
     }
 
+    /// 获取指定大小模型的适配器（公开版本，供外部模块使用）
+    pub fn adapter(&self, size: &ModelSize) -> Option<&dyn ModelAdapter> {
+        self.get_adapter(size)
+    }
+
+    /// 获取默认适配器（Small 模型）
+    ///
+    /// 便利方法：大多数场景使用小模型，无需指定 size。
+    /// 如果 Small 模型未配置，返回 None。
+    pub fn default_adapter(&self) -> Option<&dyn ModelAdapter> {
+        self.get_adapter(&ModelSize::Small)
+    }
+
     /// 获取指定大小模型的名称
     fn get_adapter_name(&self, size: &ModelSize) -> String {
         self.adapter_names
@@ -448,5 +461,26 @@ mod tests {
         assert!(estimate_tokens("你好世界") > 0);
         // 空文本
         assert_eq!(estimate_tokens(""), 0);
+    }
+
+    #[test]
+    fn test_default_adapter_returns_small_model() {
+        let runner = make_runner();
+        let adapter = runner.default_adapter();
+        assert!(adapter.is_some(), "default_adapter should return Small model adapter");
+    }
+
+    #[test]
+    fn test_default_adapter_returns_none_when_not_configured() {
+        let router = ModelRouter::new();
+        let budget = TokenBudget::new(100_000);
+        let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
+        // 只配置 Large，不配置 Small
+        adapters.insert(ModelSize::Large, Box::new(MockAdapter::new()));
+        let mut adapter_names = HashMap::new();
+        adapter_names.insert(ModelSize::Large, "mock-large".to_string());
+
+        let runner = TaskRunner::new(router, budget, adapters, adapter_names);
+        assert!(runner.default_adapter().is_none(), "Should return None when Small not configured");
     }
 }

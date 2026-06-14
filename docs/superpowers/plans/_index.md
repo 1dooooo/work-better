@@ -17,3 +17,5 @@ status: active
 | [phase3-deep-insight.md](2026-06-06-phase3-deep-insight.md) | ✅ done | 深度洞察 — 模型调度 + 审核代理 |
 | [phase4-task-intelligence.md](2026-06-06-phase4-task-intelligence.md) | ✅ done | 任务智能 — 任务管理 + 飞书同步 |
 | [phase5-polish.md](2026-06-06-phase5-polish.md) | ✅ done | 收尾打磨 — 系统能力完善 |
+| [design-implementation-gap-analysis.md](2026-06-13-design-implementation-gap-analysis.md) | 🔍 active | 设计与实现断裂分析 |
+| [ai-pipeline-repair-plan.md](2026-06-13-ai-pipeline-repair-plan.md) | 📋 approved | AI Pipeline 修复计划（29h，3 阶段） |

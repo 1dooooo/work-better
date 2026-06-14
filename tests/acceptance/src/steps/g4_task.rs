@@ -1,6 +1,11 @@
 //! G4 任务管理 — 创建、状态机、AI发现、飞书同步
+//!
+//! 已接入真实组件：TaskDiscovery（消息任务发现）
 
 use cucumber::{given, when, then};
+use wb_core::event::{Confidence, Event, EventType, Source};
+use wb_processor::task::discovery::TaskDiscovery;
+
 use crate::world::AcceptanceWorld;
 
 #[given(regex = r"^用户手动创建任务$")]
@@ -37,6 +42,23 @@ fn has_subtasks(world: &mut AcceptanceWorld) {
 
 #[given(regex = r"^(会议结束有待办|聊天消息含承诺|邮件含请求|文档评论含待办)$")]
 fn ai_task_source(world: &mut AcceptanceWorld, source: String) {
+    // Create a real Event with appropriate content for TaskDiscovery
+    let (evt_source, evt_type, content) = if source.contains("会议") {
+        (Source::FeishuMeeting, EventType::Meeting,
+         serde_json::json!({"text": "待办：完成项目进度报告"}))
+    } else if source.contains("聊天") || source.contains("承诺") {
+        (Source::FeishuMessage, EventType::Message,
+         serde_json::json!({"text": "请你帮忙检查一下登录接口"}))
+    } else if source.contains("邮件") {
+        (Source::FeishuEmail, EventType::Email,
+         serde_json::json!({"text": "请确认：API 文档是否完整"}))
+    } else {
+        // 文档评论含待办
+        (Source::FeishuDoc, EventType::DocumentChange,
+         serde_json::json!({"text": "待办：更新 README 文档"}))
+    };
+    let event = Event::new(evt_source, Confidence::High, evt_type, content, "{}".to_string());
+    world.pending_event = Some(event);
     world.state.insert("ai_source".into(), source);
 }
 
@@ -78,6 +100,25 @@ fn sync(world: &mut AcceptanceWorld) {
 
 #[when(regex = r"^分析$")]
 fn analyze(world: &mut AcceptanceWorld) {
+    // Call real TaskDiscovery based on event source
+    if let Some(ref event) = world.pending_event {
+        let content_text = match &event.content {
+            serde_json::Value::Object(obj) => {
+                obj.get("text").and_then(|v| v.as_str()).unwrap_or("").to_string()
+            }
+            serde_json::Value::String(s) => s.clone(),
+            _ => serde_json::to_string(&event.content).unwrap_or_default(),
+        };
+        let mut discovery = TaskDiscovery::new();
+        let tasks = match event.event_type {
+            EventType::Meeting => discovery.discover_from_meeting(&content_text),
+            EventType::Message => discovery.discover_from_message(&content_text),
+            EventType::Email => discovery.discover_from_email(&content_text),
+            EventType::DocumentChange => discovery.discover_from_meeting(&content_text),
+            _ => discovery.discover_from_message(&content_text),
+        };
+        world.discovery_result = Some(tasks);
+    }
     world.processing_result = Some("analyzed".into());
 }
 
@@ -146,7 +187,14 @@ fn assert_parent_linked(world: &mut AcceptanceWorld) {
 
 #[then(regex = r"^识别并创建 needs_review 任务$")]
 fn assert_ai_task_created(world: &mut AcceptanceWorld) {
-    assert!(world.state.contains_key("ai_source"));
+    // Primary: assert on real TaskDiscovery results
+    if let Some(ref tasks) = world.discovery_result {
+        assert!(!tasks.is_empty(), "TaskDiscovery 应发现至少一个任务候选");
+        assert!(tasks[0].title.chars().count() > 0, "任务标题不应为空");
+    } else {
+        // Fallback
+        assert!(world.state.contains_key("ai_source"));
+    }
 }
 
 #[then(regex = r"^必须确认或拒绝才激活$")]
