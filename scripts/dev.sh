@@ -25,8 +25,12 @@ if [ ! -f "$DEV_HOME/.work-better/config.json" ] && [ -f "$HOME/.work-better/con
 fi
 
 # 将 HOME 重定向到 dev 目录（影响 config_path、vault ~ 展开等所有 $HOME 依赖）
+# 先保存真实的 Rust 工具链路径（HOME 被重定向后 rustup/cargo 会找不到工具链）
+REAL_HOME="$HOME"
 export HOME="$DEV_HOME"
 export WORK_BETTER_HOME="$DEV_HOME"
+export RUSTUP_HOME="${RUSTUP_HOME:-$REAL_HOME/.rustup}"
+export CARGO_HOME="${CARGO_HOME:-$REAL_HOME/.cargo}"
 
 # Tauri app_data_dir symlink（SQLite 数据库位置）
 # macOS: ~/Library/Application Support/{identifier}/
