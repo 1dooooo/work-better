@@ -67,6 +67,21 @@ task_id 格式：`feat-xxx`、`fix-xxx`、`refactor-xxx`
    - `env_issue` → 记录，不阻塞
 4. 修复后重新运行 `./scripts/run-workflow.sh <task_id>`
 
+## Eval 自动运行
+
+代码变更（crates/、src/、src-tauri/）会自动触发 eval，无需手动执行。
+
+- **Hook**: `post:edit-write:eval-trigger`（每次 Edit/Write 自动触发，60s 冷却）
+- **Eval 定义**: `.claude/evals/*.md`（每个功能一个 eval 文件）
+- **运行脚本**: `scripts/run-evals.sh [eval-name]`
+- **结果**: `.claude/evals/results/eval-report-*.md`
+
+手动运行：
+```bash
+./scripts/run-evals.sh              # 运行所有 eval
+./scripts/run-evals.sh manual-capture  # 运行指定 eval
+```
+
 ## 参考文档
 
 - Workflow Spec: `.workflow/specs/dev-test-review.yaml`

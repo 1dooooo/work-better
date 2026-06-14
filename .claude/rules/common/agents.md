@@ -49,3 +49,29 @@ For complex problems, use split role sub-agents:
 - Security expert
 - Consistency reviewer
 - Redundancy checker
+
+## Code Reuse Verification
+
+When reviewing code changes, verify code reuse compliance:
+
+### Principle
+
+Prefer reusing existing core functions over re-implementing. Duplicate implementations increase maintenance cost, risk behavior inconsistency, and scatter test coverage.
+
+### When to Check
+
+- **Development time**: Before writing a new function, search if an equivalent already exists
+- **Review time**: After implementation, verify no duplication was introduced
+- **Refactoring time**: When modifying duplicated code, consolidate into a single source
+
+### What to Check
+
+| Check | Description |
+|-------|-------------|
+| Core function reuse | New code should reuse existing core functions instead of re-implementing |
+| Execution path consistency | Test-covered paths must match production execution paths |
+| Duplicate implementation | Flag multiple independent implementations of same logic as HIGH issue |
+
+### Reference
+
+For project-specific code reuse rules, see `docs/development/multi-agent-collaboration.md`.

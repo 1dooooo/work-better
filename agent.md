@@ -76,6 +76,12 @@ workflow-runner 收到任务后自行判断：
 
 **渐进式读取**：`agent.md` → CODEMAP → 目标源文件（最多 3 层定位）
 
+## 错误响应（强制）
+
+**当用户明确指出错误时，禁止直接改代码。必须先反思开发交付流程。**
+
+→ 详见 [错误响应协议](docs/development/error-response-protocol.md)
+
 ## 文档导航
 
 → [文档索引](docs/index.md) | [文档规范](docs/conventions.md) | [ADR 决策记录](docs/decisions/)

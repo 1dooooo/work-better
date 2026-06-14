@@ -24,6 +24,34 @@ MANDATORY workflow:
 3. Verify mocks are correct
 4. Fix implementation, not tests (unless tests are wrong)
 
+## Execution Path Verification
+
+Code paths covered by tests **must match** the paths exercised in production. Tests that cover dead code or exercise different call chains than production provide false confidence.
+
+### Principle
+
+Test coverage metrics (line, branch, function) measure *what* the tests touch, not whether those paths are the ones production actually runs. Execution path verification closes this gap by comparing tested paths against real call traces.
+
+### Verification Method
+
+1. **Collect production call traces** — instrument or profile the production flow to record the functions and branches actually invoked.
+2. **Collect test call traces** — run the test suite under coverage instrumentation and record the functions and branches exercised.
+3. **Diff the two sets** — anything in production but not in tests is an untested path; anything in tests but not in production is dead or redundant test code.
+
+### When to Verify
+
+The `test-agent` performs execution path verification during **L4 (system-level) testing**. At this level the full integration surface is available, making call-trace comparison meaningful.
+
+### Verification Output
+
+| Output | Meaning | Action |
+|--------|---------|--------|
+| **Untested path** | Production path not covered by any test | Add targeted test |
+| **Duplicate implementation** | Same logic exists in multiple locations | Consolidate or alias |
+| **Dead test path** | Test exercises code no production path reaches | Remove or annotate as regression guard |
+
+> **Reference:** For the full verification procedure, trace-collection setup, and tooling details, see [Testing Architecture](../../../docs/testing/architecture.md).
+
 ## Agent Support
 
 - **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
