@@ -9,7 +9,7 @@ pub mod prompt;
 pub mod router;
 pub mod task_runner;
 
-pub use adapter::{Classification, Extraction, MockAdapter, ModelAdapter};
+pub use adapter::{Classification, Extraction, MockAdapter, ModelAdapter, TaskContext};
 pub use anthropic::AnthropicAdapter;
 pub use budget::{OverloadStrategy, TokenBudget};
 pub use config::ModelConfig;

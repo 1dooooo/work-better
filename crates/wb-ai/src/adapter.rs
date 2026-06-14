@@ -14,6 +14,17 @@ pub struct Classification {
     pub reasoning: String,
 }
 
+/// 已有任务的上下文摘要（传给 AI 用于状态更新判断）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskContext {
+    /// 已有任务的 ID
+    pub id: String,
+    /// 已有任务的标题
+    pub title: String,
+    /// 任务状态（Pending / Open / InProgress）
+    pub status: String,
+}
+
 /// 提取结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Extraction {
@@ -33,6 +44,12 @@ pub struct Extraction {
     pub due_date: Option<String>,
     /// 置信度
     pub confidence: f64,
+    /// 是否为已有任务的状态更新（而非新任务）
+    #[serde(default)]
+    pub is_status_update: bool,
+    /// 关联的已有任务 ID（当 is_status_update=true 时有值）
+    #[serde(default)]
+    pub related_task_id: Option<String>,
 }
 
 /// 模型适配器异步 trait
@@ -77,6 +94,8 @@ impl MockAdapter {
                 project: None,
                 due_date: None,
                 confidence: 0.95,
+                is_status_update: false,
+                related_task_id: None,
             },
             summary: "Mock summary text".to_string(),
             model_name: "mock-model".to_string(),
@@ -193,6 +212,8 @@ mod tests {
             project: Some("ProjectX".to_string()),
             due_date: None,
             confidence: 0.88,
+            is_status_update: false,
+            related_task_id: None,
         });
         let event = make_test_event();
         let result = adapter.extract(&event).await.unwrap();

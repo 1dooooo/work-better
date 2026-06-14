@@ -34,6 +34,8 @@ fn make_non_task_adapter() -> MockAdapter {
         project: None,
         due_date: None,
         confidence: 0.2, // 低置信度
+        is_status_update: false,
+        related_task_id: None,
     })
 }
 
@@ -157,6 +159,8 @@ async fn test_pipeline_needs_fix_does_not_persist() {
         project: None,
         due_date: None,
         confidence: 0.3,
+        is_status_update: false,
+        related_task_id: None,
     });
     adapters.insert(ModelSize::Small, Box::new(low_conf_adapter));
     adapters.insert(ModelSize::Large, Box::new(MockAdapter::new()));
@@ -538,6 +542,8 @@ async fn test_discovery_ai_sets_task_category() {
         project: None,
         due_date: Some("明天下午5点".to_string()),
         confidence: 0.9,
+        is_status_update: false,
+        related_task_id: None,
     });
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
 
@@ -570,6 +576,8 @@ async fn test_discovery_ai_fallback_to_keywords() {
         project: None,
         due_date: None,
         confidence: 0.2,
+        is_status_update: false,
+        related_task_id: None,
     });
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
 
@@ -602,6 +610,8 @@ async fn test_discovery_ai_no_match_keeps_category() {
         project: None,
         due_date: None,
         confidence: 0.2,
+        is_status_update: false,
+        related_task_id: None,
     });
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
 
@@ -688,6 +698,8 @@ async fn test_pipeline_sanitizes_long_due_date() {
         project: None,
         due_date: Some(long_due.clone()),
         confidence: 0.9,
+        is_status_update: false,
+        related_task_id: None,
     });
     let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
 

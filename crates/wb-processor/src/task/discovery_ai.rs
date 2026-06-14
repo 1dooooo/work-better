@@ -2,8 +2,11 @@
 //!
 //! 使用 ModelAdapter.extract() 分析消息内容，识别潜在任务。
 //! AI 优先：AI 返回有效结果则使用 AI 结果，否则降级到关键词匹配。
+//!
+//! 支持任务上下文：传入已有 Pending/Open 任务列表，AI 可判断新消息是
+//! "新任务"还是"已有任务的状态更新"。
 
-use wb_ai::ModelAdapter;
+use wb_ai::{ModelAdapter, TaskContext};
 
 use super::discovery::PendingTask;
 use super::discovery_message;
@@ -29,9 +32,15 @@ const URGENT_KEYWORDS: &[&str] = &[
 /// - `text`: 待分析文本
 /// - `adapter`: AI 模型适配器
 /// - `source`: 事件来源类型（M5: 参数化替代硬编码）
-pub async fn discover_with_ai(text: &str, adapter: &dyn ModelAdapter, source: Source) -> Vec<PendingTask> {
-    // Step 1: 尝试 AI 提取
-    let ai_candidates = try_ai_extraction(text, adapter, source).await;
+/// - `existing_tasks`: 已有任务上下文列表，用于判断状态更新
+pub async fn discover_with_ai(
+    text: &str,
+    adapter: &dyn ModelAdapter,
+    source: Source,
+    existing_tasks: &[TaskContext],
+) -> Vec<PendingTask> {
+    // Step 1: 尝试 AI 提取（带上下文）
+    let ai_candidates = try_ai_extraction(text, adapter, source, existing_tasks).await;
 
     // Step 2: AI 返回有效候选则使用 AI 结果
     if !ai_candidates.is_empty() {
@@ -42,12 +51,29 @@ pub async fn discover_with_ai(text: &str, adapter: &dyn ModelAdapter, source: So
     discovery_message::discover_from_message(text)
 }
 
-/// 尝试通过 AI 提取任务
-async fn try_ai_extraction(text: &str, adapter: &dyn ModelAdapter, source: Source) -> Vec<PendingTask> {
-    let event = create_synthetic_event(text, source);
+/// 尝试通过 AI 提取任务（带已有任务上下文）
+async fn try_ai_extraction(
+    text: &str,
+    adapter: &dyn ModelAdapter,
+    source: Source,
+    existing_tasks: &[TaskContext],
+) -> Vec<PendingTask> {
+    let event = create_synthetic_event(text, source, existing_tasks);
     match adapter.extract(&event).await {
-        Ok(extraction) if is_valid_task_extraction(&extraction) => {
-            vec![extraction_to_pending_task(&extraction, text)]
+        Ok(extraction) => {
+            // 如果 AI 判断为状态更新，返回空（不创建新任务）
+            if extraction.is_status_update {
+                tracing::info!(
+                    "task_status_update_detected: related_task_id={:?}",
+                    extraction.related_task_id
+                );
+                return vec![];
+            }
+            if is_valid_task_extraction(&extraction) {
+                vec![extraction_to_pending_task(&extraction, text)]
+            } else {
+                vec![]
+            }
         }
         _ => vec![],
     }
@@ -92,15 +118,33 @@ fn has_urgent_keywords(text: &str) -> bool {
 
 /// 从纯文本创建合成 Event，用于调用 ModelAdapter.extract()
 ///
-/// M5: Source 参数化，不再硬编码 FeishuMessage
-fn create_synthetic_event(text: &str, source: Source) -> wb_core::event::Event {
-    wb_core::event::Event::new(
-        source,
-        Confidence::Medium,
-        EventType::Message,
-        serde_json::json!({"text": text}),
-        text.to_string(),
-    )
+/// M5: Source 参数化，不再硬编码 FeishuMessage。
+/// 如果有已有任务上下文，将其嵌入 event.content 的 task_context 字段。
+fn create_synthetic_event(
+    text: &str,
+    source: Source,
+    existing_tasks: &[TaskContext],
+) -> wb_core::event::Event {
+    let content = if existing_tasks.is_empty() {
+        serde_json::json!({"text": text})
+    } else {
+        let context_array: Vec<serde_json::Value> = existing_tasks
+            .iter()
+            .map(|t| {
+                serde_json::json!({
+                    "id": t.id,
+                    "title": t.title,
+                    "status": t.status,
+                })
+            })
+            .collect();
+        serde_json::json!({
+            "text": text,
+            "task_context": context_array,
+        })
+    };
+
+    wb_core::event::Event::new(source, Confidence::Medium, EventType::Message, content, text.to_string())
 }
 
 #[cfg(test)]
@@ -148,9 +192,11 @@ mod tests {
             project: None,
             due_date: Some("明天".to_string()),
             confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
         });
 
-        let tasks = discover_with_ai("请帮忙明天完成报告", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("请帮忙明天完成报告", &adapter, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1, "AI 应发现 1 个任务");
         assert_eq!(tasks[0].title, "完成报告");
         assert_eq!(
@@ -173,10 +219,12 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.2,
+            is_status_update: false,
+            related_task_id: None,
         });
 
         // 文本也不包含任务关键词 → 两者都为空
-        let tasks = discover_with_ai("今天天气真好", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("今天天气真好", &adapter, Source::FeishuMessage, &[]).await;
         assert!(tasks.is_empty(), "非任务文本 + AI 无结果 → 空");
     }
 
@@ -185,7 +233,7 @@ mod tests {
         // AI 返回 Err → 降级到关键词匹配
         let adapter = ErrorAdapter;
 
-        let tasks = discover_with_ai("请你帮忙检查一下登录接口", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("请你帮忙检查一下登录接口", &adapter, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1, "应降级到关键词匹配发现任务");
         assert_eq!(tasks[0].source, TaskSource::Message);
     }
@@ -201,9 +249,11 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
         });
 
-        let tasks = discover_with_ai("尽快修复生产环境崩溃", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("尽快修复生产环境崩溃", &adapter, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].priority, TaskPriority::P1, "含紧急关键词应为 P1");
     }
@@ -219,9 +269,11 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.8,
+            is_status_update: false,
+            related_task_id: None,
         });
 
-        let tasks = discover_with_ai("更新一下 API 文档", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("更新一下 API 文档", &adapter, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].priority, TaskPriority::P2, "无紧急关键词应为 P2");
     }
@@ -238,10 +290,12 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.3, // < 0.5 阈值
+            is_status_update: false,
+            related_task_id: None,
         });
 
         // 文本含关键词 → 降级后关键词能匹配
-        let tasks = discover_with_ai("请你帮忙检查 API", &adapter, Source::FeishuMessage).await;
+        let tasks = discover_with_ai("请你帮忙检查 API", &adapter, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1, "低置信度应降级到关键词");
         // 降级后由关键词发现，title 来自关键词解析
     }
@@ -258,10 +312,12 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
         });
 
         // 使用 UserCapture 作为 source
-        let tasks = discover_with_ai("请完成这个任务", &adapter, Source::UserCapture).await;
+        let tasks = discover_with_ai("请完成这个任务", &adapter, Source::UserCapture, &[]).await;
         assert_eq!(tasks.len(), 1, "应发现任务");
     }
 
@@ -277,12 +333,107 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.8,
+            is_status_update: false,
+            related_task_id: None,
         });
 
         // 测试多种 Source 类型
         for source in [Source::FeishuMessage, Source::UserCapture, Source::SystemBrowser] {
-            let tasks = discover_with_ai("检查一下这个", &adapter, source.clone()).await;
+            let tasks = discover_with_ai("检查一下这个", &adapter, source.clone(), &[]).await;
             assert_eq!(tasks.len(), 1, "Source {:?} 应能发现任务", source);
         }
+    }
+
+    // ─── 状态更新检测测试 ─────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_ai_status_update_returns_empty() {
+        // AI 判断为状态更新 → 不创建新任务
+        let adapter = adapter_with_extraction(Extraction {
+            title: String::new(),
+            summary: String::new(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.9,
+            is_status_update: true,
+            related_task_id: Some("existing-task-1".to_string()),
+        });
+
+        let existing = vec![TaskContext {
+            id: "existing-task-1".to_string(),
+            title: "发邮件给lily".to_string(),
+            status: "Open".to_string(),
+        }];
+
+        let tasks = discover_with_ai(
+            "给Lily的邮件已经发送了",
+            &adapter,
+            Source::FeishuMessage,
+            &existing,
+        )
+        .await;
+        assert!(tasks.is_empty(), "状态更新不应创建新任务");
+    }
+
+    #[tokio::test]
+    async fn test_ai_new_task_with_context() {
+        // AI 判断为新任务（有上下文但不匹配）→ 正常创建
+        let adapter = adapter_with_extraction(Extraction {
+            title: "写周报".to_string(),
+            summary: "本周工作总结".to_string(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
+        });
+
+        let existing = vec![TaskContext {
+            id: "existing-task-1".to_string(),
+            title: "发邮件给lily".to_string(),
+            status: "Open".to_string(),
+        }];
+
+        let tasks = discover_with_ai(
+            "今天要写周报",
+            &adapter,
+            Source::FeishuMessage,
+            &existing,
+        )
+        .await;
+        assert_eq!(tasks.len(), 1, "新任务应正常创建");
+        assert_eq!(tasks[0].title, "写周报");
+    }
+
+    #[tokio::test]
+    async fn test_create_synthetic_event_with_context() {
+        // 验证合成事件包含 task_context
+        let existing = vec![TaskContext {
+            id: "task-1".to_string(),
+            title: "发邮件给lily".to_string(),
+            status: "Open".to_string(),
+        }];
+
+        let event = create_synthetic_event("给Lily的邮件已经发送了", Source::FeishuMessage, &existing);
+        let context = event.content.get("task_context").unwrap();
+        assert!(context.is_array(), "task_context 应为数组");
+        assert_eq!(context.as_array().unwrap().len(), 1);
+        assert_eq!(context[0]["id"], "task-1");
+    }
+
+    #[tokio::test]
+    async fn test_create_synthetic_event_without_context() {
+        // 无上下文时，content 不应包含 task_context
+        let event = create_synthetic_event("普通消息", Source::FeishuMessage, &[]);
+        assert!(
+            event.content.get("task_context").is_none(),
+            "无上下文时不应有 task_context 字段"
+        );
     }
 }

@@ -123,6 +123,9 @@ impl ModelAdapter for OpenAIAdapter {
     }
 
     async fn extract(&self, event: &wb_core::event::Event) -> wb_core::error::Result<Extraction> {
+        // 从 event.content 中提取 task_context（如果存在）
+        let task_context_section = crate::anthropic::build_task_context_section(&event.content);
+
         let prompt = format!(
             r#"从以下工作事件中提取结构化信息。
 
@@ -130,6 +133,7 @@ impl ModelAdapter for OpenAIAdapter {
 来源: {:?}
 内容: {}
 原始数据: {}
+{task_context_section}
 
 请以 JSON 格式返回：
 {{
@@ -140,15 +144,18 @@ impl ModelAdapter for OpenAIAdapter {
   "tags": ["标签列表"],
   "project": "项目名或null",
   "due_date": "截止时间（如'明天10点'、'下周五'、'2024-01-15'），无则null",
-  "confidence": 0.0-1.0
+  "confidence": 0.0-1.0,
+  "is_status_update": false,
+  "related_task_id": null
 }}
 
 提取规则：
 - title 应反映事件的核心动作或意图，而非字面复述
 - 如果事件描述了某个任务的进展、完成或状态变更（如"已完成"、"开始做"、"推迟到"），
   title 应以该任务为核心命名，而非以状态变更为核心
-- 例如："我今天下午6点要完成邮件发送给bob" 和 "我现在已经发送给bob邮件了"
-  都应该提取为同一个任务 "给Bob发送邮件"，因为它们描述的是同一事项的不同阶段
+- 如果提供了已有任务列表，请判断当前消息是否是对某个已有任务的状态更新：
+  - 如果是状态更新，设置 is_status_update=true，related_task_id=对应任务的id，title=""
+  - 如果是全新任务，设置 is_status_update=false，related_task_id=null
 
 只返回 JSON，不要其他内容。"#,
             event.event_type, event.source, event.content, event.raw_payload

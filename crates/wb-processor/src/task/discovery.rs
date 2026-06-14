@@ -6,7 +6,7 @@ use chrono::Utc;
 use uuid::Uuid;
 use wb_core::error::Result;
 use wb_core::event::Source;
-use wb_ai::ModelAdapter;
+use wb_ai::{ModelAdapter, TaskContext};
 
 use super::discovery_ai;
 use super::discovery_confirm::ConfirmationFlow;
@@ -84,6 +84,9 @@ impl TaskDiscovery {
     /// AI 优先：调用 adapter.extract() 分析消息内容，识别潜在任务。
     /// AI 返回有效候选则使用 AI 结果，否则降级到关键词匹配。
     ///
+    /// 自动将当前 pending 任务列表作为上下文传给 AI，让 AI 能判断
+    /// 新消息是"新任务"还是"已有任务的状态更新"。
+    ///
     /// # Arguments
     /// - `text`: 待分析文本
     /// - `adapter`: AI 模型适配器
@@ -94,7 +97,19 @@ impl TaskDiscovery {
         adapter: &dyn ModelAdapter,
         source: Source,
     ) -> Vec<PendingTask> {
-        let tasks = discovery_ai::discover_with_ai(text, adapter, source).await;
+        // 从当前 pending 列表构建任务上下文
+        let existing_tasks: Vec<TaskContext> = self
+            .confirm_flow
+            .pending()
+            .iter()
+            .map(|p| TaskContext {
+                id: p.id.clone(),
+                title: p.title.clone(),
+                status: "Pending".to_string(),
+            })
+            .collect();
+
+        let tasks = discovery_ai::discover_with_ai(text, adapter, source, &existing_tasks).await;
         self.confirm_flow.add_batch(tasks.clone());
         tasks
     }
@@ -260,6 +275,8 @@ mod tests {
             project: None,
             due_date: Some("明天".to_string()),
             confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
         });
 
         let tasks = discovery
@@ -286,6 +303,8 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.2, // 低置信度
+            is_status_update: false,
+            related_task_id: None,
         });
 
         let mut discovery = TaskDiscovery::new();
@@ -311,6 +330,8 @@ mod tests {
             project: None,
             due_date: None,
             confidence: 0.2,
+            is_status_update: false,
+            related_task_id: None,
         });
 
         let mut discovery = TaskDiscovery::new();
@@ -320,5 +341,54 @@ mod tests {
         // AI 无结果 + 关键词无匹配 → 空
         assert!(tasks.is_empty(), "非任务文本应返回空");
         assert_eq!(discovery.pending_count(), 0);
+    }
+
+    // ─── 状态更新检测测试（端到端） ─────────────────────────────
+
+    #[tokio::test]
+    async fn test_discover_with_ai_status_update_no_duplicate() {
+        use wb_ai::{Extraction, MockAdapter};
+        use wb_core::event::Source;
+
+        // 模拟第一条消息：发现任务
+        let adapter1 = MockAdapter::new().with_extraction(Extraction {
+            title: "发邮件给lily".to_string(),
+            summary: "给lily发邮件".to_string(),
+            detail: String::new(),
+            people: vec!["lily".to_string()],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.9,
+            is_status_update: false,
+            related_task_id: None,
+        });
+
+        let mut discovery = TaskDiscovery::new();
+        let tasks1 = discovery
+            .discover_with_ai("我今天要发邮件给lily", &adapter1, Source::FeishuMessage)
+            .await;
+        assert_eq!(tasks1.len(), 1, "第一条消息应发现任务");
+        assert_eq!(discovery.pending_count(), 1);
+
+        // 模拟第二条消息：AI 判断为状态更新
+        let adapter2 = MockAdapter::new().with_extraction(Extraction {
+            title: String::new(),
+            summary: String::new(),
+            detail: String::new(),
+            people: vec![],
+            tags: vec![],
+            project: None,
+            due_date: None,
+            confidence: 0.9,
+            is_status_update: true,
+            related_task_id: Some(tasks1[0].id.clone()),
+        });
+
+        let tasks2 = discovery
+            .discover_with_ai("给Lily的邮件已经发送了", &adapter2, Source::FeishuMessage)
+            .await;
+        assert!(tasks2.is_empty(), "状态更新不应创建新任务");
+        assert_eq!(discovery.pending_count(), 1, "pending 数量不应增加");
     }
 }
