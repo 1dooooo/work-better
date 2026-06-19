@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Cpu,
   Radio,
@@ -10,7 +10,6 @@ import {
   Bug,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import ModelSettings from "../settings/ModelSettings";
 import CollectorSettings from "../settings/CollectorSettings";
 import StorageSettings from "../settings/StorageSettings";
@@ -37,9 +36,6 @@ const SETTINGS_TABS: SettingsTab[] = [
 ];
 
 export default function SettingsView() {
-  const [activeTab, setActiveTab] = useState("model");
-  const active = SETTINGS_TABS.find((t) => t.id === activeTab)!;
-
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -47,40 +43,35 @@ export default function SettingsView() {
         <h1 className="text-lg font-semibold">设置</h1>
       </header>
 
-      {/* Tab bar */}
-      <div className="border-b border-border px-6">
-        <div className="flex gap-1">
-          {SETTINGS_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2.5 text-sm transition-colors",
-                  "border-b-2 -mb-px",
-                  isActive
-                    ? "border-primary text-primary font-medium"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+      {/* Tabs */}
+      <Tabs defaultValue="model" className="flex-1 flex flex-col">
+        <div className="border-b border-border px-6">
+          <TabsList variant="line">
+            {SETTINGS_TABS.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <TabsTrigger key={tab.id} value={tab.id}>
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
         </div>
-      </div>
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6">
-          <div className="max-w-2xl">
-            <active.component />
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-6">
+            <div className="max-w-2xl">
+              {SETTINGS_TABS.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id}>
+                  <tab.component />
+                </TabsContent>
+              ))}
+            </div>
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </Tabs>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import "./capture-window.css";
+import { cn } from "@/lib/utils";
 
 export default function CaptureWindow() {
   const [text, setText] = useState("");
@@ -72,11 +72,12 @@ export default function CaptureWindow() {
   }, []);
 
   return (
-    <div className="capture">
-      <header className="capture__header">
-        <span className="capture__title">快速捕获</span>
+    <div className="flex h-full flex-col bg-background text-foreground select-none overflow-hidden">
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-sm font-medium">快速捕获</span>
         <button
-          className="capture__close"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           onClick={handleClose}
           aria-label="关闭"
         >
@@ -84,9 +85,10 @@ export default function CaptureWindow() {
         </button>
       </header>
 
+      {/* Input */}
       <textarea
         ref={textareaRef}
-        className="capture__input"
+        className="flex-1 px-4 py-3 bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground"
         placeholder="记录一条想法、笔记或任务...支持粘贴图片"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -96,17 +98,34 @@ export default function CaptureWindow() {
         rows={5}
       />
 
+      {/* Image Preview */}
       {imageData && (
-        <div className="capture__image-preview">
-          <img src={imageData} alt="粘贴的图片" />
-          <button className="capture__image-remove" onClick={() => setImageData(null)}>✕</button>
+        <div className="relative mx-4 mb-3">
+          <img
+            src={imageData}
+            alt="粘贴的图片"
+            className="max-h-32 rounded-md object-cover"
+          />
+          <button
+            className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-background/80 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => setImageData(null)}
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      <footer className="capture__footer">
-        <span className="capture__hint">⌘+Enter 提交 · Esc 关闭</span>
+      {/* Footer */}
+      <footer className="flex items-center justify-between px-4 py-3 border-t border-border">
+        <span className="text-xs text-muted-foreground">
+          ⌘+Enter 提交 · Esc 关闭
+        </span>
         <button
-          className="capture__submit"
+          className={cn(
+            "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+            "bg-primary text-primary-foreground hover:bg-primary/90",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
           onClick={handleSubmit}
           disabled={!text.trim() || submitting}
         >
@@ -114,13 +133,14 @@ export default function CaptureWindow() {
         </button>
       </footer>
 
+      {/* Toast */}
       {status === "success" && (
-        <div className="capture__toast capture__toast--success">
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-md bg-success text-success-foreground text-sm font-medium">
           已捕获
         </div>
       )}
       {status === "error" && (
-        <div className="capture__toast capture__toast--error">
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium">
           捕获失败，请重试
         </div>
       )}

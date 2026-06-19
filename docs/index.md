@@ -3,7 +3,7 @@ title: 文档索引
 type: index
 domain: conventions
 created: 2026-06-06
-updated: 2026-06-12
+updated: 2026-06-19
 status: active
 ---
 
@@ -22,6 +22,6 @@ status: active
 | 测试 | [testing/_index.md](testing/_index.md) | 测试策略与规范 |
 | 设计规格 | [superpowers/specs/](superpowers/specs/) | 设计规格文档 |
 | 实现计划 | [superpowers/plans/](superpowers/plans/) | 实现计划 |
-| 设计体系 | [design/design-system.md](design/design-system.md) | UI 设计规范与组件文档 |
+| 设计体系 | [design/_index.md](design/_index.md) | UI 设计规范、组件文档与优化计划 |
 | 修复记录 | [fixes/collector-activation-fix.md](fixes/collector-activation-fix.md) | 采集器激活与可观测性修复 |
 | 规范 | [conventions.md](conventions.md) | 文档规范（本文档） |

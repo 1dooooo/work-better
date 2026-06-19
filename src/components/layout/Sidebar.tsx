@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 
-export type ViewId = "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
+export type ViewId = "dashboard" | "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
 
 interface NavItem {
   id: ViewId;
@@ -35,6 +35,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { id: "dashboard", label: "仪表盘", icon: Zap },
   { id: "events", label: "事件", icon: CalendarDays },
   { id: "tasks", label: "任务", icon: CheckSquare },
   { id: "timeline", label: "时间线", icon: Clock },

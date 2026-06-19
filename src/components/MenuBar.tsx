@@ -47,16 +47,16 @@ import { cn } from "@/lib/utils";
 // ─── 事件类型配色（macOS 系统色）─────────────────────────────────
 
 const EVENT_TYPE_CONFIG: Record<string, { color: string; label: string }> = {
-  message: { color: "text-[#0A84FF]", label: "MSG" },
-  issue: { color: "text-[#FF9F0A]", label: "ISS" },
-  pr: { color: "text-[#30D158]", label: "PR" },
-  document: { color: "text-[#8E8E93]", label: "DOC" },
-  note: { color: "text-[#BF5AF2]", label: "NOTE" },
-  task: { color: "text-[#FF6482]", label: "TASK" },
+  message: { color: "text-macos-blue", label: "MSG" },
+  issue: { color: "text-macos-orange", label: "ISS" },
+  pr: { color: "text-macos-green", label: "PR" },
+  document: { color: "text-macos-gray", label: "DOC" },
+  note: { color: "text-macos-purple", label: "NOTE" },
+  task: { color: "text-macos-pink", label: "TASK" },
 };
 
 function getEventTypeConfig(type: string) {
-  return EVENT_TYPE_CONFIG[type] ?? { color: "text-[#8E8E93]", label: type.slice(0, 4).toUpperCase() };
+  return EVENT_TYPE_CONFIG[type] ?? { color: "text-macos-gray", label: type.slice(0, 4).toUpperCase() };
 }
 
 // ─── 通知分组配置 ─────────────────────────────────────────────
@@ -73,23 +73,23 @@ const NOTIFY_GROUP_CONFIG: Record<NotifyKind, NotifyGroupConfig> = {
   Confirm: {
     label: "待确认",
     icon: AlertTriangle,
-    color: "text-[#FF9F0A]",
-    bg: "bg-[#FF9F0A]/8",
-    border: "border-l-[#FF9F0A]",
+    color: "text-macos-orange",
+    bg: "bg-macos-orange/8",
+    border: "border-l-macos-orange",
   },
   Reminder: {
     label: "提醒",
     icon: Info,
-    color: "text-[#0A84FF]",
-    bg: "bg-[#0A84FF]/8",
-    border: "border-l-[#0A84FF]",
+    color: "text-macos-blue",
+    bg: "bg-macos-blue/8",
+    border: "border-l-macos-blue",
   },
   TaskDone: {
     label: "已完成",
     icon: CheckCircle2,
-    color: "text-[#30D158]",
-    bg: "bg-[#30D158]/8",
-    border: "border-l-[#30D158]",
+    color: "text-macos-green",
+    bg: "bg-macos-green/8",
+    border: "border-l-macos-green",
   },
 };
 
@@ -225,23 +225,23 @@ export default function MenuBar() {
   );
 
   return (
-    <div className="flex h-full flex-col bg-[#1C1C1C]/95 backdrop-blur-xl text-white select-none overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]">
+    <div className="flex h-full flex-col bg-[var(--glass-bg)] backdrop-blur-[var(--glass-blur)] text-white select-none overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]">
       {/* ── Header ────────────────────────────────────────── */}
       <header className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#0A84FF]">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-macos-blue">
             <Zap className="h-3 w-3 text-white" />
           </div>
           <span className="text-[11px] font-semibold text-white/90">Work Better</span>
         </div>
         <div className="flex items-center gap-2">
           {systemStatus && systemStatus.today_processed_count > 0 && (
-            <span className="text-[10px] text-[#8E8E93] tabular-nums">
+            <span className="text-[10px] text-macos-gray tabular-nums">
               今日 {systemStatus.today_processed_count}
             </span>
           )}
           {unprocessedCount > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0A84FF] px-1 text-[9px] font-semibold text-white tabular-nums">
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-macos-blue px-1 text-[9px] font-semibold text-white tabular-nums">
               {unprocessedCount}
             </span>
           )}
@@ -253,13 +253,13 @@ export default function MenuBar() {
         <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/[0.06]">
           <span className={cn(
             "h-1.5 w-1.5 rounded-full",
-            systemStatus.scheduler_running ? "bg-[#30D158]" : "bg-[#8E8E93]"
+            systemStatus.scheduler_running ? "bg-macos-green" : "bg-macos-gray"
           )} />
-          <span className="text-[10px] text-[#8E8E93]">
+          <span className="text-[10px] text-macos-gray">
             {systemStatus.collectors_healthy}/{systemStatus.collectors_total} 采集器
           </span>
-          <span className="text-[10px] text-[#636366]">·</span>
-          <span className="text-[10px] text-[#8E8E93]">
+          <span className="text-[10px] text-macos-dark-gray">·</span>
+          <span className="text-[10px] text-macos-gray">
             {systemStatus.scheduler_running ? "调度中" : "已暂停"}
           </span>
         </div>
@@ -269,13 +269,13 @@ export default function MenuBar() {
       <div className="flex flex-1 flex-col overflow-hidden min-h-0">
         <div className="flex items-center justify-between px-3 py-1.5">
           <div className="flex items-center gap-1.5">
-            <Clock className="h-3 w-3 text-[#636366]" />
-            <span className="text-[10px] font-medium text-[#636366] uppercase tracking-wider">
+            <Clock className="h-3 w-3 text-macos-dark-gray" />
+            <span className="text-[10px] font-medium text-macos-dark-gray uppercase tracking-wider">
               最近事件
             </span>
           </div>
           <button
-            className="flex h-4 w-4 items-center justify-center rounded text-[#636366] hover:text-white hover:bg-white/10 transition-colors"
+            className="flex h-4 w-4 items-center justify-center rounded text-macos-dark-gray hover:text-white hover:bg-white/10 transition-colors"
             onClick={refresh}
           >
             <RefreshCw className="h-2.5 w-2.5" />
@@ -284,11 +284,11 @@ export default function MenuBar() {
 
         <div className="flex-1 overflow-y-auto min-h-0 px-1.5">
           {loading ? (
-            <div className="flex items-center justify-center py-6 text-[11px] text-[#636366]">
+            <div className="flex items-center justify-center py-6 text-[11px] text-macos-dark-gray">
               加载中...
             </div>
           ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-[#636366]">
+            <div className="flex flex-col items-center justify-center py-6 text-macos-dark-gray">
               <Activity className="h-4 w-4 mb-1" />
               <span className="text-[11px]">暂无事件</span>
             </div>
@@ -311,7 +311,7 @@ export default function MenuBar() {
                   </span>
 
                   {/* 时间 */}
-                  <span className="text-[9px] text-[#636366] flex-shrink-0 tabular-nums">
+                  <span className="text-[9px] text-macos-dark-gray flex-shrink-0 tabular-nums">
                     {formatRelativeTime(event.timestamp)}
                   </span>
                 </div>
@@ -325,11 +325,11 @@ export default function MenuBar() {
       {pendingTasks.length > 0 && (
         <div className="border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5 px-3 py-1.5">
-            <ListTodo className="h-3 w-3 text-[#0A84FF]" />
-            <span className="text-[10px] font-medium text-[#636366] uppercase tracking-wider">
+            <ListTodo className="h-3 w-3 text-macos-blue" />
+            <span className="text-[10px] font-medium text-macos-dark-gray uppercase tracking-wider">
               今日待办
             </span>
-            <span className="text-[9px] text-[#636366] tabular-nums">{pendingTasks.length}</span>
+            <span className="text-[9px] text-macos-dark-gray tabular-nums">{pendingTasks.length}</span>
           </div>
           <div className="px-2 pb-1.5 space-y-0.5">
             {pendingTasks.slice(0, 3).map((task) => (
@@ -337,13 +337,13 @@ export default function MenuBar() {
                 key={task.id}
                 className="group flex items-center gap-2 rounded-md px-2 py-[5px] hover:bg-white/[0.06] transition-colors cursor-pointer"
               >
-                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-[#0A84FF]/40">
-                  <ListTodo className="h-2 w-2 text-[#0A84FF]" />
+                <div className="flex h-3.5 w-3.5 items-center justify-center rounded-sm border border-macos-blue/40">
+                  <ListTodo className="h-2 w-2 text-macos-blue" />
                 </div>
                 <span className="flex-1 text-[11px] text-white/80 truncate min-w-0">
                   {task.title}
                 </span>
-                <ChevronRight className="h-3 w-3 text-[#636366] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                <ChevronRight className="h-3 w-3 text-macos-dark-gray opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
               </div>
             ))}
           </div>
@@ -354,11 +354,11 @@ export default function MenuBar() {
       {activeGroups.length > 0 && (
         <div className="border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5 px-3 py-1.5">
-            <Bell className="h-3 w-3 text-[#636366]" />
-            <span className="text-[10px] font-medium text-[#636366] uppercase tracking-wider">
+            <Bell className="h-3 w-3 text-macos-dark-gray" />
+            <span className="text-[10px] font-medium text-macos-dark-gray uppercase tracking-wider">
               通知
             </span>
-            <span className="text-[9px] text-[#636366] tabular-nums">{notifications.length}</span>
+            <span className="text-[9px] text-macos-dark-gray tabular-nums">{notifications.length}</span>
           </div>
           <div className="px-2 pb-1.5 space-y-1">
             {activeGroups.map((kind) => {
@@ -372,7 +372,7 @@ export default function MenuBar() {
                     <span className={cn("text-[9px] font-medium", group.color)}>
                       {group.label}
                     </span>
-                    <span className="text-[9px] text-[#636366] tabular-nums">{items.length}</span>
+                    <span className="text-[9px] text-macos-dark-gray tabular-nums">{items.length}</span>
                   </div>
                   <div className="space-y-0.5">
                     {items.slice(0, 3).map((notif) => (
@@ -388,16 +388,16 @@ export default function MenuBar() {
                           <p className="text-[11px] font-medium text-white/90 truncate leading-tight">
                             {notif.title}
                           </p>
-                          <p className="text-[9px] text-[#8E8E93] truncate mt-0.5">
+                          <p className="text-[9px] text-macos-gray truncate mt-0.5">
                             {notif.body}
                           </p>
                         </div>
                         <div className="flex items-center gap-0.5 flex-shrink-0">
                           {notif.action_url && (
-                            <ExternalLink className="h-2.5 w-2.5 text-[#636366] opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <ExternalLink className="h-2.5 w-2.5 text-macos-dark-gray opacity-0 group-hover:opacity-100 transition-opacity" />
                           )}
                           <button
-                            className="flex h-4 w-4 items-center justify-center rounded text-[#636366] hover:text-white hover:bg-white/10 transition-colors"
+                            className="flex h-4 w-4 items-center justify-center rounded text-macos-dark-gray hover:text-white hover:bg-white/10 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDismissNotification(notif.id);
@@ -409,7 +409,7 @@ export default function MenuBar() {
                       </div>
                     ))}
                     {items.length > 3 && (
-                      <p className="text-[9px] text-[#636366] pl-2 py-0.5">
+                      <p className="text-[9px] text-macos-dark-gray pl-2 py-0.5">
                         +{items.length - 3} 更多
                       </p>
                     )}
@@ -440,7 +440,7 @@ export default function MenuBar() {
 
       {/* ── Footer ────────────────────────────────────────── */}
       <footer className="border-t border-white/[0.06] flex items-center justify-between px-3 py-1">
-        <span className="text-[9px] text-[#636366]">v0.1.0</span>
+        <span className="text-[9px] text-macos-dark-gray">v0.1.0</span>
       </footer>
     </div>
   );
@@ -468,8 +468,8 @@ function ActionButton({
       className={cn(
         "flex-1 flex flex-col items-center gap-0.5 rounded-md py-1.5 px-1 transition-all duration-150",
         accent
-          ? "bg-[#0A84FF]/15 text-[#0A84FF] hover:bg-[#0A84FF]/25"
-          : "text-[#8E8E93] hover:text-white hover:bg-white/[0.06]",
+          ? "bg-macos-blue/15 text-macos-blue hover:bg-macos-blue/25"
+          : "text-macos-gray hover:text-white hover:bg-white/[0.06]",
         disabled && "opacity-50 cursor-not-allowed"
       )}
       onClick={onClick}

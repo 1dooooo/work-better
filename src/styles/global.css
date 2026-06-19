@@ -1,66 +1,53 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/*
+ * Global Styles — Work Better
+ *
+ * This file provides CSS variable aliases for backward compatibility
+ * with BEM-style CSS files (main-window.css, menu-bar.css, capture-window.css).
+ *
+ * All design tokens are now defined in index.css (@theme block).
+ * These aliases map legacy names to the unified token system.
+ */
 
+/* ── Color Aliases ── */
 :root {
-  /* ── Color ── */
-  --color-surface: oklch(98% 0 0);
-  --color-surface-alt: oklch(95% 0 0);
-  --color-text: oklch(18% 0 0);
-  --color-text-secondary: oklch(45% 0 0);
+  --color-surface: var(--color-background);
+  --color-surface-alt: var(--color-muted);
+  --color-text: var(--color-foreground);
+  --color-text-secondary: var(--color-muted-foreground);
   --color-text-hint: oklch(60% 0 0);
-  --color-accent: oklch(68% 0.21 250);
-  --color-accent-hover: oklch(58% 0.21 250);
-  --color-accent-subtle: oklch(92% 0.04 250);
-  --color-accent-ring: oklch(68% 0.21 250 / 0.12);
-  --color-success: oklch(65% 0.2 145);
-  --color-error: oklch(60% 0.22 25);
-  --color-border: oklch(90% 0 0);
-  --color-border-input: oklch(85% 0 0);
-  --color-hover: oklch(92% 0 0);
+  --color-accent: var(--color-accent-blue);
+  --color-accent-hover: var(--color-accent-blue-hover);
+  --color-accent-subtle: var(--color-accent-blue-subtle);
+  --color-accent-ring: var(--color-accent-blue-ring);
+  --color-error: var(--color-destructive);
+  --color-border-input: var(--color-border);
+  --color-hover: var(--color-accent);
   --color-toggle-off: oklch(82% 0 0);
-  --color-health-ok-bg: oklch(93% 0.06 145);
-  --color-health-ok-text: oklch(40% 0.12 145);
-  --color-health-err-bg: oklch(93% 0.06 25);
-  --color-health-err-text: oklch(40% 0.15 25);
 
-  /* ── Spacing ── */
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
+  /* ── Spacing Aliases ── */
+  --space-xs: var(--spacing-1);
+  --space-sm: var(--spacing-2);
+  --space-md: var(--spacing-4);
+  --space-lg: var(--spacing-6);
+  --space-xl: var(--spacing-8);
+  --space-2xl: var(--spacing-12);
 
-  /* ── Typography ── */
-  --font-size-xs: 0.7rem;
-  --font-size-sm: 0.8rem;
-  --font-size-base: 0.85rem;
-  --font-size-md: 0.95rem;
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.5rem;
+  /* ── Typography Aliases ── */
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-md: var(--text-lg);
+  --font-size-lg: var(--text-2xl);
+  --font-size-xl: var(--text-3xl);
 
-  /* ── Radius ── */
-  --radius: 8px;
-  --radius-sm: 4px;
+  /* ── Radius Aliases ── */
+  --radius: var(--radius-lg);
+  --radius-sm: var(--radius-sm);
 
-  /* ── Shadow ── */
-  --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.06);
-  --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.08);
-  --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.12);
-  --shadow-toggle: 0 1px 3px oklch(0% 0 0 / 0.15);
+  /* ── Motion Aliases ── */
+  --ease-out: var(--ease-out-expo);
 
-  /* ── Motion ── */
-  --duration-fast: 150ms;
-  --duration-normal: 200ms;
-  --duration-slow: 300ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* ── Border ── */
+  /* ── Border Aliases ── */
   --border-subtle: 1px solid var(--color-border);
   --border-input: 1px solid var(--color-border-input);
 
@@ -68,67 +55,8 @@
   --sidebar-width: 200px;
 }
 
-/* ── Dark Mode (manual toggle) ── */
+/* ── Dark Mode Aliases ── */
 [data-theme="dark"] {
-  --color-surface: oklch(18% 0 0);
-  --color-surface-alt: oklch(22% 0 0);
-  --color-text: oklch(93% 0 0);
-  --color-text-secondary: oklch(65% 0 0);
   --color-text-hint: oklch(50% 0 0);
-  --color-accent: oklch(72% 0.18 250);
-  --color-accent-hover: oklch(80% 0.18 250);
-  --color-accent-subtle: oklch(25% 0.06 250);
-  --color-accent-ring: oklch(72% 0.18 250 / 0.2);
-  --color-success: oklch(70% 0.18 145);
-  --color-error: oklch(65% 0.2 25);
-  --color-border: oklch(30% 0 0);
-  --color-border-input: oklch(35% 0 0);
-  --color-hover: oklch(25% 0 0);
   --color-toggle-off: oklch(40% 0 0);
-  --color-health-ok-bg: oklch(25% 0.06 145);
-  --color-health-ok-text: oklch(70% 0.15 145);
-  --color-health-err-bg: oklch(25% 0.06 25);
-  --color-health-err-text: oklch(70% 0.15 25);
-  --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.2);
-  --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.3);
-  --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.4);
-  --shadow-toggle: 0 1px 3px oklch(0% 0 0 / 0.3);
-}
-
-/* ── Dark Mode (system preference) ── */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-surface: oklch(18% 0 0);
-    --color-surface-alt: oklch(22% 0 0);
-    --color-text: oklch(93% 0 0);
-    --color-text-secondary: oklch(65% 0 0);
-    --color-text-hint: oklch(50% 0 0);
-    --color-accent: oklch(72% 0.18 250);
-    --color-accent-hover: oklch(80% 0.18 250);
-    --color-accent-subtle: oklch(25% 0.06 250);
-    --color-accent-ring: oklch(72% 0.18 250 / 0.2);
-    --color-success: oklch(70% 0.18 145);
-    --color-error: oklch(65% 0.2 25);
-    --color-border: oklch(30% 0 0);
-    --color-border-input: oklch(35% 0 0);
-    --color-hover: oklch(25% 0 0);
-    --color-toggle-off: oklch(40% 0 0);
-    --color-health-ok-bg: oklch(25% 0.06 145);
-    --color-health-ok-text: oklch(70% 0.15 145);
-    --color-health-err-bg: oklch(25% 0.06 25);
-    --color-health-err-text: oklch(70% 0.15 25);
-    --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.2);
-    --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.3);
-    --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.4);
-    --shadow-toggle: 0 1px 3px oklch(0% 0 0 / 0.3);
-  }
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  background: var(--color-surface);
-  color: var(--color-text);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
 }

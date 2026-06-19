@@ -154,7 +154,7 @@ export default function CollectorSettings() {
         return (
           <Badge
             variant="outline"
-            className="text-[10px] border-yellow-500 text-yellow-600"
+            className="text-[10px] border-status-warning-border text-status-warning-text"
           >
             降级
           </Badge>

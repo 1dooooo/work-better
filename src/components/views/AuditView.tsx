@@ -81,12 +81,12 @@ function ExecutionStatusBadge({ status }: { status: ExecutionStatus }) {
 }
 
 const STEP_COLORS: Record<AuditStep, string> = {
-  Classifier: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  Extract: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  Upgrade: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  Review: "bg-green-500/10 text-green-600 dark:text-green-400",
-  Persist: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
-  UserConfirm: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  Classifier: "bg-event-blue-bg text-event-blue-text",
+  Extract: "bg-event-purple-bg text-event-purple-text",
+  Upgrade: "bg-event-amber-bg text-event-amber-text",
+  Review: "bg-event-green-bg text-event-green-text",
+  Persist: "bg-event-gray-bg text-event-gray-text",
+  UserConfirm: "bg-event-pink-bg text-event-pink-text",
 };
 
 function StepBadge({ step }: { step: string }) {

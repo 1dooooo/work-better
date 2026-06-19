@@ -12,14 +12,14 @@ function App() {
   }
   if (view === "tray") {
     return (
-      <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
         <MenuBar />
       </ThemeProvider>
     );
   }
 
   return (
-    <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
       <MainWindow />
     </ThemeProvider>
   );

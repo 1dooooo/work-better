@@ -20,21 +20,22 @@ import {
   Download,
   CheckCircle2,
   Loader2,
-  Inbox,
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useListNavigation } from "@/hooks/useListNavigation";
+import { EmptyEvents } from "@/components/ui/empty-state";
 
 type FilterSource = "all" | string;
 
 // 事件类型配置
 const EVENT_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
-  message: { label: "MSG", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  issue: { label: "ISS", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  pr: { label: "PR", className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-  document: { label: "DOC", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-  default: { label: "EVT", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+  message: { label: "MSG", className: "bg-event-blue-bg text-event-blue-text" },
+  issue: { label: "ISS", className: "bg-event-amber-bg text-event-amber-text" },
+  pr: { label: "PR", className: "bg-event-green-bg text-event-green-text" },
+  document: { label: "DOC", className: "bg-event-gray-bg text-event-gray-text" },
+  default: { label: "EVT", className: "bg-event-gray-bg text-event-gray-text" },
 };
 
 export default function EventsView() {
@@ -43,6 +44,18 @@ export default function EventsView() {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+
+  // T3.2 vim 风格列表导航
+  const { focusedIndex, listRef } = useListNavigation({
+    itemCount: events.length,
+    onEnter: (index) => toggleEvent(events[index]?.id ?? ""),
+    onSpace: (index) => {
+      const event = events[index];
+      if (event && !event.processed) {
+        handleMarkProcessed(event.id);
+      }
+    },
+  });
 
   const toggleEvent = useCallback((id: string) => {
     setExpandedEvents((prev) => {
@@ -200,19 +213,16 @@ export default function EventsView() {
       </header>
 
       {/* Event List */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {loading && events.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-xs">加载中...</span>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
-            <Inbox className="h-6 w-6 opacity-50" />
-            <span className="text-xs">暂无事件</span>
-          </div>
+          <EmptyEvents />
         ) : (
-          filteredEvents.map((event) => {
+          filteredEvents.map((event, index) => {
             const typeConfig = getEventType(event.type);
             const isExpanded = expandedEvents.has(event.id);
             const contentStr =
@@ -220,7 +230,7 @@ export default function EventsView() {
                 ? event.content
                 : JSON.stringify(event.content);
             return (
-              <div key={event.id} className="border-b border-border/50">
+              <div key={event.id} className={`border-b border-border/50 ${index === focusedIndex ? "border-l-2 border-l-primary bg-muted/30" : ""}`}>
                 {/* Event row - clickable to toggle expand */}
                 <div
                   className="group flex items-center px-5 py-2 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"

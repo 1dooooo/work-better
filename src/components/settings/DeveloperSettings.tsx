@@ -138,7 +138,7 @@ export default function DeveloperSettings() {
               <Badge variant="secondary">当前状态</Badge>
               <span className="text-sm">
                 {developerMode ? (
-                  <span className="text-green-600 dark:text-green-400">
+                  <span className="text-status-success-text">
                     已开启
                   </span>
                 ) : (
@@ -239,18 +239,18 @@ function OrganizeCard() {
         <div className="space-y-4">
           {/* API Key 未配置警告 */}
           {needsApiKey && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4">
+            <div className="rounded-lg border border-status-warning-border bg-status-warning-bg p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-status-warning-text shrink-0 mt-0.5" />
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  <p className="text-sm font-medium text-status-warning-text">
                     未配置 API Key
                   </p>
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                  <p className="text-sm text-status-warning-text">
                     主动整理需要调用大模型进行事件分类和信息提取。
                     请先在「设置 → 模型」中配置 API Key。
                   </p>
-                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                  <p className="text-xs text-status-warning-text">
                     未配置时应用将以只读模式运行：可以查看已采集的事件，但无法进行智能分析。
                   </p>
                 </div>
@@ -261,7 +261,7 @@ function OrganizeCard() {
           {/* 只读模式提示 */}
           {apiKeyConfigured === true && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" />
               <span>API Key 已配置，大模型调用已就绪</span>
             </div>
           )}
@@ -278,7 +278,7 @@ function OrganizeCard() {
                   无待处理事件
                 </span>
               ) : (
-                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                <span className="text-status-warning-text font-medium">
                   {unprocessedCount} 条事件
                 </span>
               )}
@@ -299,7 +299,7 @@ function OrganizeCard() {
                   label="成功"
                   value={result.success}
                   icon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                  className="text-green-600 dark:text-green-400"
+                  className="text-status-success-text"
                 />
                 <ResultStat
                   label="失败"

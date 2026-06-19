@@ -49,6 +49,82 @@
   --color-warning-foreground: oklch(14% 0 0);
   --color-info: oklch(65% 0.18 240);
   --color-info-foreground: oklch(98% 0 0);
+  --color-error: oklch(60% 0.22 25);
+  --color-error-foreground: oklch(98% 0 0);
+
+  /* ── Accent Variants ── */
+  --color-accent-blue: oklch(68% 0.21 250);
+  --color-accent-blue-hover: oklch(58% 0.21 250);
+  --color-accent-blue-subtle: oklch(92% 0.04 250);
+  --color-accent-blue-ring: oklch(68% 0.21 250 / 0.12);
+
+  /* ── Surface Variants ── */
+  --color-surface: oklch(98% 0 0);
+  --color-surface-alt: oklch(95% 0 0);
+  --color-hover: oklch(92% 0 0);
+  --color-toggle-off: oklch(82% 0 0);
+
+  /* ── Text Variants ── */
+  --color-text-secondary: oklch(45% 0 0);
+  --color-text-hint: oklch(60% 0 0);
+
+  /* ── Health Status ── */
+  --color-health-ok-bg: oklch(93% 0.06 145);
+  --color-health-ok-text: oklch(40% 0.12 145);
+  --color-health-err-bg: oklch(93% 0.06 25);
+  --color-health-err-text: oklch(40% 0.15 25);
+
+  /* ── Status Colors ── */
+  --color-status-success-bg: oklch(95% 0.06 145);
+  --color-status-success-text: oklch(40% 0.15 145);
+  --color-status-success-border: oklch(85% 0.1 145);
+  --color-status-error-bg: oklch(95% 0.06 25);
+  --color-status-error-text: oklch(40% 0.15 25);
+  --color-status-error-border: oklch(85% 0.1 25);
+  --color-status-warning-bg: oklch(95% 0.06 80);
+  --color-status-warning-text: oklch(40% 0.12 80);
+  --color-status-warning-border: oklch(85% 0.08 80);
+
+  /* ── Event Type Colors ── */
+  --color-event-blue-bg: oklch(95% 0.04 250);
+  --color-event-blue-text: oklch(45% 0.15 250);
+  --color-event-amber-bg: oklch(95% 0.04 80);
+  --color-event-amber-text: oklch(45% 0.12 80);
+  --color-event-green-bg: oklch(95% 0.04 145);
+  --color-event-green-text: oklch(45% 0.15 145);
+  --color-event-gray-bg: oklch(95% 0 0);
+  --color-event-gray-text: oklch(45% 0 0);
+  --color-event-purple-bg: oklch(95% 0.04 300);
+  --color-event-purple-text: oklch(45% 0.15 300);
+  --color-event-pink-bg: oklch(95% 0.04 350);
+  --color-event-pink-text: oklch(45% 0.15 350);
+
+  /* ── macOS System Colors (Apple HIG) ── */
+  --color-macos-blue: oklch(62% 0.22 250);
+  --color-macos-orange: oklch(75% 0.18 60);
+  --color-macos-green: oklch(72% 0.22 145);
+  --color-macos-gray: oklch(55% 0 0);
+  --color-macos-purple: oklch(60% 0.22 300);
+  --color-macos-pink: oklch(65% 0.22 350);
+  --color-macos-dark-gray: oklch(42% 0 0);
+  --color-macos-surface: oklch(14% 0 0);
+  --color-macos-surface-hover: oklch(100% 0 0 / 0.06);
+
+  /* ── Border Variants ── */
+  --color-border-input: oklch(85% 0 0);
+  --border-subtle: 1px solid oklch(90% 0 0);
+  --border-input: 1px solid oklch(85% 0 0);
+
+  /* ── Shadow Variants ── */
+  --shadow-toggle: 0 1px 3px oklch(0% 0 0 / 0.15);
+
+  /* ── Glass Effect ── */
+  --glass-blur: 12px;
+  --glass-bg: oklch(100% 0 0 / 0.8);
+  --glass-border: oklch(100% 0 0 / 0.2);
+
+  /* ── Layout ── */
+  --sidebar-width: 200px;
 
   /* ── Spacing Scale ── */
   --spacing-1: 0.25rem;
@@ -68,8 +144,8 @@
   --radius-xl: 0.75rem;
 
   /* ── Typography ── */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", monospace;
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
@@ -121,42 +197,113 @@
 
   /* Dark Mode token overrides */
   [data-theme="dark"] {
-    --color-background: oklch(14% 0 0);
-    --color-foreground: oklch(93% 0 0);
-    --color-card: oklch(18% 0 0);
+    /* ── Surface Layers (5-level hierarchy) ── */
+    --color-background: oklch(13% 0 0);      /* Layer 0: 应用背景 */
+    --color-card: oklch(17% 0 0);            /* Layer 2: 卡片、内容区 */
     --color-card-foreground: oklch(93% 0 0);
-    --color-popover: oklch(18% 0 0);
+    --color-popover: oklch(20% 0 0);         /* Layer 3: 悬浮、弹窗 */
     --color-popover-foreground: oklch(93% 0 0);
+
+    /* ── Core Colors ── */
+    --color-foreground: oklch(93% 0 0);
     --color-primary: oklch(60% 0.19 260);
-    --color-primary-foreground: oklch(14% 0 0);
-    --color-secondary: oklch(25% 0 0);
+    --color-primary-foreground: oklch(13% 0 0);
+    --color-secondary: oklch(22% 0 0);
     --color-secondary-foreground: oklch(93% 0 0);
-    --color-muted: oklch(22% 0 0);
+    --color-muted: oklch(19% 0 0);
     --color-muted-foreground: oklch(55% 0 0);
-    --color-accent: oklch(25% 0 0);
+    --color-accent: oklch(22% 0 0);
     --color-accent-foreground: oklch(93% 0 0);
     --color-destructive: oklch(60% 0.2 25);
-    --color-destructive-foreground: oklch(14% 0 0);
+    --color-destructive-foreground: oklch(13% 0 0);
+
+    /* ── Border & Input ── */
     --color-border: oklch(25% 0 0);
     --color-input: oklch(28% 0 0);
     --color-ring: oklch(60% 0.19 260);
-    --color-sidebar: oklch(16% 0 0);
+
+    /* ── Sidebar (Layer 1) ── */
+    --color-sidebar: oklch(15% 0 0);         /* Layer 1: 侧边栏、面板 */
     --color-sidebar-foreground: oklch(93% 0 0);
     --color-sidebar-primary: oklch(60% 0.19 260);
-    --color-sidebar-primary-foreground: oklch(14% 0 0);
-    --color-sidebar-accent: oklch(25% 0 0);
+    --color-sidebar-primary-foreground: oklch(13% 0 0);
+    --color-sidebar-accent: oklch(22% 0 0);
     --color-sidebar-accent-foreground: oklch(93% 0 0);
     --color-sidebar-border: oklch(25% 0 0);
     --color-sidebar-ring: oklch(60% 0.19 260);
+
+    /* ── Status Colors ── */
     --color-success: oklch(70% 0.18 145);
-    --color-success-foreground: oklch(14% 0 0);
+    --color-success-foreground: oklch(13% 0 0);
     --color-warning: oklch(75% 0.16 80);
-    --color-warning-foreground: oklch(14% 0 0);
+    --color-warning-foreground: oklch(13% 0 0);
     --color-info: oklch(70% 0.16 240);
-    --color-info-foreground: oklch(14% 0 0);
+    --color-info-foreground: oklch(13% 0 0);
+    --color-error: oklch(65% 0.2 25);
+    --color-error-foreground: oklch(13% 0 0);
+
+    /* ── Accent Variants (Dark) ── */
+    --color-accent-blue: oklch(72% 0.18 250);
+    --color-accent-blue-hover: oklch(80% 0.18 250);
+    --color-accent-blue-subtle: oklch(22% 0.06 250);
+    --color-accent-blue-ring: oklch(72% 0.18 250 / 0.2);
+
+    /* ── Surface Variants (Dark) ── */
+    --color-surface: oklch(15% 0 0);         /* Layer 1 */
+    --color-surface-alt: oklch(19% 0 0);     /* Layer 3 */
+    --color-hover: oklch(22% 0 0);
+    --color-toggle-off: oklch(35% 0 0);
+
+    /* ── Text Variants (Dark) ── */
+    --color-text-secondary: oklch(65% 0 0);
+    --color-text-hint: oklch(50% 0 0);
+
+    /* ── Health Status (Dark) ── */
+    --color-health-ok-bg: oklch(25% 0.06 145);
+    --color-health-ok-text: oklch(70% 0.15 145);
+    --color-health-err-bg: oklch(25% 0.06 25);
+    --color-health-err-text: oklch(70% 0.15 25);
+
+    /* ── Status Colors (Dark) ── */
+    --color-status-success-bg: oklch(25% 0.06 145);
+    --color-status-success-text: oklch(70% 0.15 145);
+    --color-status-success-border: oklch(35% 0.1 145);
+    --color-status-error-bg: oklch(25% 0.06 25);
+    --color-status-error-text: oklch(70% 0.15 25);
+    --color-status-error-border: oklch(35% 0.1 25);
+    --color-status-warning-bg: oklch(25% 0.06 80);
+    --color-status-warning-text: oklch(70% 0.12 80);
+    --color-status-warning-border: oklch(35% 0.08 80);
+
+    /* ── Event Type Colors (Dark) ── */
+    --color-event-blue-bg: oklch(25% 0.06 250);
+    --color-event-blue-text: oklch(70% 0.15 250);
+    --color-event-amber-bg: oklch(25% 0.06 80);
+    --color-event-amber-text: oklch(70% 0.12 80);
+    --color-event-green-bg: oklch(25% 0.06 145);
+    --color-event-green-text: oklch(70% 0.15 145);
+    --color-event-gray-bg: oklch(25% 0 0);
+    --color-event-gray-text: oklch(65% 0 0);
+    --color-event-purple-bg: oklch(25% 0.06 300);
+    --color-event-purple-text: oklch(70% 0.15 300);
+    --color-event-pink-bg: oklch(25% 0.06 350);
+    --color-event-pink-text: oklch(70% 0.15 350);
+
+    /* ── Border Variants (Dark) ── */
+    --color-border-input: oklch(35% 0 0);
+    --border-subtle: 1px solid oklch(30% 0 0);
+    --border-input: 1px solid oklch(35% 0 0);
+
+    /* ── Shadow Variants (Dark) ── */
+    --shadow-toggle: 0 1px 3px oklch(0% 0 0 / 0.3);
     --shadow-xs: 0 1px 2px oklch(0% 0 0 / 0.15);
     --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.2);
     --shadow-md: 0 2px 8px oklch(0% 0 0 / 0.3);
     --shadow-lg: 0 4px 16px oklch(0% 0 0 / 0.4);
+
+    /* ── Glass Effect (Dark) ── */
+    --glass-blur: 16px;
+    --glass-bg: oklch(13% 0 0 / 0.85);
+    --glass-border: oklch(100% 0 0 / 0.1);
   }
 }

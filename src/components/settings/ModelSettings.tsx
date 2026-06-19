@@ -320,22 +320,22 @@ export default function ModelSettings() {
           <div
             className={`rounded-lg border p-3 text-sm ${
               testResult.success
-                ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
-                : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
+                ? "border-status-success-border bg-status-success-bg"
+                : "border-status-error-border bg-status-error-bg"
             }`}
           >
             <div className="flex items-start gap-2">
               {testResult.success ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0 mt-0.5" />
               ) : (
-                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <XCircle className="h-4 w-4 text-status-error-text shrink-0 mt-0.5" />
               )}
               <div>
                 <p
                   className={
                     testResult.success
-                      ? "text-green-800 dark:text-green-300"
-                      : "text-red-800 dark:text-red-300"
+                      ? "text-status-success-text"
+                      : "text-status-error-text"
                   }
                 >
                   {testResult.message}
