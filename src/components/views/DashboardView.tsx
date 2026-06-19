@@ -49,38 +49,40 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <MotionCard className={cn("relative overflow-hidden", className)}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {title}
-          </CardTitle>
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-        )}
-        {trend && (
-          <div
-            className={cn(
-              "absolute bottom-2 right-2 flex items-center gap-1 text-xs",
-              trend === "up" && "text-success",
-              trend === "down" && "text-destructive",
-              trend === "neutral" && "text-muted-foreground"
-            )}
-          >
-            <TrendingUp
-              className={cn(
-                "h-3 w-3",
-                trend === "down" && "rotate-180"
-              )}
-            />
+    <MotionCard className={className}>
+      <Card className="relative overflow-hidden">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {title}
+            </CardTitle>
+            <Icon className="h-4 w-4 text-muted-foreground" />
           </div>
-        )}
-      </CardContent>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{value}</div>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          )}
+          {trend && (
+            <div
+              className={cn(
+                "absolute bottom-2 right-2 flex items-center gap-1 text-xs",
+                trend === "up" && "text-success",
+                trend === "down" && "text-destructive",
+                trend === "neutral" && "text-muted-foreground"
+              )}
+            >
+              <TrendingUp
+                className={cn(
+                  "h-3 w-3",
+                  trend === "down" && "rotate-180"
+                )}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </MotionCard>
   );
 }
@@ -94,16 +96,18 @@ function CollectorStatusCard({
 }) {
   if (!status) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            采集器状态
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-muted-foreground">加载中...</div>
-        </CardContent>
-      </Card>
+      <MotionCard>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              采集器状态
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-muted-foreground">加载中...</div>
+          </CardContent>
+        </Card>
+      </MotionCard>
     );
   }
 
@@ -112,6 +116,7 @@ function CollectorStatusCard({
     : 0;
 
   return (
+    <MotionCard>
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -175,6 +180,7 @@ function CollectorStatusCard({
         </div>
       </CardContent>
     </Card>
+    </MotionCard>
   );
 }
 
@@ -189,6 +195,7 @@ function RecentEventsCard({ events }: { events: Event[] }) {
   };
 
   return (
+    <MotionCard className="col-span-2">
     <Card className="col-span-2">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -232,6 +239,7 @@ function RecentEventsCard({ events }: { events: Event[] }) {
         )}
       </CardContent>
     </Card>
+    </MotionCard>
   );
 }
 
@@ -239,6 +247,7 @@ function RecentEventsCard({ events }: { events: Event[] }) {
 
 function PendingTasksCard({ tasks }: { tasks: PendingTaskDto[] }) {
   return (
+    <MotionCard>
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -274,6 +283,7 @@ function PendingTasksCard({ tasks }: { tasks: PendingTaskDto[] }) {
         )}
       </CardContent>
     </Card>
+    </MotionCard>
   );
 }
 
@@ -376,6 +386,7 @@ export default function DashboardView() {
         <RecentEventsCard events={events} />
 
         {/* Row 2: Quick Actions */}
+        <MotionCard className="col-span-2">
         <Card className="col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -403,6 +414,7 @@ export default function DashboardView() {
             </div>
           </CardContent>
         </Card>
+        </MotionCard>
       </div>
     </div>
   );

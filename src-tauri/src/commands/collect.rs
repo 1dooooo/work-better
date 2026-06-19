@@ -76,42 +76,9 @@ pub async fn trigger_feishu_collect(
     }
     drop(log);
 
-    // 从采集的消息中自动发现任务（AI 驱动）
-    let mut discovered_count = 0;
-    let runner = build_task_runner_from_config()
-        .map_err(|e| format!("AI 模型配置错误: {}", e))?
-        .ok_or("AI 模型未配置。请在设置中配置 API Key。")?;
-    let adapter = runner.default_adapter()
-        .ok_or("AI 模型适配器不可用。请检查 API Key 配置。")?;
-
-    for event in &events {
-        let text = match &event.content {
-            serde_json::Value::Object(obj) => {
-                obj.get("text")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string()
-            }
-            serde_json::Value::String(s) => s.clone(),
-            _ => continue,
-        };
-
-        if text.is_empty() {
-            continue;
-        }
-
-        let discovery = super::tasks::get_task_discovery();
-        let mut disc = discovery.lock().await;
-        let tasks = disc.discover_with_ai(&text, adapter, event.source.clone()).await;
-        discovered_count += tasks.len();
-    }
-
-    if discovered_count > 0 {
-        eprintln!(
-            "[collect] 飞书采集完成: {} 条事件, 发现 {} 个待确认任务",
-            count, discovered_count
-        );
-    }
+    // 任务发现由 Pipeline 的 Step 4.5 处理（通过 ModelRouter 路由到小/大模型），
+    // 采集器只负责收集事件并存入 EventLog，不再重复调用 AI。
+    eprintln!("[collect] 飞书采集完成: {} 条事件", count);
 
     // 通知前端采集完成
     app.emit("feishu:collect-complete", count)
@@ -173,12 +140,10 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
         existing_tasks.len()
     );
 
-    // AI 驱动：直接调用 adapter.extract() 获取完整 Extraction
-    let runner = build_task_runner_from_config()
+    // AI 驱动：通过 TaskRunner.run_extract() 调用 AI，自动路由到小/大模型
+    let mut runner = build_task_runner_from_config()
         .map_err(|e| format!("AI 模型配置错误: {}", e))?
         .ok_or("AI 模型未配置。请在设置中配置 API Key。")?;
-    let adapter = runner.default_adapter()
-        .ok_or("AI 模型适配器不可用。请检查 API Key 配置。")?;
 
     // 构建合成事件
     let ai_event = wb_core::event::Event::new(
@@ -188,75 +153,101 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
         text.clone(),
     );
 
-    match adapter.extract(&ai_event).await {
-        Ok(extraction) if extraction.is_status_update => {
-            // AI 判断为状态更新 → 确认 pending 任务并标记为 Done
-            eprintln!(
-                "[capture] status_update: text='{}', related_task_id={:?}",
-                text, extraction.related_task_id
-            );
+    let extraction_result = runner.run_extract(&ai_event, 0.5).await;
+    let extraction: wb_ai::Extraction = match extraction_result {
+        Ok(output) => match serde_json::from_str(&output.content) {
+            Ok(e) => e,
+            Err(e) => return Err(format!("AI 输出解析失败: {}", e)),
+        },
+        Err(e) => return Err(format!("AI 模型调用失败: {}", e)),
+    };
 
-            // 在 TaskDiscovery 的 pending 列表中查找匹配的任务
-            let discovery = super::tasks::get_task_discovery();
-            let mut disc = discovery.lock().await;
-            let pending_tasks: Vec<_> = disc.pending().iter().map(|p| (p.id.clone(), p.title.clone())).collect();
+    if extraction.is_status_update {
+        // AI 判断为状态更新 → 确认 pending 任务并标记为 Done
+        eprintln!(
+            "[capture] status_update: text='{}', related_task_id={:?}",
+            text, extraction.related_task_id
+        );
 
-            // 找到与 related_task_id 匹配的 pending 任务
-            let related_title = extraction.related_task_id.as_ref()
-                .and_then(|id| pending_tasks.iter().find(|(pid, _)| pid == id))
-                .map(|(_, title)| title.clone());
+        // 在 TaskDiscovery 的 pending 列表中查找匹配的任务
+        let discovery = super::tasks::get_task_discovery();
+        let mut disc = discovery.lock().await;
+        let pending_tasks: Vec<_> = disc.pending().iter().map(|p| (p.id.clone(), p.title.clone())).collect();
 
-            if let Some(ref title) = related_title {
-                eprintln!("[capture] found pending task: '{}'", title);
-                if let Some((pid, _)) = pending_tasks.iter().find(|(_, t)| t == title) {
-                    if let Ok(confirmed) = disc.confirm(pid) {
-                        drop(disc);
-                        let manager = super::tasks::get_task_manager().lock().await;
-                        if let Ok(task) = manager.create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone()).await {
-                            let _ = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Open).await;
-                            let _ = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Done).await;
-                            eprintln!("[capture] task '{}' confirmed and transitioned to Done", task.title);
-                            // 通知前端刷新任务列表
-                            let _ = app.emit("tasks:updated", ());
+        // 找到与 related_task_id 匹配的 pending 任务
+        // related_task_id 可能是 UUID（pending 任务 id）或 "recent-N"（existing_tasks 索引）
+        let related_title = extraction.related_task_id.as_ref()
+            .and_then(|id| {
+                // 首先尝试直接匹配 pending 任务 id（UUID 格式）
+                pending_tasks.iter().find(|(pid, _)| pid == id).map(|(_, title)| title.clone())
+                    .or_else(|| {
+                        // 如果直接匹配失败，尝试解析 "recent-N" 格式，从 existing_tasks 中获取标题
+                        id.strip_prefix("recent-")
+                            .and_then(|idx_str| idx_str.parse::<usize>().ok())
+                            .and_then(|idx| existing_tasks.get(idx))
+                            .map(|ctx| ctx.title.clone())
+                    })
+            });
+
+        if let Some(ref title) = related_title {
+            eprintln!("[capture] found related task title: '{}'", title);
+
+            // 用标题在 pending 列表中查找
+            if let Some((pid, _)) = pending_tasks.iter().find(|(_, t)| t == title) {
+                if let Ok(confirmed) = disc.confirm(pid) {
+                    drop(disc);
+                    let manager = super::tasks::get_task_manager().lock().await;
+                    if let Ok(task) = manager.create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone()).await {
+                        if let Err(e) = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Open).await {
+                            eprintln!("[capture] WARN: transition to Open failed: {}", e);
                         }
+                        if let Err(e) = manager.transition(&task.id, wb_processor::task::model::TaskStatus::InProgress).await {
+                            eprintln!("[capture] WARN: transition to InProgress failed: {}", e);
+                        }
+                        if let Err(e) = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Done).await {
+                            eprintln!("[capture] WARN: transition to Done failed: {}", e);
+                        }
+                        eprintln!("[capture] task '{}' confirmed and transitioned to Done", task.title);
+                        let _ = app.emit("tasks:updated", ());
                     }
                 }
             } else {
-                // pending 中没找到，尝试在 TaskManager 中查找
+                // pending 中没找到，用标题在 TaskManager 中查找
                 drop(disc);
                 let manager = super::tasks::get_task_manager().lock().await;
                 let all_tasks = manager.list(wb_processor::task::model::TaskFilter::default()).await.unwrap_or_default();
                 if let Some(task) = all_tasks.iter().find(|t| {
                     t.status != wb_processor::task::model::TaskStatus::Done &&
-                    (t.title.contains("邮件") || t.title.contains("lily") || t.title.contains("Lily"))
+                    t.title.contains(title.as_str())
                 }) {
-                    let _ = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Done).await;
+                    if let Err(e) = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Done).await {
+                        eprintln!("[capture] WARN: transition to Done failed: {}", e);
+                    }
                     eprintln!("[capture] task '{}' transitioned to Done", task.title);
                     let _ = app.emit("tasks:updated", ());
                 } else {
                     eprintln!("[capture] no matching task found for status update");
                 }
             }
+        } else {
+            // 无法确定关联任务
+            drop(disc);
+            eprintln!("[capture] no matching task found for status update");
         }
-        Ok(extraction) => {
-            // AI 判断为新任务
-            if !extraction.title.is_empty() && extraction.confidence >= 0.5 {
-                let tasks = wb_processor::task::discovery_ai::discover_with_ai(
-                    &text, adapter, Source::UserCapture, &existing_tasks
-                ).await;
-                if !tasks.is_empty() {
-                    eprintln!("[capture] new task discovered: '{}'", tasks[0].title);
-                    let discovery = super::tasks::get_task_discovery();
-                    let mut disc = discovery.lock().await;
-                    for task in &tasks {
-                        disc.add_pending(task.clone());
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            return Err(format!("AI 模型调用失败: {}", e));
-        }
+    } else if !extraction.title.is_empty() && extraction.confidence >= 0.5 {
+        // AI 判断为新任务
+        let discovery = super::tasks::get_task_discovery();
+        let mut disc = discovery.lock().await;
+        let pending = wb_processor::task::discovery::PendingTask::new(
+            &extraction.title,
+            extraction.summary.as_str().into(),
+            wb_processor::task::model::TaskSource::Message,
+            wb_processor::task::model::TaskPriority::P2,
+            extraction.due_date.clone(),
+            &text,
+        );
+        disc.add_pending(pending.clone());
+        eprintln!("[capture] new task discovered: '{}'", pending.title);
     }
 
     Ok(event)
