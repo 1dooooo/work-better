@@ -182,15 +182,12 @@ impl ProcessingPipeline {
 
         // Step 4.5: Task Discovery（AI 驱动，检查是否包含任务）
         // 仅对文本类事件运行任务发现，避免对 Approval、Browsing 等产生误报
+        // 通过 TaskRunner 的 ModelRouter 决定使用小模型还是大模型
         if Self::is_text_rich_event(event) {
             let event_text = Self::extract_text_from_event(event);
-            let discovery_tasks = if let Some(adapter) = self.task_runner.default_adapter() {
-                self.task_discovery
-                    .discover_with_ai(&event_text, adapter, event.source.clone())
-                    .await
-            } else {
-                vec![]
-            };
+            let discovery_tasks = self.task_discovery
+                .discover_with_ai(&event_text, &mut self.task_runner, event.source.clone())
+                .await;
             if let Some(candidate) = discovery_tasks.first() {
                 record.category = wb_core::record::Category::Task;
                 if let Some(ref due) = candidate.due_date {

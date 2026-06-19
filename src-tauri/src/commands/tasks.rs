@@ -105,12 +105,10 @@ pub async fn discover_tasks_from_text(
         _ => wb_core::event::Source::UserCapture,
     };
 
-    let runner = super::events::build_task_runner_from_config()
+    let mut runner = super::events::build_task_runner_from_config()
         .map_err(|e| CommandError::from(wb_core::error::WbError::Ai(e)))?
         .ok_or(CommandError::from(wb_core::error::WbError::Ai("AI 模型未配置。请在设置中配置 API Key。".to_string())))?;
-    let adapter = runner.default_adapter()
-        .ok_or(CommandError::from(wb_core::error::WbError::Ai("AI 模型适配器不可用。请检查 API Key 配置。".to_string())))?;
-    let tasks = discovery.discover_with_ai(&text, adapter, source_enum).await;
+    let tasks = discovery.discover_with_ai(&text, &mut runner, source_enum).await;
 
     Ok(tasks.iter().map(PendingTaskDto::from).collect())
 }

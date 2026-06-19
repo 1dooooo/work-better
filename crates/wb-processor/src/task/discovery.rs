@@ -7,7 +7,7 @@ use chrono::Utc;
 use uuid::Uuid;
 use wb_core::error::Result;
 use wb_core::event::Source;
-use wb_ai::{ModelAdapter, TaskContext};
+use wb_ai::{TaskContext, TaskRunner};
 
 use super::discovery_ai;
 use super::discovery_confirm::ConfirmationFlow;
@@ -66,6 +66,7 @@ impl TaskDiscovery {
     /// AI 驱动的任务发现（统一入口）
     ///
     /// 所有来源（消息、邮件、会议、手动捕获）统一走此路径。
+    /// 通过 TaskRunner 的 ModelRouter 决定使用小模型还是大模型，
     /// 自动将当前 pending 任务列表作为上下文传给 AI，让 AI 能判断
     /// 新消息是"新任务"还是"已有任务的状态更新"。
     ///
@@ -73,7 +74,7 @@ impl TaskDiscovery {
     pub async fn discover_with_ai(
         &mut self,
         text: &str,
-        adapter: &dyn ModelAdapter,
+        task_runner: &mut TaskRunner,
         source: Source,
     ) -> Vec<PendingTask> {
         let existing_tasks: Vec<TaskContext> = self
@@ -94,7 +95,7 @@ impl TaskDiscovery {
             existing_tasks.iter().map(|t| t.title.as_str()).collect::<Vec<_>>()
         );
 
-        let tasks = discovery_ai::discover_with_ai(text, adapter, source, &existing_tasks).await;
+        let tasks = discovery_ai::discover_with_ai(text, task_runner, source, &existing_tasks).await;
 
         eprintln!(
             "[discovery] discover_with_ai result: discovered={}, is_status_update_check_done",
@@ -146,10 +147,11 @@ impl Default for TaskDiscovery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wb_ai::{Extraction, MockAdapter};
+    use std::collections::HashMap;
+    use wb_ai::{Extraction, MockAdapter, ModelRouter, TokenBudget};
 
-    fn make_adapter(title: &str, confidence: f64) -> MockAdapter {
-        MockAdapter::new().with_extraction(Extraction {
+    fn make_runner(title: &str, confidence: f64) -> TaskRunner {
+        let extraction = Extraction {
             title: title.to_string(),
             summary: String::new(),
             detail: String::new(),
@@ -160,16 +162,37 @@ mod tests {
             confidence,
             is_status_update: false,
             related_task_id: None,
-        })
+        };
+        let router = ModelRouter::new();
+        let budget = TokenBudget::new(100_000);
+        let mut adapters: HashMap<wb_ai::ModelSize, Box<dyn wb_ai::ModelAdapter>> = HashMap::new();
+        adapters.insert(wb_ai::ModelSize::Small, Box::new(MockAdapter::new().with_extraction(extraction.clone())));
+        adapters.insert(wb_ai::ModelSize::Large, Box::new(MockAdapter::new().with_extraction(extraction)));
+        let mut adapter_names = HashMap::new();
+        adapter_names.insert(wb_ai::ModelSize::Small, "mock-small".to_string());
+        adapter_names.insert(wb_ai::ModelSize::Large, "mock-large".to_string());
+        TaskRunner::new(router, budget, adapters, adapter_names)
+    }
+
+    fn make_runner_with_extraction(extraction: Extraction) -> TaskRunner {
+        let router = ModelRouter::new();
+        let budget = TokenBudget::new(100_000);
+        let mut adapters: HashMap<wb_ai::ModelSize, Box<dyn wb_ai::ModelAdapter>> = HashMap::new();
+        adapters.insert(wb_ai::ModelSize::Small, Box::new(MockAdapter::new().with_extraction(extraction.clone())));
+        adapters.insert(wb_ai::ModelSize::Large, Box::new(MockAdapter::new().with_extraction(extraction)));
+        let mut adapter_names = HashMap::new();
+        adapter_names.insert(wb_ai::ModelSize::Small, "mock-small".to_string());
+        adapter_names.insert(wb_ai::ModelSize::Large, "mock-large".to_string());
+        TaskRunner::new(router, budget, adapters, adapter_names)
     }
 
     #[tokio::test]
     async fn test_discover_with_ai_returns_ai_result() {
         let mut discovery = TaskDiscovery::new();
-        let adapter = make_adapter("完成报告", 0.9);
+        let mut runner = make_runner("完成报告", 0.9);
 
         let tasks = discovery
-            .discover_with_ai("请帮忙明天完成报告", &adapter, Source::FeishuMessage)
+            .discover_with_ai("请帮忙明天完成报告", &mut runner, Source::FeishuMessage)
             .await;
         assert_eq!(tasks.len(), 1, "AI 应发现 1 个任务");
         assert_eq!(tasks[0].title, "完成报告");
@@ -179,7 +202,7 @@ mod tests {
     #[tokio::test]
     async fn test_discover_with_ai_no_match() {
         let mut discovery = TaskDiscovery::new();
-        let adapter = MockAdapter::new().with_extraction(Extraction {
+        let mut runner = make_runner_with_extraction(Extraction {
             title: String::new(),
             summary: String::new(),
             detail: String::new(),
@@ -193,7 +216,7 @@ mod tests {
         });
 
         let tasks = discovery
-            .discover_with_ai("今天天气真好", &adapter, Source::FeishuMessage)
+            .discover_with_ai("今天天气真好", &mut runner, Source::FeishuMessage)
             .await;
         assert!(tasks.is_empty(), "非任务文本应返回空");
         assert_eq!(discovery.pending_count(), 0);
@@ -202,26 +225,26 @@ mod tests {
     #[tokio::test]
     async fn test_discover_with_ai_low_confidence_returns_empty() {
         let mut discovery = TaskDiscovery::new();
-        let adapter = make_adapter("可能的任务", 0.2);
+        let mut runner = make_runner("可能的任务", 0.2);
 
         let tasks = discovery
-            .discover_with_ai("请你帮忙检查 API", &adapter, Source::FeishuMessage)
+            .discover_with_ai("请你帮忙检查 API", &mut runner, Source::FeishuMessage)
             .await;
         assert!(tasks.is_empty(), "低置信度应返回空，不降级");
     }
 
     #[tokio::test]
     async fn test_discover_with_ai_status_update_no_duplicate() {
-        let adapter1 = make_adapter("发邮件给lily", 0.9);
+        let mut runner1 = make_runner("发邮件给lily", 0.9);
 
         let mut discovery = TaskDiscovery::new();
         let tasks1 = discovery
-            .discover_with_ai("我今天要发邮件给lily", &adapter1, Source::FeishuMessage)
+            .discover_with_ai("我今天要发邮件给lily", &mut runner1, Source::FeishuMessage)
             .await;
         assert_eq!(tasks1.len(), 1, "第一条消息应发现任务");
         assert_eq!(discovery.pending_count(), 1);
 
-        let adapter2 = MockAdapter::new().with_extraction(Extraction {
+        let mut runner2 = make_runner_with_extraction(Extraction {
             title: String::new(),
             summary: String::new(),
             detail: String::new(),
@@ -235,7 +258,7 @@ mod tests {
         });
 
         let tasks2 = discovery
-            .discover_with_ai("给Lily的邮件已经发送了", &adapter2, Source::FeishuMessage)
+            .discover_with_ai("给Lily的邮件已经发送了", &mut runner2, Source::FeishuMessage)
             .await;
         assert!(tasks2.is_empty(), "状态更新不应创建新任务");
         assert_eq!(discovery.pending_count(), 1);
@@ -243,10 +266,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_confirm_flow() {
-        let adapter = make_adapter("修复 bug", 0.9);
+        let mut runner = make_runner("修复 bug", 0.9);
         let mut discovery = TaskDiscovery::new();
         let tasks = discovery
-            .discover_with_ai("TODO: 修复 bug", &adapter, Source::FeishuMessage)
+            .discover_with_ai("TODO: 修复 bug", &mut runner, Source::FeishuMessage)
             .await;
         let id = tasks[0].id.clone();
 
@@ -257,10 +280,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_flow() {
-        let adapter = make_adapter("误报的任务", 0.9);
+        let mut runner = make_runner("误报的任务", 0.9);
         let mut discovery = TaskDiscovery::new();
         let tasks = discovery
-            .discover_with_ai("TODO: 误报的任务", &adapter, Source::FeishuMessage)
+            .discover_with_ai("TODO: 误报的任务", &mut runner, Source::FeishuMessage)
             .await;
         let id = tasks[0].id.clone();
 

@@ -304,11 +304,9 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
                         }
                     };
 
-                    // 任务发现：委托给 discover_with_ai
+                    // 任务发现：通过 TaskRunner 的 ModelRouter 路由到小/大模型
                     if !event_text.is_empty() {
-                        if let Some(adapter) = runner.default_adapter() {
-                            let _tasks = disc.discover_with_ai(&event_text, adapter, event.source.clone()).await;
-                        }
+                        let _tasks = disc.discover_with_ai(&event_text, &mut runner, event.source.clone()).await;
                     }
 
                     let combined_output = serde_json::json!({

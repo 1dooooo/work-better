@@ -21,7 +21,6 @@ pub fn validate_transition(current: &TaskStatus, target: &TaskStatus) -> Result<
         (current, target),
         (TaskStatus::Pending, TaskStatus::Open)
             | (TaskStatus::Open, TaskStatus::InProgress)
-            | (TaskStatus::Open, TaskStatus::Done)
             | (TaskStatus::InProgress, TaskStatus::Done)
             | (TaskStatus::Done, TaskStatus::Archived)
     );

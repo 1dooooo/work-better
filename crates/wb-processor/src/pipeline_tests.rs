@@ -43,14 +43,22 @@ fn make_pipeline_with_adapter(
     tmp_dir: &std::path::Path,
     small_adapter: MockAdapter,
 ) -> ProcessingPipeline {
+    make_pipeline_with_adapters(tmp_dir, small_adapter, MockAdapter::new().with_model_name("mock-large".to_string()))
+}
+
+/// 创建带有自定义 Small 和 Large 适配器的 Pipeline
+///
+/// 当 ModelRouter 升级到 Large 模型时，Large 适配器也需要配置正确的 Extraction。
+fn make_pipeline_with_adapters(
+    tmp_dir: &std::path::Path,
+    small_adapter: MockAdapter,
+    large_adapter: MockAdapter,
+) -> ProcessingPipeline {
     let router = ModelRouter::new();
     let budget = TokenBudget::new(100_000);
     let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
     adapters.insert(ModelSize::Small, Box::new(small_adapter));
-    adapters.insert(
-        ModelSize::Large,
-        Box::new(MockAdapter::new().with_model_name("mock-large".to_string())),
-    );
+    adapters.insert(ModelSize::Large, Box::new(large_adapter));
     let mut adapter_names = HashMap::new();
     adapter_names.insert(ModelSize::Small, "mock-small".to_string());
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
@@ -212,7 +220,8 @@ async fn test_pipeline_meeting_category_mapping() {
 async fn test_pipeline_email_category_mapping() {
     let tmp = tempdir().unwrap();
     // 使用低置信度 adapter，避免 AI 认为是任务
-    let mut pipeline = make_pipeline_with_adapter(tmp.path(), make_non_task_adapter());
+    // Small 和 Large 都配置为非任务，避免 ModelRouter 升级后 Large 返回任务
+    let mut pipeline = make_pipeline_with_adapters(tmp.path(), make_non_task_adapter(), make_non_task_adapter().with_model_name("mock-large".to_string()));
 
     let event = make_event(
         Source::FeishuEmail,
@@ -485,8 +494,9 @@ async fn test_discovery_sets_task_category() {
 async fn test_discovery_no_candidate_keeps_original_category() {
     // 普通消息 → Discovery 无候选 → 保持原分类
     // 使用低置信度 adapter，避免 AI 误判为任务
+    // Small 和 Large 都配置为非任务，避免 ModelRouter 升级后 Large 返回任务
     let tmp = tempdir().unwrap();
-    let mut pipeline = make_pipeline_with_adapter(tmp.path(), make_non_task_adapter());
+    let mut pipeline = make_pipeline_with_adapters(tmp.path(), make_non_task_adapter(), make_non_task_adapter().with_model_name("mock-large".to_string()));
 
     let event = make_event(
         Source::FeishuMessage,
@@ -567,7 +577,7 @@ async fn test_discovery_ai_sets_task_category() {
 async fn test_discovery_ai_no_fallback_returns_communication() {
     // AI 返回空结果 → 不降级到关键词 → 保持原分类
     let tmp = tempdir().unwrap();
-    let adapter = MockAdapter::new().with_extraction(wb_ai::Extraction {
+    let non_task_extraction = wb_ai::Extraction {
         title: String::new(),
         summary: String::new(),
         detail: String::new(),
@@ -578,8 +588,10 @@ async fn test_discovery_ai_no_fallback_returns_communication() {
         confidence: 0.2,
         is_status_update: false,
         related_task_id: None,
-    });
-    let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
+    };
+    let adapter = MockAdapter::new().with_extraction(non_task_extraction.clone());
+    let large_adapter = MockAdapter::new().with_extraction(non_task_extraction).with_model_name("mock-large".to_string());
+    let mut pipeline = make_pipeline_with_adapters(tmp.path(), adapter, large_adapter);
 
     let event = make_event(
         Source::FeishuMessage,
@@ -601,7 +613,7 @@ async fn test_discovery_ai_no_fallback_returns_communication() {
 async fn test_discovery_ai_no_match_keeps_category() {
     // AI 无结果 + 关键词无匹配 → 保持原分类
     let tmp = tempdir().unwrap();
-    let adapter = MockAdapter::new().with_extraction(wb_ai::Extraction {
+    let non_task_extraction = wb_ai::Extraction {
         title: String::new(),
         summary: String::new(),
         detail: String::new(),
@@ -612,8 +624,10 @@ async fn test_discovery_ai_no_match_keeps_category() {
         confidence: 0.2,
         is_status_update: false,
         related_task_id: None,
-    });
-    let mut pipeline = make_pipeline_with_adapter(tmp.path(), adapter);
+    };
+    let adapter = MockAdapter::new().with_extraction(non_task_extraction.clone());
+    let large_adapter = MockAdapter::new().with_extraction(non_task_extraction).with_model_name("mock-large".to_string());
+    let mut pipeline = make_pipeline_with_adapters(tmp.path(), adapter, large_adapter);
 
     let event = make_event(
         Source::FeishuMessage,

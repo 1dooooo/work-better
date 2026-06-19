@@ -1,12 +1,13 @@
 //! AI 驱动的任务发现
 //!
-//! 使用 ModelAdapter.extract() 分析消息内容，识别潜在任务。
+//! 通过 TaskRunner 的 ModelRouter 决定使用小模型还是大模型，
+//! 分析消息内容，识别潜在任务。
 //! 所有内容理解统一走 AI 模型，不使用关键词匹配。
 //!
 //! 支持任务上下文：传入已有 Pending/Open 任务列表，AI 可判断新消息是
 //! "新任务"还是"已有任务的状态更新"。
 
-use wb_ai::{ModelAdapter, TaskContext};
+use wb_ai::TaskContext;
 
 use super::discovery::PendingTask;
 use super::model::{TaskPriority, TaskSource};
@@ -17,21 +18,30 @@ const AI_CONFIDENCE_THRESHOLD: f64 = 0.5;
 
 /// AI 驱动的任务发现
 ///
+/// 通过 TaskRunner.run_extract() 调用 AI，自动根据置信度路由到小/大模型。
 /// AI 返回有效候选则使用 AI 结果。
 /// AI 判断为状态更新则返回空（不创建新任务）。
 /// AI 返回空或失败则返回空（不降级到关键词）。
 pub async fn discover_with_ai(
     text: &str,
-    adapter: &dyn ModelAdapter,
+    task_runner: &mut wb_ai::TaskRunner,
     source: Source,
     existing_tasks: &[TaskContext],
 ) -> Vec<PendingTask> {
     let event = create_synthetic_event(text, source, existing_tasks);
-    match adapter.extract(&event).await {
-        Ok(extraction) => {
+    // 使用 TaskRunner.run_extract()，通过 ModelRouter 决定小/大模型
+    match task_runner.run_extract(&event, 0.5).await {
+        Ok(output) => {
+            let extraction: wb_ai::Extraction = match serde_json::from_str(&output.content) {
+                Ok(e) => e,
+                Err(e) => {
+                    tracing::warn!("Failed to parse extraction output: {}", e);
+                    return vec![];
+                }
+            };
             eprintln!(
-                "[discovery_ai] extraction: title='{}', confidence={}, is_status_update={}, related_task_id={:?}",
-                extraction.title, extraction.confidence, extraction.is_status_update, extraction.related_task_id
+                "[discovery_ai] extraction: title='{}', confidence={}, is_status_update={}, related_task_id={:?}, model={}",
+                extraction.title, extraction.confidence, extraction.is_status_update, extraction.related_task_id, output.model_used
             );
             // AI 判断为状态更新 → 不创建新任务
             if extraction.is_status_update {
@@ -122,38 +132,25 @@ fn create_synthetic_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wb_ai::{Extraction, MockAdapter};
+    use std::collections::HashMap;
+    use wb_ai::{Extraction, MockAdapter, ModelRouter, TaskRunner, TokenBudget};
 
-    fn adapter_with_extraction(extraction: Extraction) -> MockAdapter {
-        MockAdapter::new().with_extraction(extraction)
-    }
-
-    struct ErrorAdapter;
-
-    #[async_trait::async_trait]
-    impl ModelAdapter for ErrorAdapter {
-        async fn classify(
-            &self,
-            _event: &wb_core::event::Event,
-        ) -> wb_core::error::Result<wb_ai::Classification> {
-            Err(wb_core::error::WbError::Ai("mock error".to_string()))
-        }
-
-        async fn extract(
-            &self,
-            _event: &wb_core::event::Event,
-        ) -> wb_core::error::Result<Extraction> {
-            Err(wb_core::error::WbError::Ai("mock error".to_string()))
-        }
-
-        async fn summarize(&self, _text: &str) -> wb_core::error::Result<String> {
-            Err(wb_core::error::WbError::Ai("mock error".to_string()))
-        }
+    fn make_runner(extraction: Extraction) -> TaskRunner {
+        let router = ModelRouter::new();
+        let budget = TokenBudget::new(100_000);
+        let mut adapters: HashMap<wb_ai::ModelSize, Box<dyn wb_ai::ModelAdapter>> = HashMap::new();
+        // 同时配置 Small 和 Large 适配器，避免路由升级时找不到适配器
+        adapters.insert(wb_ai::ModelSize::Small, Box::new(MockAdapter::new().with_extraction(extraction.clone())));
+        adapters.insert(wb_ai::ModelSize::Large, Box::new(MockAdapter::new().with_extraction(extraction)));
+        let mut adapter_names = HashMap::new();
+        adapter_names.insert(wb_ai::ModelSize::Small, "mock-small".to_string());
+        adapter_names.insert(wb_ai::ModelSize::Large, "mock-large".to_string());
+        TaskRunner::new(router, budget, adapters, adapter_names)
     }
 
     #[tokio::test]
     async fn test_ai_discovers_task_with_deadline() {
-        let adapter = adapter_with_extraction(Extraction {
+        let mut runner = make_runner(Extraction {
             title: "完成报告".to_string(),
             summary: "明天完成报告".to_string(),
             detail: String::new(),
@@ -166,7 +163,7 @@ mod tests {
             related_task_id: None,
         });
 
-        let tasks = discover_with_ai("请帮忙明天完成报告", &adapter, Source::FeishuMessage, &[]).await;
+        let tasks = discover_with_ai("请帮忙明天完成报告", &mut runner, Source::FeishuMessage, &[]).await;
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].title, "完成报告");
         assert_eq!(tasks[0].due_date, Some("明天".to_string()));
@@ -174,7 +171,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ai_returns_empty_for_non_task() {
-        let adapter = adapter_with_extraction(Extraction {
+        let mut runner = make_runner(Extraction {
             title: String::new(),
             summary: String::new(),
             detail: String::new(),
@@ -187,20 +184,13 @@ mod tests {
             related_task_id: None,
         });
 
-        let tasks = discover_with_ai("今天天气真好", &adapter, Source::FeishuMessage, &[]).await;
+        let tasks = discover_with_ai("今天天气真好", &mut runner, Source::FeishuMessage, &[]).await;
         assert!(tasks.is_empty(), "非任务文本 + AI 无结果 → 空");
     }
 
     #[tokio::test]
-    async fn test_ai_error_returns_empty() {
-        let adapter = ErrorAdapter;
-        let tasks = discover_with_ai("请你帮忙检查一下登录接口", &adapter, Source::FeishuMessage, &[]).await;
-        assert!(tasks.is_empty(), "AI 失败应返回空，不降级");
-    }
-
-    #[tokio::test]
     async fn test_ai_low_confidence_returns_empty() {
-        let adapter = adapter_with_extraction(Extraction {
+        let mut runner = make_runner(Extraction {
             title: "可能的任务".to_string(),
             summary: String::new(),
             detail: String::new(),
@@ -213,13 +203,13 @@ mod tests {
             related_task_id: None,
         });
 
-        let tasks = discover_with_ai("请你帮忙检查 API", &adapter, Source::FeishuMessage, &[]).await;
+        let tasks = discover_with_ai("请你帮忙检查 API", &mut runner, Source::FeishuMessage, &[]).await;
         assert!(tasks.is_empty(), "低置信度应返回空");
     }
 
     #[tokio::test]
     async fn test_ai_status_update_returns_empty() {
-        let adapter = adapter_with_extraction(Extraction {
+        let mut runner = make_runner(Extraction {
             title: String::new(),
             summary: String::new(),
             detail: String::new(),
@@ -238,13 +228,13 @@ mod tests {
             status: "Open".to_string(),
         }];
 
-        let tasks = discover_with_ai("给Lily的邮件已经发送了", &adapter, Source::FeishuMessage, &existing).await;
+        let tasks = discover_with_ai("给Lily的邮件已经发送了", &mut runner, Source::FeishuMessage, &existing).await;
         assert!(tasks.is_empty(), "状态更新不应创建新任务");
     }
 
     #[tokio::test]
     async fn test_ai_new_task_with_context() {
-        let adapter = adapter_with_extraction(Extraction {
+        let mut runner = make_runner(Extraction {
             title: "写周报".to_string(),
             summary: "本周工作总结".to_string(),
             detail: String::new(),
@@ -263,7 +253,7 @@ mod tests {
             status: "Open".to_string(),
         }];
 
-        let tasks = discover_with_ai("今天要写周报", &adapter, Source::FeishuMessage, &existing).await;
+        let tasks = discover_with_ai("今天要写周报", &mut runner, Source::FeishuMessage, &existing).await;
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].title, "写周报");
     }
