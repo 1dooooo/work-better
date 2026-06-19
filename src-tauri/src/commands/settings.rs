@@ -241,6 +241,115 @@ pub async fn save_developer_mode(enabled: bool) -> Result<(), String> {
 
 // ─── 模型管理 ─────────────────────────────────────────────────────
 
+// ─── 快捷键配置 ─────────────────────────────────────────────────
+
+/// 快捷键配置项（前端 DTO）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShortcutConfig {
+    pub id: String,
+    pub label: String,
+    pub key: String,
+    pub modifiers: Vec<String>,
+}
+
+/// 默认快捷键配置
+fn default_shortcuts() -> Vec<ShortcutConfig> {
+    vec![
+        ShortcutConfig {
+            id: "capture".into(),
+            label: "快速捕获".into(),
+            key: "Space".into(),
+            modifiers: vec!["cmd".into(), "shift".into()],
+        },
+        ShortcutConfig {
+            id: "search".into(),
+            label: "全局搜索".into(),
+            key: "K".into(),
+            modifiers: vec!["cmd".into()],
+        },
+        ShortcutConfig {
+            id: "task".into(),
+            label: "新建任务".into(),
+            key: "N".into(),
+            modifiers: vec!["cmd".into(), "shift".into()],
+        },
+    ]
+}
+
+use wb_storage::config::ShortcutEntry;
+
+/// 获取快捷键配置
+#[tauri::command]
+pub async fn get_shortcut_config() -> Result<Vec<ShortcutConfig>, String> {
+    let app_config = load_config()?;
+    if app_config.shortcuts.is_empty() {
+        Ok(default_shortcuts())
+    } else {
+        Ok(app_config
+            .shortcuts
+            .into_iter()
+            .map(|e| ShortcutConfig {
+                id: e.id,
+                label: e.label,
+                key: e.key,
+                modifiers: e.modifiers,
+            })
+            .collect())
+    }
+}
+
+/// 保存快捷键配置
+#[tauri::command]
+pub async fn save_shortcut_config(config: Vec<ShortcutConfig>) -> Result<(), String> {
+    let mut app_config = load_config()?;
+    app_config.shortcuts = config
+        .into_iter()
+        .map(|c| ShortcutEntry {
+            id: c.id,
+            label: c.label,
+            key: c.key,
+            modifiers: c.modifiers,
+        })
+        .collect();
+    save_config(&app_config)
+}
+
+// ─── 系统状态 ─────────────────────────────────────────────────
+
+/// 采集器简要状态
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollectorBrief {
+    pub id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub healthy: bool,
+}
+
+/// 系统状态（供菜单栏展示）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemStatus {
+    pub collectors_total: usize,
+    pub collectors_healthy: usize,
+    pub scheduler_running: bool,
+    pub unprocessed_count: usize,
+}
+
+/// 获取系统状态（菜单栏用）
+#[tauri::command]
+pub async fn get_system_status() -> Result<SystemStatus, String> {
+    let app_config = load_config()?;
+    let statuses = build_collector_statuses(&app_config.collectors);
+    let total = statuses.len();
+    let healthy = statuses.iter().filter(|s| s.healthy).count();
+
+    Ok(SystemStatus {
+        collectors_total: total,
+        collectors_healthy: healthy,
+        scheduler_running: app_config.scheduler.enabled,
+        unprocessed_count: 0, // 由前端单独查询
+    })
+}
+
 /// 模型信息（从 API 获取）
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInfo {

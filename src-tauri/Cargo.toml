@@ -14,6 +14,8 @@ tauri-build = { version = "2", features = [] }
 thiserror = { workspace = true }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-shell = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
@@ -27,3 +29,4 @@ wb-storage = { path = "../crates/wb-storage" }
 wb-ai = { path = "../crates/wb-ai" }
 wb-scheduler = { path = "../crates/wb-scheduler" }
 reqwest = { version = "0.12", features = ["json"] }
+lazy_static = "1"

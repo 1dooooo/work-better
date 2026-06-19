@@ -32,6 +32,13 @@ export async function triggerManualCapture(text: string): Promise<Event> {
   return invoke<Event>("trigger_manual_capture", { text });
 }
 
+/**
+ * 显示速记窗口
+ */
+export async function showCaptureWindow(): Promise<void> {
+  return invoke("show_capture_window");
+}
+
 export async function triggerFeishuCollect(
   chatId?: string,
   limit?: number,
@@ -365,6 +372,94 @@ export async function saveDeveloperMode(enabled: boolean): Promise<void> {
 }
 
 // ─── Task Management ─────────────────────────────────────────────
+
+// ─── Notifications ───────────────────────────────────────────────
+
+export type NotifyKind = "Confirm" | "Reminder" | "TaskDone";
+
+export interface NotifyRequest {
+  title: string;
+  body: string;
+  kind: NotifyKind;
+  action_url: string | null;
+}
+
+export interface NotificationRecord {
+  id: string;
+  title: string;
+  body: string;
+  kind: NotifyKind;
+  action_url: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+/**
+ * 发送系统通知
+ */
+export async function sendNotification(request: NotifyRequest): Promise<void> {
+  return invoke("send_notification", { request });
+}
+
+/**
+ * 获取待确认通知列表
+ */
+export async function getPendingNotifications(): Promise<NotificationRecord[]> {
+  return invoke<NotificationRecord[]>("get_pending_notifications");
+}
+
+/**
+ * 标记通知为已读
+ */
+export async function markNotificationRead(id: string): Promise<void> {
+  return invoke("mark_notification_read", { id });
+}
+
+/**
+ * 清除所有已读通知
+ */
+export async function clearReadNotifications(): Promise<void> {
+  return invoke("clear_read_notifications");
+}
+
+// ─── System Status ──────────────────────────────────────────────
+
+export interface SystemStatus {
+  collectors_total: number;
+  collectors_healthy: number;
+  scheduler_running: boolean;
+  unprocessed_count: number;
+}
+
+/**
+ * 获取系统状态（菜单栏用）
+ */
+export async function getSystemStatus(): Promise<SystemStatus> {
+  return invoke<SystemStatus>("get_system_status");
+}
+
+// ─── Global Shortcut ─────────────────────────────────────────────
+
+export interface ShortcutConfig {
+  id: string;
+  label: string;
+  key: string;
+  modifiers: string[];
+}
+
+/**
+ * 获取快捷键配置
+ */
+export async function getShortcutConfig(): Promise<ShortcutConfig[]> {
+  return invoke<ShortcutConfig[]>("get_shortcut_config");
+}
+
+/**
+ * 保存快捷键配置
+ */
+export async function saveShortcutConfig(config: ShortcutConfig[]): Promise<void> {
+  return invoke("save_shortcut_config", { config });
+}
 
 export interface TaskDto {
   id: string;

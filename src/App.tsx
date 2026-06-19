@@ -11,7 +11,11 @@ function App() {
     return <CaptureWindow />;
   }
   if (view === "tray") {
-    return <MenuBar />;
+    return (
+      <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+        <MenuBar />
+      </ThemeProvider>
+    );
   }
 
   return (

@@ -102,6 +102,21 @@ pub struct AppConfig {
     /// 开发者模式：显示审计日志等调试功能
     #[serde(default)]
     pub developer_mode: bool,
+    /// 快捷键配置
+    #[serde(default)]
+    pub shortcuts: Vec<ShortcutEntry>,
+}
+
+/// 快捷键配置项（存储层 DTO）
+///
+/// 与 settings.rs 中的 ShortcutConfig 结构一致，
+/// 此处定义在 config.rs 以保持 AppConfig 的自包含性。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ShortcutEntry {
+    pub id: String,
+    pub label: String,
+    pub key: String,
+    pub modifiers: Vec<String>,
 }
 
 impl AppConfig {
@@ -165,6 +180,7 @@ mod tests {
                 }],
             },
             developer_mode: false,
+            shortcuts: vec![],
         };
 
         let json = config.to_json().unwrap();

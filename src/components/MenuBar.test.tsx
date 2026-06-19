@@ -9,19 +9,15 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("../lib/tauri", () => ({
   getEvents: vi.fn().mockResolvedValue([]),
   getUnprocessedCount: vi.fn().mockResolvedValue(0),
-  triggerManualCapture: vi.fn().mockResolvedValue({
-    id: "1",
-    timestamp: new Date().toISOString(),
-    collected_at: new Date().toISOString(),
-    source: "manual",
-    source_confidence: "high",
-    type: "note",
-    content: "test",
-    raw_payload: "{}",
-    tags: [],
-    related_ids: [],
-    attachments: [],
+  getPendingNotifications: vi.fn().mockResolvedValue([]),
+  markNotificationRead: vi.fn().mockResolvedValue(undefined),
+  getSystemStatus: vi.fn().mockResolvedValue({
+    collectors_total: 3,
+    collectors_healthy: 2,
+    scheduler_running: true,
+    unprocessed_count: 0,
   }),
+  showCaptureWindow: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("MenuBar", () => {
@@ -29,7 +25,7 @@ describe("MenuBar", () => {
     vi.clearAllMocks();
   });
 
-  it("renders without crashing (D1-01)", () => {
+  it("renders without crashing", () => {
     const { container } = render(<MenuBar />);
     expect(container).toBeTruthy();
   });
@@ -39,11 +35,6 @@ describe("MenuBar", () => {
     expect(screen.getByText("Work Better")).toBeInTheDocument();
   });
 
-  it("shows the capture textarea", () => {
-    render(<MenuBar />);
-    expect(screen.getByPlaceholderText(/记录想法/)).toBeInTheDocument();
-  });
-
   it("shows empty state when no events", async () => {
     render(<MenuBar />);
     await waitFor(() => {
@@ -51,9 +42,89 @@ describe("MenuBar", () => {
     });
   });
 
-  it("disables submit when input is empty", () => {
+  it("shows the recent events section header", async () => {
     render(<MenuBar />);
-    const button = screen.getByRole("button", { name: "记录" });
-    expect(button).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByText("最近事件")).toBeInTheDocument();
+    });
+  });
+
+  it("shows quick action buttons", async () => {
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("主窗口")).toBeInTheDocument();
+      expect(screen.getByText("速记")).toBeInTheDocument();
+      expect(screen.getByText("截图")).toBeInTheDocument();
+    });
+  });
+
+  it("shows system status in footer", async () => {
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText(/采集器/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows scheduler status when running", async () => {
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("调度")).toBeInTheDocument();
+    });
+  });
+
+  it("displays events when loaded", async () => {
+    const { getEvents } = await import("../lib/tauri");
+    vi.mocked(getEvents).mockResolvedValueOnce([
+      {
+        id: "1",
+        timestamp: new Date().toISOString(),
+        collected_at: new Date().toISOString(),
+        source: "feishu",
+        source_confidence: "high",
+        type: "message",
+        content: "测试消息内容",
+        raw_payload: "{}",
+        tags: [],
+        related_ids: [],
+        attachments: [],
+        processed: false,
+      },
+    ]);
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("测试消息内容")).toBeInTheDocument();
+    });
+  });
+
+  it("displays notifications when present", async () => {
+    const { getPendingNotifications } = await import("../lib/tauri");
+    vi.mocked(getPendingNotifications).mockResolvedValueOnce([
+      {
+        id: "notif-1",
+        title: "任务确认",
+        body: "请确认飞书任务",
+        kind: "Confirm",
+        action_url: null,
+        read: false,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("待确认")).toBeInTheDocument();
+      expect(screen.getByText("任务确认")).toBeInTheDocument();
+    });
+  });
+
+  it("shows unprocessed count badge when count > 0", async () => {
+    const { getUnprocessedCount } = await import("../lib/tauri");
+    vi.mocked(getUnprocessedCount).mockResolvedValueOnce(5);
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("5 待处理")).toBeInTheDocument();
+    });
   });
 });

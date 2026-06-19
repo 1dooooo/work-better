@@ -1,9 +1,11 @@
 {
   "identifier": "default",
   "description": "Default capability",
-  "windows": ["main"],
+  "windows": ["main", "capture", "tray"],
   "permissions": [
     "core:default",
-    "shell:default"
+    "shell:default",
+    "global-shortcut:default",
+    "notification:default"
   ]
 }

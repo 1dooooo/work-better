@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use wb_collector::collector_task::CollectorTask;
 use wb_storage::sqlite::audit_log::ExecutionLogInsert;
 
@@ -110,6 +111,24 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        // 全局快捷键触发：切换速记窗口显示/隐藏
+                        if let Some(window) = app.get_webview_window("capture") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(),
+        )
         .setup(|app| {
             commands::events::init_event_log(app.handle())
                 .map_err(|e| e.to_string())?;
@@ -225,6 +244,72 @@ pub fn run() {
             // macOS 菜单栏托盘
             setup_tray(app)?;
 
+            // 注册全局快捷键（从用户配置读取，默认 Cmd+Shift+Space）
+            let shortcuts = {
+                let config = commands::settings::load_config_for_collect().unwrap_or_default();
+                if config.shortcuts.is_empty() {
+                    vec![("capture".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::Space)]
+                } else {
+                    config
+                        .shortcuts
+                        .iter()
+                        .filter_map(|s| {
+                            let mut mods = Modifiers::empty();
+                            for m in &s.modifiers {
+                                match m.as_str() {
+                                    "cmd" => mods |= Modifiers::SUPER,
+                                    "shift" => mods |= Modifiers::SHIFT,
+                                    "alt" => mods |= Modifiers::ALT,
+                                    "ctrl" => mods |= Modifiers::CONTROL,
+                                    _ => {}
+                                }
+                            }
+                            // 只注册 capture 类型的快捷键（全局速记窗口）
+                            if s.id == "capture" {
+                                let code = match s.key.as_str() {
+                                    "Space" => Code::Space,
+                                    "A" => Code::KeyA,
+                                    "B" => Code::KeyB,
+                                    "C" => Code::KeyC,
+                                    "D" => Code::KeyD,
+                                    "E" => Code::KeyE,
+                                    "F" => Code::KeyF,
+                                    "G" => Code::KeyG,
+                                    "H" => Code::KeyH,
+                                    "I" => Code::KeyI,
+                                    "J" => Code::KeyJ,
+                                    "K" => Code::KeyK,
+                                    "L" => Code::KeyL,
+                                    "M" => Code::KeyM,
+                                    "N" => Code::KeyN,
+                                    "O" => Code::KeyO,
+                                    "P" => Code::KeyP,
+                                    "Q" => Code::KeyQ,
+                                    "R" => Code::KeyR,
+                                    "S" => Code::KeyS,
+                                    "T" => Code::KeyT,
+                                    "U" => Code::KeyU,
+                                    "V" => Code::KeyV,
+                                    "W" => Code::KeyW,
+                                    "X" => Code::KeyX,
+                                    "Y" => Code::KeyY,
+                                    "Z" => Code::KeyZ,
+                                    _ => return None,
+                                };
+                                Some((s.id.clone(), mods, code))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                }
+            };
+
+            for (_id, mods, code) in shortcuts {
+                let shortcut = Shortcut::new(Some(mods), code);
+                app.global_shortcut().register(shortcut)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -257,8 +342,13 @@ pub fn run() {
             commands::settings::save_feishu_chat_id,
             commands::settings::get_storage_config,
             commands::settings::save_storage_config,
+            commands::settings::get_shortcut_config,
+            commands::settings::save_shortcut_config,
+            commands::settings::get_system_status,
             commands::notify::send_notification,
             commands::notify::get_pending_notifications,
+            commands::notify::mark_notification_read,
+            commands::notify::clear_read_notifications,
             commands::capture::take_screenshot,
             commands::audit::get_processing_audits,
             commands::audit::get_execution_logs,

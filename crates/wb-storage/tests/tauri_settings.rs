@@ -5,7 +5,8 @@
 
 use std::collections::HashMap;
 use wb_storage::config::{
-    AppConfig, CollectorConfig, ModelConfig, ScheduledTaskConfig, SchedulerConfig, StorageConfig,
+    AppConfig, CollectorConfig, ModelConfig, ScheduledTaskConfig, SchedulerConfig, ShortcutEntry,
+    StorageConfig,
 };
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ fn b3_01_settings_roundtrip() {
             }],
         },
         developer_mode: false,
+        shortcuts: vec![],
     };
 
     let json = config.to_json().unwrap();
