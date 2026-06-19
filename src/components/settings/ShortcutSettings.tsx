@@ -9,6 +9,7 @@ import {
 
 const DEFAULT_SHORTCUTS: ShortcutConfig[] = [
   { id: "capture", label: "快速捕获", key: "Space", modifiers: ["cmd", "shift"] },
+  { id: "screenshot", label: "截图速记", key: "S", modifiers: ["cmd", "shift"] },
   { id: "search", label: "全局搜索", key: "K", modifiers: ["cmd"] },
   { id: "task", label: "新建任务", key: "N", modifiers: ["cmd", "shift"] },
 ];

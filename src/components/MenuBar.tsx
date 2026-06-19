@@ -7,8 +7,9 @@
  * 布局：
  *   Header — 应用名 + 待处理计数
  *   最近事件 — 紧凑型列表（状态指示器 + 类型标签 + 来源 + 内容 + 时间）
- *   待确认通知 — 通知列表 + 标记已读
- *   快捷操作 — 打开主窗口 / 速记 / 截图
+ *   今日待办 — 截止日临近的任务
+ *   待确认通知 — 通知列表 + 点击跳转 + 标记已读
+ *   快捷操作 — 打开主窗口 / 速记 / 截图 / 处理
  *   Footer — 系统状态 + 版本号
  */
 
@@ -18,10 +19,13 @@ import {
   getUnprocessedCount,
   getPendingNotifications,
   markNotificationRead,
+  getPendingTasks,
   getSystemStatus,
   showCaptureWindow,
+  triggerBatchProcess,
   type Event,
   type NotificationRecord,
+  type PendingTaskDto,
   type SystemStatus,
 } from "../lib/tauri";
 import { invoke } from "@tauri-apps/api/core";
@@ -39,6 +43,9 @@ import {
   Check,
   Clock,
   Activity,
+  ListTodo,
+  Play,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -91,20 +98,24 @@ export default function MenuBar() {
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [events, setEvents] = useState<Event[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [pendingTasks, setPendingTasks] = useState<PendingTaskDto[]>([]);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const [count, recentEvents, pendingNotifs, status] = await Promise.all([
+      const [count, recentEvents, pendingNotifs, tasks, status] = await Promise.all([
         getUnprocessedCount(),
         getEvents(15),
         getPendingNotifications().catch(() => []),
+        getPendingTasks().catch(() => []),
         getSystemStatus().catch(() => null),
       ]);
       setUnprocessedCount(count);
       setEvents(recentEvents);
       setNotifications(pendingNotifs);
+      setPendingTasks(tasks);
       setSystemStatus(status);
     } catch (err) {
       console.error("[MenuBar] refresh failed:", err);
@@ -125,6 +136,46 @@ export default function MenuBar() {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
       console.error("[MenuBar] dismiss notification failed:", err);
+    }
+  };
+
+  // P0-2: 通知点击跳转 — 打开主窗口并导航到 action_url
+  const handleNotificationClick = async (notif: NotificationRecord) => {
+    try {
+      // 先标记为已读
+      await markNotificationRead(notif.id);
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+
+      // 打开主窗口
+      await invoke("show_main_window");
+
+      // 如果有 action_url，通过事件通知前端导航
+      if (notif.action_url) {
+        // 发送导航事件给主窗口
+        const mainWindow = await invoke("get_main_window");
+        if (mainWindow) {
+          // 使用 Tauri event 系统通知主窗口导航
+          const { emit } = await import("@tauri-apps/api/event");
+          await emit("navigate-to", { url: notif.action_url });
+        }
+      }
+    } catch (err) {
+      console.error("[MenuBar] notification click failed:", err);
+    }
+  };
+
+  // P1-2: 手动触发处理
+  const handleTriggerProcess = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      await triggerBatchProcess();
+      // 处理完成后刷新数据
+      await refresh();
+    } catch (err) {
+      console.error("[MenuBar] trigger process failed:", err);
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -236,7 +287,40 @@ export default function MenuBar() {
         </ScrollArea>
       </div>
 
-      {/* ── 待确认通知 ────────────────────────────────────── */}
+      {/* ── P1-1: 今日待办 ────────────────────────────────── */}
+      {pendingTasks.length > 0 && (
+        <>
+          <Separator />
+          <div className="px-4 py-2">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <ListTodo className="h-3.5 w-3.5 text-info" />
+              <span className="text-[11px] font-medium text-muted-foreground">
+                今日待办
+              </span>
+              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0 rounded-full">
+                {pendingTasks.length}
+              </span>
+            </div>
+            <div className="space-y-1">
+              {pendingTasks.slice(0, 3).map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-2 rounded bg-info/10 px-2 py-1.5 min-h-[36px]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium truncate">{task.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {task.source} · {task.priority}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── P0-2: 待确认通知（支持点击跳转）───────────────── */}
       {notifications.length > 0 && (
         <>
           <Separator />
@@ -254,17 +338,26 @@ export default function MenuBar() {
               {notifications.slice(0, 3).map((notif) => (
                 <div
                   key={notif.id}
-                  className="flex items-start gap-2 rounded bg-warning/10 px-2 py-1.5"
+                  className="group flex items-start gap-2 rounded bg-warning/10 px-2 py-1.5 cursor-pointer hover:bg-warning/20 transition-colors"
+                  onClick={() => handleNotificationClick(notif)}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium truncate">{notif.title}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[11px] font-medium truncate">{notif.title}</p>
+                      {notif.action_url && (
+                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      )}
+                    </div>
                     <p className="text-[10px] text-muted-foreground truncate">{notif.body}</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => handleDismissNotification(notif.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismissNotification(notif.id);
+                    }}
                   >
                     <Check className="h-3 w-3" />
                   </Button>
@@ -275,7 +368,7 @@ export default function MenuBar() {
         </>
       )}
 
-      {/* ── 快捷操作 ──────────────────────────────────────── */}
+      {/* ── 快捷操作（含 P1-2 处理按钮）───────────────────── */}
       <Separator />
       <div className="flex items-center gap-1 px-4 py-2">
         <Button
@@ -304,6 +397,19 @@ export default function MenuBar() {
         >
           <Camera className="h-3 w-3" />
           截图
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-7 flex-1 gap-1 text-[11px]",
+            processing && "opacity-50 cursor-not-allowed"
+          )}
+          onClick={handleTriggerProcess}
+          disabled={processing}
+        >
+          <Play className={cn("h-3 w-3", processing && "animate-spin")} />
+          {processing ? "处理中" : "处理"}
         </Button>
       </div>
 

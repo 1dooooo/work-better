@@ -11,6 +11,7 @@ vi.mock("../lib/tauri", () => ({
   getUnprocessedCount: vi.fn().mockResolvedValue(0),
   getPendingNotifications: vi.fn().mockResolvedValue([]),
   markNotificationRead: vi.fn().mockResolvedValue(undefined),
+  getPendingTasks: vi.fn().mockResolvedValue([]),
   getSystemStatus: vi.fn().mockResolvedValue({
     collectors_total: 3,
     collectors_healthy: 2,
@@ -18,6 +19,13 @@ vi.mock("../lib/tauri", () => ({
     unprocessed_count: 0,
   }),
   showCaptureWindow: vi.fn().mockResolvedValue(undefined),
+  triggerBatchProcess: vi.fn().mockResolvedValue({
+    total: 0,
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    details: [],
+  }),
 }));
 
 describe("MenuBar", () => {
@@ -55,6 +63,7 @@ describe("MenuBar", () => {
       expect(screen.getByText("主窗口")).toBeInTheDocument();
       expect(screen.getByText("速记")).toBeInTheDocument();
       expect(screen.getByText("截图")).toBeInTheDocument();
+      expect(screen.getByText("处理")).toBeInTheDocument();
     });
   });
 
@@ -125,6 +134,27 @@ describe("MenuBar", () => {
     render(<MenuBar />);
     await waitFor(() => {
       expect(screen.getByText("5 待处理")).toBeInTheDocument();
+    });
+  });
+
+  it("displays pending tasks when present", async () => {
+    const { getPendingTasks } = await import("../lib/tauri");
+    vi.mocked(getPendingTasks).mockResolvedValueOnce([
+      {
+        id: "task-1",
+        title: "完成报告",
+        description: null,
+        source: "feishu",
+        priority: "high",
+        origin_text: "完成报告",
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("今日待办")).toBeInTheDocument();
+      expect(screen.getByText("完成报告")).toBeInTheDocument();
     });
   });
 });

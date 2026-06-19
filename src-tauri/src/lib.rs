@@ -116,13 +116,25 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        // 全局快捷键触发：切换速记窗口显示/隐藏
-                        if let Some(window) = app.get_webview_window("capture") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
+                        // 根据快捷键的 key code 区分不同操作
+                        match shortcut.key {
+                            // Cmd+Shift+S → 截图并进入速记窗口
+                            tauri_plugin_global_shortcut::Code::KeyS => {
+                                let handle = app.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    let _ = commands::capture::take_screenshot(handle).await;
+                                });
+                            }
+                            // 其他快捷键（默认 Cmd+Shift+Space）→ 切换速记窗口
+                            _ => {
+                                if let Some(window) = app.get_webview_window("capture") {
+                                    if window.is_visible().unwrap_or(false) {
+                                        let _ = window.hide();
+                                    } else {
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                    }
+                                }
                             }
                         }
                     }
@@ -244,11 +256,14 @@ pub fn run() {
             // macOS 菜单栏托盘
             setup_tray(app)?;
 
-            // 注册全局快捷键（从用户配置读取，默认 Cmd+Shift+Space）
+            // 注册全局快捷键（从用户配置读取，默认 Cmd+Shift+Space + Cmd+Shift+S）
             let shortcuts = {
                 let config = commands::settings::load_config_for_collect().unwrap_or_default();
                 if config.shortcuts.is_empty() {
-                    vec![("capture".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::Space)]
+                    vec![
+                        ("capture".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::Space),
+                        ("screenshot".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::KeyS),
+                    ]
                 } else {
                     config
                         .shortcuts
@@ -264,8 +279,8 @@ pub fn run() {
                                     _ => {}
                                 }
                             }
-                            // 只注册 capture 类型的快捷键（全局速记窗口）
-                            if s.id == "capture" {
+                            // 注册 capture 和 screenshot 类型的全局快捷键
+                            if s.id == "capture" || s.id == "screenshot" {
                                 let code = match s.key.as_str() {
                                     "Space" => Code::Space,
                                     "A" => Code::KeyA,
