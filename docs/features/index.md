@@ -3,7 +3,7 @@ title: 功能索引
 type: structural
 domain: features
 created: 2026-06-06
-updated: 2026-06-13
+updated: 2026-06-19
 status: active
 ---
 
@@ -364,13 +364,13 @@ commit 41b5818 完成两项修复：
 
 ### F6.1 全局交互重构 (2026-06-19)
 
-菜单栏工具重设计完成，三个 Phase 全部通过测试和审查。
+菜单栏工具重设计完成，全部功能通过产品审查。
 
 | 功能 | Phase | 变更内容 | 测试数 | 状态 |
 |------|-------|----------|--------|------|
-| F6.1.1 全局快捷键 | Phase 1 | Cmd+Shift+Space 呼出速记窗口，快捷键可自定义 | 650+ | ✅ |
-| F6.1.3 系统通知 | Phase 2 | Tauri 通知插件集成，MenuBar 通知区域 | 650+ | ✅ |
-| F6.1.4 菜单栏常驻 | Phase 3 | 信息展示中心：事件列表 + 通知 + 快捷操作 + 系统状态 | 147 前端 | ✅ |
+| F6.1.1 全局快捷键 | Phase 1 | Cmd+Shift+Space 呼出速记 + Cmd+Shift+S 截图，快捷键可自定义，热重载 | 650+ | ✅ |
+| F6.1.3 系统通知 | Phase 2 | Tauri 通知插件集成，通知点击跳转，按类型分组展示 | 650+ | ✅ |
+| F6.1.4 菜单栏常驻 | Phase 3 | 信息展示中心：事件列表 + 通知分组 + 今日待办 + 快捷操作 + 系统状态 | 14 前端 | ✅ |
 
-审查修复：快捷键重复注册、通知无 UI、Mutex 安全、暗黑模式支持。
-产品审查报告：`.workflow/artifacts/feat-menu-bar-phase3/product-review.json`
+审查修复：快捷键重复注册、通知无 UI、Mutex 安全、暗黑模式、快捷键热重载、今日待办、手动处理入口、通知分组。
+产品审查报告：`.workflow/artifacts/feat-f61-product-review/product-review.json`
