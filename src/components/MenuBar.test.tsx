@@ -17,6 +17,7 @@ vi.mock("../lib/tauri", () => ({
     collectors_healthy: 2,
     scheduler_running: true,
     unprocessed_count: 0,
+    today_processed_count: 0,
   }),
   showCaptureWindow: vi.fn().mockResolvedValue(undefined),
   triggerBatchProcess: vi.fn().mockResolvedValue({
@@ -106,7 +107,7 @@ describe("MenuBar", () => {
     });
   });
 
-  it("displays notifications when present", async () => {
+  it("displays notifications grouped by kind", async () => {
     const { getPendingNotifications } = await import("../lib/tauri");
     vi.mocked(getPendingNotifications).mockResolvedValueOnce([
       {
@@ -118,12 +119,25 @@ describe("MenuBar", () => {
         read: false,
         created_at: new Date().toISOString(),
       },
+      {
+        id: "notif-2",
+        title: "系统提醒",
+        body: "采集器异常",
+        kind: "Reminder",
+        action_url: null,
+        read: false,
+        created_at: new Date().toISOString(),
+      },
     ]);
 
     render(<MenuBar />);
     await waitFor(() => {
+      // DD-3: 通知分组标题
       expect(screen.getByText("待确认")).toBeInTheDocument();
+      expect(screen.getByText("提醒")).toBeInTheDocument();
+      // 分组内的通知内容
       expect(screen.getByText("任务确认")).toBeInTheDocument();
+      expect(screen.getByText("系统提醒")).toBeInTheDocument();
     });
   });
 
@@ -155,6 +169,62 @@ describe("MenuBar", () => {
     await waitFor(() => {
       expect(screen.getByText("今日待办")).toBeInTheDocument();
       expect(screen.getByText("完成报告")).toBeInTheDocument();
+    });
+  });
+
+  // DD-2: 今日已处理数展示
+  it("shows today processed count when > 0", async () => {
+    const { getSystemStatus } = await import("../lib/tauri");
+    vi.mocked(getSystemStatus).mockResolvedValueOnce({
+      collectors_total: 3,
+      collectors_healthy: 2,
+      scheduler_running: true,
+      unprocessed_count: 0,
+      today_processed_count: 12,
+    });
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("今日已处理 12 条")).toBeInTheDocument();
+    });
+  });
+
+  it("hides today processed count when 0", async () => {
+    const { getSystemStatus } = await import("../lib/tauri");
+    vi.mocked(getSystemStatus).mockResolvedValueOnce({
+      collectors_total: 3,
+      collectors_healthy: 2,
+      scheduler_running: true,
+      unprocessed_count: 0,
+      today_processed_count: 0,
+    });
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("Work Better")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/今日已处理/)).not.toBeInTheDocument();
+  });
+
+  // DD-3: TaskDone 类型通知分组
+  it("shows TaskDone notifications in completed group", async () => {
+    const { getPendingNotifications } = await import("../lib/tauri");
+    vi.mocked(getPendingNotifications).mockResolvedValueOnce([
+      {
+        id: "notif-done-1",
+        title: "报告已生成",
+        body: "周报已自动保存到 Obsidian",
+        kind: "TaskDone",
+        action_url: null,
+        read: false,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+
+    render(<MenuBar />);
+    await waitFor(() => {
+      expect(screen.getByText("已完成")).toBeInTheDocument();
+      expect(screen.getByText("报告已生成")).toBeInTheDocument();
     });
   });
 });

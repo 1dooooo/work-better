@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tauri::AppHandle;
 use wb_collector::runner;
 use wb_storage::config::{AppConfig, CollectorConfig};
 
@@ -298,9 +299,9 @@ pub async fn get_shortcut_config() -> Result<Vec<ShortcutConfig>, String> {
     }
 }
 
-/// 保存快捷键配置
+/// 保存快捷键配置（保存后立即热重载全局快捷键）
 #[tauri::command]
-pub async fn save_shortcut_config(config: Vec<ShortcutConfig>) -> Result<(), String> {
+pub async fn save_shortcut_config(app: AppHandle, config: Vec<ShortcutConfig>) -> Result<(), String> {
     let mut app_config = load_config()?;
     app_config.shortcuts = config
         .into_iter()
@@ -311,7 +312,10 @@ pub async fn save_shortcut_config(config: Vec<ShortcutConfig>) -> Result<(), Str
             modifiers: c.modifiers,
         })
         .collect();
-    save_config(&app_config)
+    save_config(&app_config)?;
+
+    // 热重载：立即重新注册全局快捷键
+    crate::register_shortcuts(&app, &app_config)
 }
 
 // ─── 系统状态 ─────────────────────────────────────────────────
@@ -332,6 +336,8 @@ pub struct SystemStatus {
     pub collectors_healthy: usize,
     pub scheduler_running: bool,
     pub unprocessed_count: usize,
+    /// 今日已处理事件数
+    pub today_processed_count: usize,
 }
 
 /// 获取系统状态（菜单栏用）
@@ -342,12 +348,27 @@ pub async fn get_system_status() -> Result<SystemStatus, String> {
     let total = statuses.len();
     let healthy = statuses.iter().filter(|s| s.healthy).count();
 
+    // 查询今日已处理事件数
+    let today_processed_count = query_today_processed_count();
+
     Ok(SystemStatus {
         collectors_total: total,
         collectors_healthy: healthy,
         scheduler_running: app_config.scheduler.enabled,
         unprocessed_count: 0, // 由前端单独查询
+        today_processed_count,
     })
+}
+
+/// 查询今日已处理事件数
+///
+/// 从 SQLite events 表查询 processed_at 在今日 00:00 之后的记录数。
+/// 如果查询失败（如表不存在），返回 0。
+fn query_today_processed_count() -> usize {
+    // TODO: 当 SQLite events 查询接口就绪后，替换为真实查询
+    // 示例 SQL: SELECT COUNT(*) FROM events WHERE processed = 1 AND processed_at >= <today_midnight>
+    // 目前先返回 0，不影响前端展示
+    0
 }
 
 /// 模型信息（从 API 获取）

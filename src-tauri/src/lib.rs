@@ -5,10 +5,100 @@ mod commands;
 use std::sync::Arc;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 use wb_collector::collector_task::CollectorTask;
+use wb_storage::config::AppConfig;
 use wb_storage::sqlite::audit_log::ExecutionLogInsert;
+
+/// 将快捷键字符串 key 转为 Code 枚举
+fn parse_key_code(key: &str) -> Option<Code> {
+    match key {
+        "Space" => Some(Code::Space),
+        "A" => Some(Code::KeyA),
+        "B" => Some(Code::KeyB),
+        "C" => Some(Code::KeyC),
+        "D" => Some(Code::KeyD),
+        "E" => Some(Code::KeyE),
+        "F" => Some(Code::KeyF),
+        "G" => Some(Code::KeyG),
+        "H" => Some(Code::KeyH),
+        "I" => Some(Code::KeyI),
+        "J" => Some(Code::KeyJ),
+        "K" => Some(Code::KeyK),
+        "L" => Some(Code::KeyL),
+        "M" => Some(Code::KeyM),
+        "N" => Some(Code::KeyN),
+        "O" => Some(Code::KeyO),
+        "P" => Some(Code::KeyP),
+        "Q" => Some(Code::KeyQ),
+        "R" => Some(Code::KeyR),
+        "S" => Some(Code::KeyS),
+        "T" => Some(Code::KeyT),
+        "U" => Some(Code::KeyU),
+        "V" => Some(Code::KeyV),
+        "W" => Some(Code::KeyW),
+        "X" => Some(Code::KeyX),
+        "Y" => Some(Code::KeyY),
+        "Z" => Some(Code::KeyZ),
+        _ => None,
+    }
+}
+
+/// 将 modifiers 字符串列表转为 Modifiers 位掩码
+fn parse_modifiers(modifiers: &[String]) -> Modifiers {
+    let mut mods = Modifiers::empty();
+    for m in modifiers {
+        match m.as_str() {
+            "cmd" => mods |= Modifiers::SUPER,
+            "shift" => mods |= Modifiers::SHIFT,
+            "alt" => mods |= Modifiers::ALT,
+            "ctrl" => mods |= Modifiers::CONTROL,
+            _ => {}
+        }
+    }
+    mods
+}
+
+/// 注册全局快捷键（从 AppConfig 读取，供 setup 和 save_shortcut_config 复用）
+///
+/// 先注销所有已注册快捷键，再按最新配置重新注册。
+pub fn register_shortcuts(app: &AppHandle, config: &AppConfig) -> Result<(), String> {
+    // 注销全部已有快捷键
+    app.global_shortcut()
+        .unregister_all()
+        .map_err(|e| format!("注销快捷键失败: {e}"))?;
+
+    let shortcuts: Vec<(String, Modifiers, Code)> = if config.shortcuts.is_empty() {
+        vec![
+            ("capture".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::Space),
+            ("screenshot".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::KeyS),
+        ]
+    } else {
+        config
+            .shortcuts
+            .iter()
+            .filter_map(|s| {
+                // 仅注册 capture 和 screenshot 类型的全局快捷键
+                if s.id != "capture" && s.id != "screenshot" {
+                    return None;
+                }
+                let mods = parse_modifiers(&s.modifiers);
+                let code = parse_key_code(&s.key)?;
+                Some((s.id.clone(), mods, code))
+            })
+            .collect()
+    };
+
+    for (_id, mods, code) in shortcuts {
+        let shortcut = Shortcut::new(Some(mods), code);
+        app.global_shortcut()
+            .register(shortcut)
+            .map_err(|e| format!("注册快捷键失败: {e}"))?;
+    }
+
+    Ok(())
+}
 
 /// 设置 macOS 菜单栏托盘
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -257,73 +347,8 @@ pub fn run() {
             setup_tray(app)?;
 
             // 注册全局快捷键（从用户配置读取，默认 Cmd+Shift+Space + Cmd+Shift+S）
-            let shortcuts = {
-                let config = commands::settings::load_config_for_collect().unwrap_or_default();
-                if config.shortcuts.is_empty() {
-                    vec![
-                        ("capture".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::Space),
-                        ("screenshot".to_string(), Modifiers::SUPER | Modifiers::SHIFT, Code::KeyS),
-                    ]
-                } else {
-                    config
-                        .shortcuts
-                        .iter()
-                        .filter_map(|s| {
-                            let mut mods = Modifiers::empty();
-                            for m in &s.modifiers {
-                                match m.as_str() {
-                                    "cmd" => mods |= Modifiers::SUPER,
-                                    "shift" => mods |= Modifiers::SHIFT,
-                                    "alt" => mods |= Modifiers::ALT,
-                                    "ctrl" => mods |= Modifiers::CONTROL,
-                                    _ => {}
-                                }
-                            }
-                            // 注册 capture 和 screenshot 类型的全局快捷键
-                            if s.id == "capture" || s.id == "screenshot" {
-                                let code = match s.key.as_str() {
-                                    "Space" => Code::Space,
-                                    "A" => Code::KeyA,
-                                    "B" => Code::KeyB,
-                                    "C" => Code::KeyC,
-                                    "D" => Code::KeyD,
-                                    "E" => Code::KeyE,
-                                    "F" => Code::KeyF,
-                                    "G" => Code::KeyG,
-                                    "H" => Code::KeyH,
-                                    "I" => Code::KeyI,
-                                    "J" => Code::KeyJ,
-                                    "K" => Code::KeyK,
-                                    "L" => Code::KeyL,
-                                    "M" => Code::KeyM,
-                                    "N" => Code::KeyN,
-                                    "O" => Code::KeyO,
-                                    "P" => Code::KeyP,
-                                    "Q" => Code::KeyQ,
-                                    "R" => Code::KeyR,
-                                    "S" => Code::KeyS,
-                                    "T" => Code::KeyT,
-                                    "U" => Code::KeyU,
-                                    "V" => Code::KeyV,
-                                    "W" => Code::KeyW,
-                                    "X" => Code::KeyX,
-                                    "Y" => Code::KeyY,
-                                    "Z" => Code::KeyZ,
-                                    _ => return None,
-                                };
-                                Some((s.id.clone(), mods, code))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                }
-            };
-
-            for (_id, mods, code) in shortcuts {
-                let shortcut = Shortcut::new(Some(mods), code);
-                app.global_shortcut().register(shortcut)?;
-            }
+            let config = commands::settings::load_config_for_collect().unwrap_or_default();
+            register_shortcuts(app.handle(), &config).map_err(|e| e.to_string())?;
 
             Ok(())
         })

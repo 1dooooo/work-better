@@ -429,6 +429,8 @@ export interface SystemStatus {
   collectors_healthy: number;
   scheduler_running: boolean;
   unprocessed_count: number;
+  /** 今日已处理事件数 */
+  today_processed_count: number;
 }
 
 /**

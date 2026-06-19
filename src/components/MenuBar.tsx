@@ -5,15 +5,15 @@
  * 设计参考：Linear/Raycast 风格紧凑型列表
  *
  * 布局：
- *   Header — 应用名 + 待处理计数
+ *   Header — 应用名 + 待处理计数 + 今日已处理数
  *   最近事件 — 紧凑型列表（状态指示器 + 类型标签 + 来源 + 内容 + 时间）
  *   今日待办 — 截止日临近的任务
- *   待确认通知 — 通知列表 + 点击跳转 + 标记已读
+ *   通知中心 — 按类型分组：待确认(Confirm) / 提醒(Reminder) / 已完成(TaskDone)
  *   快捷操作 — 打开主窗口 / 速记 / 截图 / 处理
  *   Footer — 系统状态 + 版本号
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getEvents,
   getUnprocessedCount,
@@ -27,6 +27,7 @@ import {
   type NotificationRecord,
   type PendingTaskDto,
   type SystemStatus,
+  type NotifyKind,
 } from "../lib/tauri";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,9 @@ import {
   ListTodo,
   Play,
   ExternalLink,
+  AlertTriangle,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +67,40 @@ const EVENT_TYPE_CONFIG: Record<string, { bg: string; text: string; label: strin
 function getEventTypeStyle(type: string) {
   return EVENT_TYPE_CONFIG[type] ?? { bg: "bg-muted", text: "text-muted-foreground", label: type.toUpperCase() };
 }
+
+// ─── 通知分组配置 ─────────────────────────────────────────────
+
+interface NotifyGroupConfig {
+  label: string;
+  icon: typeof Bell;
+  colorClass: string;
+  bgClass: string;
+  hoverBgClass: string;
+}
+
+const NOTIFY_GROUP_CONFIG: Record<NotifyKind, NotifyGroupConfig> = {
+  Confirm: {
+    label: "待确认",
+    icon: AlertTriangle,
+    colorClass: "text-warning",
+    bgClass: "bg-warning/10",
+    hoverBgClass: "hover:bg-warning/20",
+  },
+  Reminder: {
+    label: "提醒",
+    icon: Info,
+    colorClass: "text-info",
+    bgClass: "bg-info/10",
+    hoverBgClass: "hover:bg-info/20",
+  },
+  TaskDone: {
+    label: "已完成",
+    icon: CheckCircle2,
+    colorClass: "text-success",
+    bgClass: "bg-success/10",
+    hoverBgClass: "hover:bg-success/20",
+  },
+};
 
 // ─── 时间格式化 ────────────────────────────────────────────────
 
@@ -92,6 +130,22 @@ function getEventSummary(content: unknown): string {
   }
 }
 
+// ─── 通知分组 Hook ─────────────────────────────────────────────
+
+function useGroupedNotifications(notifications: NotificationRecord[]) {
+  return useMemo(() => {
+    const groups: Record<NotifyKind, NotificationRecord[]> = {
+      Confirm: [],
+      Reminder: [],
+      TaskDone: [],
+    };
+    for (const n of notifications) {
+      groups[n.kind].push(n);
+    }
+    return groups;
+  }, [notifications]);
+}
+
 // ─── MenuBar 组件 ──────────────────────────────────────────────
 
 export default function MenuBar() {
@@ -102,6 +156,8 @@ export default function MenuBar() {
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+
+  const groupedNotifications = useGroupedNotifications(notifications);
 
   const refresh = useCallback(async () => {
     try {
@@ -185,6 +241,11 @@ export default function MenuBar() {
     });
   };
 
+  // 计算通知分组中哪些有内容
+  const activeGroups = (["Confirm", "Reminder", "TaskDone"] as NotifyKind[]).filter(
+    (kind) => groupedNotifications[kind].length > 0
+  );
+
   return (
     <div className="flex h-full flex-col bg-background text-foreground select-none">
       {/* ── Header ────────────────────────────────────────── */}
@@ -195,11 +256,18 @@ export default function MenuBar() {
           </div>
           <span className="text-xs font-semibold">Work Better</span>
         </div>
-        {unprocessedCount > 0 && (
-          <Badge variant="default" className="text-[10px] px-1.5 py-0">
-            {unprocessedCount} 待处理
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {systemStatus && systemStatus.today_processed_count > 0 && (
+            <span className="text-[10px] text-muted-foreground">
+              今日已处理 {systemStatus.today_processed_count} 条
+            </span>
+          )}
+          {unprocessedCount > 0 && (
+            <Badge variant="default" className="text-[10px] px-1.5 py-0">
+              {unprocessedCount} 待处理
+            </Badge>
+          )}
+        </div>
       </header>
 
       <Separator />
@@ -320,50 +388,80 @@ export default function MenuBar() {
         </>
       )}
 
-      {/* ── P0-2: 待确认通知（支持点击跳转）───────────────── */}
-      {notifications.length > 0 && (
+      {/* ── DD-3: 通知中心（按类型分组展示）────────────────── */}
+      {activeGroups.length > 0 && (
         <>
           <Separator />
           <div className="px-4 py-2">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <Bell className="h-3.5 w-3.5 text-warning" />
+              <Bell className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-[11px] font-medium text-muted-foreground">
-                待确认
+                通知
               </span>
               <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0 rounded-full">
                 {notifications.length}
               </span>
             </div>
-            <div className="space-y-1">
-              {notifications.slice(0, 3).map((notif) => (
-                <div
-                  key={notif.id}
-                  className="group flex items-start gap-2 rounded bg-warning/10 px-2 py-1.5 cursor-pointer hover:bg-warning/20 transition-colors"
-                  onClick={() => handleNotificationClick(notif)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1">
-                      <p className="text-[11px] font-medium truncate">{notif.title}</p>
-                      {notif.action_url && (
-                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                      )}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground truncate">{notif.body}</p>
+
+            {activeGroups.map((kind) => {
+              const group = NOTIFY_GROUP_CONFIG[kind];
+              const items = groupedNotifications[kind];
+              const GroupIcon = group.icon;
+              return (
+                <div key={kind} className="mb-1.5 last:mb-0">
+                  {/* 分组标题 */}
+                  <div className="flex items-center gap-1 mb-1">
+                    <GroupIcon className={cn("h-3 w-3", group.colorClass)} />
+                    <span className={cn("text-[10px] font-medium", group.colorClass)}>
+                      {group.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {items.length}
+                    </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDismissNotification(notif.id);
-                    }}
-                  >
-                    <Check className="h-3 w-3" />
-                  </Button>
+
+                  {/* 分组内的通知列表 */}
+                  <div className="space-y-1">
+                    {items.slice(0, 3).map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={cn(
+                          "group flex items-start gap-2 rounded px-2 py-1.5 cursor-pointer transition-colors",
+                          group.bgClass, group.hoverBgClass
+                        )}
+                        onClick={() => handleNotificationClick(notif)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <p className="text-[11px] font-medium truncate">{notif.title}</p>
+                            {notif.action_url && (
+                              <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate">{notif.body}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissNotification(notif.id);
+                          }}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    {items.length > 3 && (
+                      <p className="text-[10px] text-muted-foreground pl-2">
+                        +{items.length - 3} 更多
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </>
       )}
