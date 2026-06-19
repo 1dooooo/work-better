@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   listScheduledTasks,
   pauseScheduler,
@@ -127,6 +128,14 @@ export default function TasksView() {
       setLoadingTasks(false);
     }
   }, []);
+
+  // 监听任务更新事件（来自 trigger_manual_capture）
+  useEffect(() => {
+    const unlisten = listen("tasks:updated", () => {
+      refreshTasks();
+    });
+    return () => { unlisten.then((fn) => fn()); };
+  }, [refreshTasks]);
 
   // 加载调度器任务
   useEffect(() => {

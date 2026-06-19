@@ -185,14 +185,11 @@ impl ProcessingPipeline {
         if Self::is_text_rich_event(event) {
             let event_text = Self::extract_text_from_event(event);
             let discovery_tasks = if let Some(adapter) = self.task_runner.default_adapter() {
-                // AI 优先：调用 AI 分析消息内容
-                // M5: 传递事件的 source 而非硬编码
                 self.task_discovery
                     .discover_with_ai(&event_text, adapter, event.source.clone())
                     .await
             } else {
-                // 降级到关键词匹配
-                self.task_discovery.discover_from_message(&event_text)
+                vec![]
             };
             if let Some(candidate) = discovery_tasks.first() {
                 record.category = wb_core::record::Category::Task;

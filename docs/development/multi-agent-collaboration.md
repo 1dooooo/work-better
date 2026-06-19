@@ -4,7 +4,6 @@ type: structural
 domain: development
 created: 2026-06-07
 updated: 2026-06-14
-status: active
 ---
 
 # 多 Agent 协作开发规范
@@ -71,33 +70,59 @@ review-agent 在代码审查中**必须**检查以下复用合规项：
 
 review-agent 若发现违规，应在 `review-report.json` 中以 `HIGH` 级别标记，并注明应复用的具体函数和文件路径。
 
-## 协作流程（v2 并行版）
+## 协作流程（v2 并行版 + 自动重试）
 
 ```
 用户下达开发任务
     │
     ▼
-workflow-runner（编排入口）
+run-workflow.sh（CLI 入口）
     │
     │ 阶段 1：开发（顺序）
     ├── 触发 dev-agent
     │   └── 写代码 + 写 L1-L2 测试
     │   └── 写入 dev-output.json
     │
-    │ 阶段 2：并行审查
+    │ 阶段 2：并行审查（循环）
     ├── 同时触发 ─┬─ test-agent（测试 + 安全扫描）
     │            ├─ review-agent（代码审查 + H3-H5）
     │            └─ product-reviewer（产品符合性审查）
     │
-    │ 阶段 3：汇总
+    │ 阶段 3：评估结果
     ├── 收集三个 agent 的输出
-    ├── 合并 suggested_action（避免多次重试只修一个问题）
     ├── 检查结果
-    │   ├── 全部通过 → 写入 final-report.json (done) + metrics
-    │   └── 有失败 → 合并失败信息 → 触发 dev-agent 修复 → 回到阶段 2
+    │   ├── 全部通过 → 写入 final-report.json (done)
+    │   └── 有失败 → 合并失败信息
+    │       ├── 检查重试次数
+    │       │   ├── 未超限 → 触发 dev-agent 修复 → 回到阶段 2
+    │       │   └── 超限 → 写入 final-report.json (fail) + 上报
+    │       └── product fail (gap/new_feature) → 记录，不阻塞
     │
-    └── 重试超限 → escalate（上报用户）
+    └── 重试时：将所有失败的 artifact 一起传给 dev-agent
+        避免多次重试只修一个问题
 ```
+
+### 自动重试机制
+
+`run-workflow.sh` 实现了自动重试循环：
+
+1. **并行审查**：同时触发 test-agent、review-agent、product-reviewer
+2. **评估结果**：检查三个 agent 的输出，判断是否需要修复
+3. **触发修复**：如果需要修复且未超重试次数，触发 dev-agent 修复
+4. **重新审查**：修复完成后，重新运行并行审查
+5. **终止条件**：
+   - 全部通过 → 生成成功报告
+   - 超过最大重试次数 → 生成失败报告并上报
+
+### 重试触发条件
+
+| 条件 | 触发重试 | 优先级 |
+|------|---------|--------|
+| product-review.verdict == "fail" && category == "bug" | ✅ | 最高 |
+| test-report.result == "fail" | ✅ | 高 |
+| review-report.verdict == "request_changes" | ✅ | 中 |
+| review-report.verdict == "block" | ✅ | 中 |
+| product-review.verdict == "fail" && category != "bug" | ❌ | 记录为非阻塞问题 |
 
 ## A2A 通信机制
 
@@ -189,6 +214,98 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
 
 > **适配状态**：Claude Code、Codex、Cursor 适配均已实现。
 
+## 日志系统（开发阶段）
+
+**开发阶段，所有 workflow 执行必须写入日志文件，帮助调试任务流转问题。**
+
+### 日志文件位置
+
+每个任务的日志文件：`.workflow/artifacts/{task_id}/workflow.log`
+
+### 日志格式
+
+```
+[ISO_TIMESTAMP] [LEVEL] [PHASE] message
+```
+
+- `ISO_TIMESTAMP`：`2026-06-14 19:30:45.123`
+- `LEVEL`：`DEBUG` | `INFO` | `WARN` | `ERROR`
+- `PHASE`：`INIT` | `DEV` | `PARALLEL_REVIEW` | `EVALUATE` | `RETRY` | `DONE`
+
+### 必须记录的节点
+
+| 节点 | 级别 | 内容 |
+|------|------|------|
+| workflow 启动 | INFO | task_id, 输入文件内容摘要 |
+| 阶段切换 | INFO | 从哪个阶段到哪个阶段 |
+| agent 调用前 | INFO | agent 名称, 输入文件, 期望输出文件 |
+| agent 完成后 | INFO | agent 名称, 输出文件是否存在, 关键字段值 |
+| agent 失败 | ERROR | agent 名称, 失败原因, 是否重试 |
+| artifact 读取 | DEBUG | 文件路径, 关键字段值 |
+| artifact 缺失 | WARN | 文件路径, 哪个 agent 应该生成 |
+| 决策点 | INFO | 决策内容, 判断依据 |
+| 重试 | WARN | 第几次重试, 重试原因, 目标文件 |
+| 最终结果 | INFO | overall_result, 各 gate 结果, 总耗时 |
+
+### 脚本层日志
+
+Shell 脚本通过 `workflow-logger.sh` 提供统一的日志能力：
+
+```bash
+source "$(dirname "$0")/workflow-logger.sh"
+workflow_log_init "<task_id>"
+
+log_info "消息"
+log_warn "警告"
+log_error "错误"
+log_phase "阶段名"
+log_agent_call "agent名" "start|complete|fail" "详情"
+log_artifact "read|write|missing" "文件路径" "详情"
+log_decision "决策内容" "判断依据"
+log_retry "当前次" "最大次" "原因"
+log_gate_result "gate名" "pass|fail" "详情"
+```
+
+### Agent 层日志
+
+workflow-runner agent 通过 Bash 命令追加日志：
+
+```bash
+echo "[$(date '+%Y-%m-%d %H:%M:%S.%3N')] [INFO] [PHASE] message" >> "$LOG_FILE"
+```
+
+### 日志查看
+
+```bash
+# 查看完整日志
+./scripts/workflow-log-view.sh <task_id>
+
+# 查看最后 50 行
+./scripts/workflow-log-view.sh <task_id> --tail 50
+
+# 只看错误
+./scripts/workflow-log-view.sh <task_id> --errors
+
+# 只看特定阶段
+./scripts/workflow-log-view.sh <task_id> --phase DEV
+
+# 只看 agent 相关
+./scripts/workflow-log-view.sh <task_id> --agent
+
+# 只看决策点
+./scripts/workflow-log-view.sh <task_id> --decision
+```
+
+### 调试流程
+
+当任务流转出现问题时：
+
+1. 查看日志文件：`.workflow/artifacts/{task_id}/workflow.log`
+2. 搜索 `ERROR` 和 `WARN` 级别日志
+3. 检查 `AGENT` 相关日志，确认 agent 调用顺序和结果
+4. 检查 `DECISION` 日志，确认决策点判断是否正确
+5. 检查 `ARTIFACT` 日志，确认文件读写是否正常
+
 ## 文件结构
 
 ```
@@ -205,8 +322,15 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
         ├── dev-output.json
         ├── test-report.json
         ├── review-report.json
-        └── final-report.json
+        ├── final-report.json
+        └── workflow.log           # 执行日志（开发阶段保留）
+
+scripts/
+├── workflow-logger.sh             # 日志工具库（source 使用）
+├── create-dev-output.sh           # 生成 dev-output.json
+├── run-workflow.sh                # CLI 入口
+└── workflow-log-view.sh           # 日志查看工具
 
 .claude/agents/
-└── workflow-runner.md             # workflow-agent 定义
+└── workflow-runner.md             # workflow-agent 定义（含日志指令）
 ```

@@ -564,11 +564,11 @@ async fn test_discovery_ai_sets_task_category() {
 }
 
 #[tokio::test]
-async fn test_discovery_ai_fallback_to_keywords() {
-    // AI 返回空结果 → 降级到关键词匹配
+async fn test_discovery_ai_no_fallback_returns_communication() {
+    // AI 返回空结果 → 不降级到关键词 → 保持原分类
     let tmp = tempdir().unwrap();
     let adapter = MockAdapter::new().with_extraction(wb_ai::Extraction {
-        title: String::new(), // 空标题 → AI 认为不是任务
+        title: String::new(),
         summary: String::new(),
         detail: String::new(),
         people: vec![],
@@ -589,11 +589,11 @@ async fn test_discovery_ai_fallback_to_keywords() {
     );
 
     let result = pipeline.process(&event).await.unwrap();
-    // AI 返回空 → 降级到关键词匹配 → 应发现任务
+    // AI 返回空 → 不降级 → 保持原分类
     assert_eq!(
         result.work_record.category,
-        wb_core::record::Category::Task,
-        "Fallback to keywords should discover task"
+        wb_core::record::Category::Communication,
+        "AI returns empty, no keyword fallback, keeps original category"
     );
 }
 

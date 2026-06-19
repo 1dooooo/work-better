@@ -199,7 +199,7 @@ pub async fn trigger_batch_process() -> Result<BatchProcessResult, String> {
 /// 从配置构建 TaskRunner（带真实 AI 适配器）
 ///
 /// 如果 API Key 未配置，返回 None（降级为关键词匹配）。
-fn build_task_runner_from_config() -> Result<Option<TaskRunner>, String> {
+pub fn build_task_runner_from_config() -> Result<Option<TaskRunner>, String> {
     let config = super::settings::load_config()?;
     let api_key = match config.model.api_key {
         Some(ref key) if !key.is_empty() => key.clone(),
@@ -321,35 +321,11 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
                     (cat, conf, "ai-model".to_string(), model, tokens_in, tokens_out, combined_output.to_string())
                 }
                 Err(e) => {
-                    // 大模型调用失败，降级为关键词匹配
-                    let (cat, conf, path) = classify_event(&event);
-                    let fallback_output = serde_json::json!({
-                        "fallback": "keyword",
-                        "error": e.to_string(),
-                        "category": cat,
-                        "confidence": conf,
-                    });
-                    // 降级到关键词匹配
-                    if !event_text.is_empty() {
-                        let _tasks = disc.discover_from_message(&event_text);
-                    }
-                    (cat, conf, path, "keyword-fallback".to_string(), 0u32, 0u32, fallback_output.to_string())
+                    return Err(format!("AI 模型调用失败: {}", e));
                 }
             }
         } else {
-            // ── 降级：关键词匹配（API Key 未配置）──
-            let (cat, conf, path) = classify_event(&event);
-            let fallback_output = serde_json::json!({
-                "fallback": "keyword",
-                "reason": "api_key_not_configured",
-                "category": cat,
-                "confidence": conf,
-            });
-            // 降级到关键词匹配
-            if !event_text.is_empty() {
-                let _tasks = disc.discover_from_message(&event_text);
-            }
-            (cat, conf, path, "keyword-fallback".to_string(), 0u32, 0u32, fallback_output.to_string())
+            return Err("AI 模型未配置。请在设置中配置 API Key 后重试。".to_string());
         };
 
     let review_status = if confidence >= 0.7 {
@@ -422,23 +398,3 @@ fn estimate_cost(token_input: u32, token_output: u32, model: &str) -> f64 {
     token_input as f64 * input_price + token_output as f64 * output_price
 }
 
-/// 分类事件
-fn classify_event(event: &Event) -> (String, f64, String) {
-    let content = match &event.content {
-        serde_json::Value::String(s) => s.clone(),
-        other => serde_json::to_string(other).unwrap_or_default(),
-    };
-
-    // 简单的分类逻辑
-    if content.contains("会议") || content.contains("meeting") {
-        ("meeting".to_string(), 0.9, "direct".to_string())
-    } else if content.contains("任务") || content.contains("task") {
-        ("task".to_string(), 0.85, "direct".to_string())
-    } else if content.contains("邮件") || content.contains("email") {
-        ("email".to_string(), 0.8, "direct".to_string())
-    } else if content.contains("审批") || content.contains("approval") {
-        ("approval".to_string(), 0.85, "direct".to_string())
-    } else {
-        ("note".to_string(), 0.6, "aggregate".to_string())
-    }
-}
