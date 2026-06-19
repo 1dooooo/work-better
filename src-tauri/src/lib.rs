@@ -3,7 +3,6 @@
 mod commands;
 
 use std::sync::Arc;
-use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
@@ -104,27 +103,9 @@ pub fn register_shortcuts(app: &AppHandle, config: &AppConfig) -> Result<(), Str
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
 
-    // 构建托盘菜单
-    let show_item = MenuItemBuilder::with_id("show", "显示主窗口").build(handle)?;
-    let capture_item = MenuItemBuilder::with_id("capture", "快速捕获").build(handle)?;
-    let screenshot_item = MenuItemBuilder::with_id("screenshot", "截图").build(handle)?;
-    let collect_item = MenuItemBuilder::with_id("collect", "采集飞书").build(handle)?;
-    let quit_item = PredefinedMenuItem::quit(handle, Some("退出"))?;
-
-    let menu = MenuBuilder::new(handle)
-        .item(&show_item)
-        .item(&capture_item)
-        .item(&screenshot_item)
-        .separator()
-        .item(&collect_item)
-        .separator()
-        .item(&quit_item)
-        .build()?;
-
-    // 创建托盘图标
+    // 创建托盘图标（无右键菜单，左键点击显示 MenuBar 面板）
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
-        .menu(&menu)
         .tooltip("Work Better")
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {
@@ -155,42 +136,6 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         let _ = window.set_focus();
                     }
                 }
-            }
-        })
-        .on_menu_event(|app, event| {
-            match event.id().as_ref() {
-                "show" => {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-                "capture" => {
-                    if let Some(window) = app.get_webview_window("capture") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-                "screenshot" => {
-                    let handle = app.clone();
-                    tauri::async_runtime::spawn(async move {
-                        let _ = commands::capture::take_screenshot(handle).await;
-                    });
-                }
-                "collect" => {
-                    let handle = app.clone();
-                    tauri::async_runtime::spawn(async move {
-                        match commands::collect::trigger_feishu_collect(handle, None, None).await {
-                            Ok(count) => {
-                                eprintln!("[tray] 飞书采集完成: {} 条事件", count);
-                            }
-                            Err(e) => {
-                                eprintln!("[tray] 飞书采集失败: {}", e);
-                            }
-                        }
-                    });
-                }
-                _ => {}
             }
         })
         .build(handle)?;

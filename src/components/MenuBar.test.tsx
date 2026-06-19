@@ -68,7 +68,7 @@ describe("MenuBar", () => {
     });
   });
 
-  it("shows system status in footer", async () => {
+  it("shows system status in status bar", async () => {
     render(<MenuBar />);
     await waitFor(() => {
       expect(screen.getByText(/采集器/)).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe("MenuBar", () => {
   it("shows scheduler status when running", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("调度")).toBeInTheDocument();
+      expect(screen.getByText("调度中")).toBeInTheDocument();
     });
   });
 
@@ -147,7 +147,7 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("5 待处理")).toBeInTheDocument();
+      expect(screen.getByText("5")).toBeInTheDocument();
     });
   });
 
@@ -185,7 +185,7 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("今日已处理 12 条")).toBeInTheDocument();
+      expect(screen.getByText("今日 12")).toBeInTheDocument();
     });
   });
 
