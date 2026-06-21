@@ -4,19 +4,11 @@
 //! 通过 AppState 在 Tauri setup 阶段显式初始化，之后所有命令
 //! 通过 `State<'_, AppState>` 获取依赖。
 
-use std::collections::HashMap;
 use tauri::State;
 use wb_core::event::{Event, EventFilter, EventLog};
 use wb_storage::ProcessingAuditInsert;
 use serde::{Deserialize, Serialize};
-use wb_ai::{
-    adapter::ModelAdapter,
-    budget::TokenBudget,
-    config::ModelConfig as AiModelConfig,
-    router::ModelRouter,
-    task_runner::{ModelSize, TaskRunner},
-    OpenAIAdapter, AnthropicAdapter,
-};
+use wb_ai::task_runner::TaskRunner;
 
 use super::AppState;
 
@@ -170,50 +162,22 @@ pub async fn trigger_batch_process(state: State<'_, AppState>) -> Result<BatchPr
     })
 }
 
-/// 从配置构建 TaskRunner（带真实 AI 适配器）
+/// 从配置构建 TaskRunner
 ///
-/// 如果 API Key 未配置，返回 None（降级为关键词匹配）。
+/// 委托给 `TaskRunner::from_config()`，如果 API Key 未配置返回 None。
 pub fn build_task_runner_from_config() -> Result<Option<TaskRunner>, String> {
     let config = super::settings::load_config()?;
     let api_key = match config.model.api_key {
         Some(ref key) if !key.is_empty() => key.clone(),
         _ => return Ok(None),
     };
-
-    let endpoint = config.model.api_endpoint.clone();
-    let small_model = config.model.small_model.clone();
-    let large_model = config.model.large_model.clone();
-    let budget = TokenBudget::new(config.model.token_budget as u64);
-
-    // 统一处理 endpoint：剥掉尾部的 /v1，适配器会自己拼 /chat/completions
-    let clean_endpoint = endpoint.trim_end_matches('/').trim_end_matches("/v1").to_string();
-
-    // 根据 endpoint 判断使用 Anthropic 还是 OpenAI 适配器
-    let is_anthropic = endpoint.contains("anthropic");
-
-    let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
-    let mut adapter_names: HashMap<ModelSize, String> = HashMap::new();
-
-    if is_anthropic {
-        let small_config = AiModelConfig::anthropic(api_key.clone()).with_model(&small_model);
-        let large_config = AiModelConfig::anthropic(api_key).with_model(&large_model);
-        adapters.insert(ModelSize::Small, Box::new(AnthropicAdapter::new(small_config)));
-        adapters.insert(ModelSize::Large, Box::new(AnthropicAdapter::new(large_config)));
-        adapter_names.insert(ModelSize::Small, small_model);
-        adapter_names.insert(ModelSize::Large, large_model);
-    } else {
-        let small_config = AiModelConfig::openai(api_key.clone(), Some(clean_endpoint.clone()))
-            .with_model(&small_model);
-        let large_config = AiModelConfig::openai(api_key, Some(clean_endpoint))
-            .with_model(&large_model);
-        adapters.insert(ModelSize::Small, Box::new(OpenAIAdapter::new(small_config)));
-        adapters.insert(ModelSize::Large, Box::new(OpenAIAdapter::new(large_config)));
-        adapter_names.insert(ModelSize::Small, small_model);
-        adapter_names.insert(ModelSize::Large, large_model);
-    }
-
-    let router = ModelRouter::new();
-    Ok(Some(TaskRunner::new(router, budget, adapters, adapter_names)))
+    Ok(TaskRunner::from_config(
+        &api_key,
+        &config.model.api_endpoint,
+        &config.model.small_model,
+        &config.model.large_model,
+        config.model.token_budget as u64,
+    ))
 }
 
 /// 处理单个事件（内部实现，供 batch 和单次调用共用）

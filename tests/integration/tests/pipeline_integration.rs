@@ -51,8 +51,8 @@ fn make_pipeline_with_adapter(
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor)
+    let _persistor = PersistStep::new(tmp_dir);
+    ProcessingPipeline::new(runner)
 }
 
 /// 辅助函数：使用默认 MockAdapter 创建 ProcessingPipeline

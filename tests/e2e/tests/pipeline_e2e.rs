@@ -60,8 +60,8 @@ fn make_pipeline_with_adapter(
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor)
+    let _persistor = PersistStep::new(tmp_dir);
+    ProcessingPipeline::new(runner)
 }
 
 /// 辅助函数：使用默认 MockAdapter 创建 ProcessingPipeline
@@ -88,8 +88,8 @@ fn make_pipeline_with_review(
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor).with_reviewer(reviewer)
+    let _persistor = PersistStep::new(tmp_dir);
+    ProcessingPipeline::new(runner).with_reviewer(reviewer)
 }
 
 /// 辅助函数：创建返回错误的 Adapter
@@ -131,8 +131,8 @@ fn make_error_pipeline(tmp_dir: &Path) -> ProcessingPipeline {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor)
+    let _persistor = PersistStep::new(tmp_dir);
+    ProcessingPipeline::new(runner)
 }
 
 /// 辅助函数：创建仅 extract 返回错误的 Adapter
@@ -185,8 +185,8 @@ fn make_extract_error_pipeline(tmp_dir: &Path) -> ProcessingPipeline {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor)
+    let _persistor = PersistStep::new(tmp_dir);
+    ProcessingPipeline::new(runner)
 }
 
 /// 辅助函数：在 vault 目录下查找 .md 文件

@@ -64,9 +64,9 @@ fn make_pipeline_with_adapters(
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp_dir);
+    let _persistor = PersistStep::new(tmp_dir);
 
-    ProcessingPipeline::new(runner, persistor)
+    ProcessingPipeline::new(runner)
 }
 
 #[tokio::test]
@@ -177,8 +177,8 @@ async fn test_pipeline_needs_fix_does_not_persist() {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp.path());
-    let mut pipeline = ProcessingPipeline::new(runner, persistor);
+    let _persistor = PersistStep::new(tmp.path());
+    let mut pipeline = ProcessingPipeline::new(runner);
 
     let event = make_event(
         Source::FeishuProject,
@@ -297,10 +297,10 @@ async fn test_pipeline_with_custom_reviewer() {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp.path());
+    let _persistor = PersistStep::new(tmp.path());
     // 自定义 ReviewAgent（默认配置）
     let reviewer = ReviewAgent::new();
-    let mut pipeline = ProcessingPipeline::new(runner, persistor).with_reviewer(reviewer);
+    let mut pipeline = ProcessingPipeline::new(runner).with_reviewer(reviewer);
 
     let event = make_event(
         Source::FeishuProject,
@@ -389,8 +389,8 @@ async fn test_classify_ai_overrides_rule() {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp.path());
-    let mut pipeline = ProcessingPipeline::new(runner, persistor);
+    let _persistor = PersistStep::new(tmp.path());
+    let mut pipeline = ProcessingPipeline::new(runner);
 
     let event = make_event(
         Source::FeishuMessage,
@@ -421,8 +421,8 @@ async fn test_classify_ai_fallback_on_error() {
     adapter_names.insert(ModelSize::Large, "mock-large".to_string());
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
-    let persistor = PersistStep::new(tmp.path());
-    let mut pipeline = ProcessingPipeline::new(runner, persistor);
+    let _persistor = PersistStep::new(tmp.path());
+    let mut pipeline = ProcessingPipeline::new(runner);
 
     let event = make_event(
         Source::FeishuProject,

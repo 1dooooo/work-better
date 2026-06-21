@@ -65,6 +65,53 @@ impl TaskRunner {
         self
     }
 
+    /// 从应用配置构建 TaskRunner
+    ///
+    /// 根据 endpoint 自动选择 Anthropic 或 OpenAI 适配器。
+    /// 如果 api_key 为空，返回 None（降级为关键词匹配）。
+    pub fn from_config(
+        api_key: &str,
+        api_endpoint: &str,
+        small_model: &str,
+        large_model: &str,
+        token_budget: u64,
+    ) -> Option<Self> {
+        if api_key.is_empty() {
+            return None;
+        }
+
+        let clean_endpoint = api_endpoint.trim_end_matches('/').trim_end_matches("/v1").to_string();
+        let is_anthropic = api_endpoint.contains("anthropic");
+
+        let budget = TokenBudget::new(token_budget);
+        let router = ModelRouter::new();
+
+        let mut adapters: HashMap<ModelSize, Box<dyn ModelAdapter>> = HashMap::new();
+        let mut adapter_names: HashMap<ModelSize, String> = HashMap::new();
+
+        if is_anthropic {
+            let small_config = crate::config::ModelConfig::anthropic(api_key.to_string())
+                .with_model(small_model);
+            let large_config = crate::config::ModelConfig::anthropic(api_key.to_string())
+                .with_model(large_model);
+            adapters.insert(ModelSize::Small, Box::new(crate::AnthropicAdapter::new(small_config)));
+            adapters.insert(ModelSize::Large, Box::new(crate::AnthropicAdapter::new(large_config)));
+        } else {
+            let small_config = crate::config::ModelConfig::openai(api_key.to_string(), Some(clean_endpoint.clone()))
+                .with_model(small_model);
+            let large_config = crate::config::ModelConfig::openai(api_key.to_string(), Some(clean_endpoint))
+                .with_model(large_model);
+            adapters.insert(ModelSize::Small, Box::new(crate::OpenAIAdapter::new(small_config)));
+            adapters.insert(ModelSize::Large, Box::new(crate::OpenAIAdapter::new(large_config)));
+        }
+
+        adapter_names.insert(ModelSize::Small, small_model.to_string());
+        adapter_names.insert(ModelSize::Large, large_model.to_string());
+
+        Some(Self::new(router, budget, adapters, adapter_names))
+    }
+
+
     /// 获取路由器的只读引用
     pub fn router(&self) -> &ModelRouter {
         &self.router

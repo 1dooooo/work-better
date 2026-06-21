@@ -42,7 +42,7 @@ fn make_pipeline_with_adapter(
 
     let runner = TaskRunner::new(router, budget, adapters, adapter_names);
     let persistor = PersistStep::new(tmp_dir);
-    ProcessingPipeline::new(runner, persistor)
+    ProcessingPipeline::new(runner)
 }
 
 /// 使用默认 MockAdapter 创建 ProcessingPipeline

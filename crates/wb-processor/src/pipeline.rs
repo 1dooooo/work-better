@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use wb_core::audit::{ReviewResult, ReviewVerdict};
+use wb_core::audit::{ReviewResult, ReviewVerdict}; // used by pipeline_tests.rs
 use wb_core::error::Result;
 use wb_core::event::{Event, EventType};
 use wb_core::record::WorkRecord;
@@ -50,19 +50,20 @@ pub struct ProcessingPipeline {
     classifier: Classifier,
     task_runner: TaskRunner,
     reviewer: ReviewAgent,
-    persistor: PersistStep,
     deduplicator: Option<Deduplicator>,
     task_discovery: TaskDiscovery,
 }
 
 impl ProcessingPipeline {
     /// 创建新的处理流水线
-    pub fn new(task_runner: TaskRunner, persistor: PersistStep) -> Self {
+    ///
+    /// 流水线只负责处理（分类 → 提取 → 审核），不负责持久化。
+    /// 调用者根据 `ProcessedResult.review_result` 决定是否持久化。
+    pub fn new(task_runner: TaskRunner) -> Self {
         Self {
             classifier: Classifier,
             task_runner,
             reviewer: ReviewAgent::new(),
-            persistor,
             deduplicator: None,
             task_discovery: TaskDiscovery::new(),
         }
@@ -82,11 +83,10 @@ impl ProcessingPipeline {
 
     /// 处理单个事件
     ///
-    /// 流程：Event → Classifier → TaskRunner → Extraction → ReviewAgent → PersistStep
+    /// 流程：Event → Classifier → TaskRunner → Extraction → ReviewAgent
     ///
     /// - Archive 路由：跳过模型调用，直接归档
-    /// - NeedsFix：返回结果但不持久化
-    /// - Approved/NeedsReview：持久化后返回
+    /// - 返回 `ProcessedResult`，调用者根据 `review_result` 决定是否持久化
     pub async fn process(&mut self, event: &Event) -> Result<ProcessedResult> {
         let total_start = Instant::now();
         let mut timings = StepTimings::default();
@@ -203,11 +203,9 @@ impl ProcessingPipeline {
         // Step 4.6: 语义去重（如果启用了 Deduplicator）
         if let Some(ref dedup) = self.deduplicator {
             if let Some(existing_id) = dedup.find_similar(&record).await {
-                // 将当前事件的 source_event_ids 合并到已有记录的路径
-                // 通过修改 obsidian_path 指向已有文件，触发 PersistStep 的 LCS 去重
-                record.obsidian_path = Self::find_existing_path_by_id(
-                    &self.persistor, &existing_id, &record.obsidian_path,
-                ).unwrap_or(record.obsidian_path);
+                tracing::info!("dedup_match: existing_id={}", existing_id);
+                // 调用者可通过 existing_id 决定合并策略
+                record.source_event_ids.insert(0, existing_id);
             }
         }
 
@@ -215,19 +213,6 @@ impl ProcessingPipeline {
         let review_start = Instant::now();
         let review_result = self.reviewer.review(&record);
         timings.review_ms = review_start.elapsed().as_millis() as u64;
-
-        // Step 6: 持久化（仅 Approved 或 NeedsReview 时持久化）
-        let needs_fix = matches!(review_result.verdict, ReviewVerdict::NeedsFix(_));
-        if !needs_fix {
-            let persist_start = Instant::now();
-            self.persistor.persist(&record)?;
-            timings.persist_ms = persist_start.elapsed().as_millis() as u64;
-
-            // 持久化成功后索引到向量库（用于后续去重）
-            if let Some(ref dedup) = self.deduplicator {
-                dedup.index_record(&record).await;
-            }
-        }
 
         Ok(ProcessedResult {
             work_record: record,
@@ -345,36 +330,7 @@ impl ProcessingPipeline {
         }
     }
 
-    /// 在 Obsidian vault 中查找包含指定 record_id 的已有文件路径
-    ///
-    /// 扫描目标目录下的 markdown 文件，检查 frontmatter 中的 id 字段。
-    fn find_existing_path_by_id(
-        persistor: &PersistStep,
-        record_id: &str,
-        new_path: &str,
-    ) -> Option<String> {
-        let vault_path = persistor.writer().vault_path();
-        let new_full = vault_path.join(new_path);
-        let parent = new_full.parent()?;
 
-        let entries = std::fs::read_dir(parent).ok()?;
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().map_or(true, |e| e != "md") {
-                continue;
-            }
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                // 检查 frontmatter 中的 id 行
-                if content.lines().any(|l| l.trim() == format!("id: {}", record_id)) {
-                    // 返回相对于 vault 的路径
-                    if let Ok(rel) = path.strip_prefix(vault_path) {
-                        return Some(rel.to_string_lossy().to_string());
-                    }
-                }
-            }
-        }
-        None
-    }
 }
 
 /// 净化文本输入：按字符截断到指定最大长度

@@ -10,27 +10,7 @@ use wb_storage::config::{AppConfig, CollectorConfig};
 /// lark-cli 工具路径
 const LARK_CLI: &str = "/opt/homebrew/bin/lark-cli";
 
-/// 模型配置（前端 DTO）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelConfig {
-    pub api_endpoint: String,
-    pub api_key: String,
-    pub token_budget: u32,
-    /// 小模型名称（如 gpt-4o-mini）
-    #[serde(default = "default_small_model")]
-    pub small_model: String,
-    /// 大模型名称（如 gpt-4o）
-    #[serde(default = "default_large_model")]
-    pub large_model: String,
-}
 
-fn default_small_model() -> String {
-    "gpt-4o-mini".to_string()
-}
-
-fn default_large_model() -> String {
-    "gpt-4o".to_string()
-}
 
 /// 采集器状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,31 +79,16 @@ fn save_config(config: &AppConfig) -> Result<(), String> {
 
 /// 获取模型配置
 #[tauri::command]
-pub async fn get_model_config() -> Result<ModelConfig, String> {
+pub async fn get_model_config() -> Result<wb_storage::config::ModelConfig, String> {
     let app_config = load_config()?;
-    Ok(ModelConfig {
-        api_endpoint: app_config.model.api_endpoint,
-        api_key: app_config.model.api_key.unwrap_or_default(),
-        token_budget: app_config.model.token_budget,
-        small_model: app_config.model.small_model,
-        large_model: app_config.model.large_model,
-    })
+    Ok(app_config.model)
 }
 
 /// 保存模型配置
 #[tauri::command]
-pub async fn save_model_config(config: ModelConfig) -> Result<(), String> {
+pub async fn save_model_config(config: wb_storage::config::ModelConfig) -> Result<(), String> {
     let mut app_config = load_config()?;
-    app_config.model.api_endpoint = config.api_endpoint;
-    app_config.model.token_budget = config.token_budget;
-    app_config.model.small_model = config.small_model;
-    app_config.model.large_model = config.large_model;
-    // 持久化 api_key（本地桌面应用，config.json 权限为 user-only）
-    app_config.model.api_key = if config.api_key.is_empty() {
-        None
-    } else {
-        Some(config.api_key)
-    };
+    app_config.model = config;
     save_config(&app_config)
 }
 
