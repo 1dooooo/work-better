@@ -47,6 +47,19 @@ import { cn } from "@/lib/utils";
 // ─── 事件类型配色（macOS 系统色）─────────────────────────────────
 
 const EVENT_TYPE_CONFIG: Record<string, { color: string; label: string }> = {
+  // PascalCase（后端 Rust 枚举序列化格式）
+  Message: { color: "text-macos-blue", label: "MSG" },
+  DocumentChange: { color: "text-macos-gray", label: "DOC" },
+  TaskUpdate: { color: "text-macos-pink", label: "TASK" },
+  Meeting: { color: "text-macos-orange", label: "MTG" },
+  CalendarEvent: { color: "text-macos-orange", label: "CAL" },
+  Email: { color: "text-macos-blue", label: "MAIL" },
+  Approval: { color: "text-macos-green", label: "APPR" },
+  OkrUpdate: { color: "text-macos-purple", label: "OKR" },
+  Browsing: { color: "text-macos-gray", label: "WEB" },
+  AppActivity: { color: "text-macos-blue", label: "APP" },
+  ManualNote: { color: "text-macos-purple", label: "NOTE" },
+  // snake_case 兼容（备用）
   message: { color: "text-macos-blue", label: "MSG" },
   issue: { color: "text-macos-orange", label: "ISS" },
   pr: { color: "text-macos-green", label: "PR" },
@@ -266,7 +279,7 @@ export default function MenuBar() {
       )}
 
       {/* ── 最近事件 ──────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-hidden min-h-0">
+      <div className="flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-3 py-1.5">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3 text-macos-dark-gray" />
@@ -282,7 +295,7 @@ export default function MenuBar() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 px-1.5">
+        <div className="max-h-[180px] overflow-y-auto px-1.5">
           {loading ? (
             <div className="flex items-center justify-center py-6 text-[11px] text-macos-dark-gray">
               加载中...
@@ -437,11 +450,6 @@ export default function MenuBar() {
           />
         </div>
       </div>
-
-      {/* ── Footer ────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.06] flex items-center justify-between px-3 py-1">
-        <span className="text-[9px] text-macos-dark-gray">v0.1.0</span>
-      </footer>
     </div>
   );
 }
@@ -467,16 +475,17 @@ function ActionButton({
     <button
       className={cn(
         "flex-1 flex flex-col items-center gap-0.5 rounded-md py-1.5 px-1 transition-all duration-150",
+        "active:scale-95 active:opacity-80",
         accent
-          ? "bg-macos-blue/15 text-macos-blue hover:bg-macos-blue/25"
-          : "text-macos-gray hover:text-white hover:bg-white/[0.06]",
+          ? "bg-macos-blue/15 text-macos-blue hover:bg-macos-blue/25 hover:text-macos-blue"
+          : "text-macos-gray hover:text-white hover:bg-white/[0.08]",
         disabled && "opacity-50 cursor-not-allowed"
       )}
       onClick={onClick}
       disabled={disabled}
     >
-      <Icon className={cn("h-3.5 w-3.5", spinning && "animate-spin")} />
-      <span className="text-[9px] font-medium leading-none">{label}</span>
+      <Icon className={cn("h-3.5 w-3.5 transition-colors", spinning && "animate-spin")} />
+      <span className="text-[9px] font-medium leading-none transition-colors">{label}</span>
     </button>
   );
 }
