@@ -89,7 +89,7 @@ export function EmptyEvents({ onCollect }: EmptyEventsProps) {
           </Button>
         )
       }
-      hint="连接飞书、GitHub 等数据源开始采集"
+      hint="配置飞书数据源开始采集"
     />
   );
 }
@@ -145,7 +145,7 @@ export function EmptyCollectors() {
       icon={Radio}
       title="暂无采集器"
       description="配置一个采集器开始收集数据"
-      hint="在设置中配置飞书、GitHub 等数据源"
+      hint="在设置中配置飞书数据源"
     />
   );
 }
