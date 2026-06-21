@@ -7,6 +7,7 @@ import TimelineView from "../views/TimelineView";
 import ReportsView from "../views/ReportsView";
 import SettingsView from "../views/SettingsView";
 import AuditView from "../views/AuditView";
+import CommandPalette from "../CommandPalette";
 import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode } from "@/lib/tauri";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -88,6 +89,12 @@ export default function MainWindow() {
     getDeveloperMode().then(setDeveloperMode).catch(() => {});
   }, []);
 
+  // 命令面板操作处理
+  const handleCommandAction = useCallback((action: string) => {
+    console.log("Command action:", action);
+    // TODO: 实现具体操作（新建任务、触发采集等）
+  }, []);
+
   // T3.1 全局键盘快捷键
   useKeyboardShortcuts([
     { ...SHORTCUTS.VIEW_EVENTS, handler: () => handleViewChange("events") },
@@ -112,6 +119,7 @@ export default function MainWindow() {
           <ActiveComponent />
         </main>
       </div>
+      <CommandPalette onNavigate={handleViewChange} onAction={handleCommandAction} />
       <Toaster />
     </TooltipProvider>
   );
