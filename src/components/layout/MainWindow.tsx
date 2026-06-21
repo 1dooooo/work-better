@@ -7,8 +7,9 @@ import TimelineView from "../views/TimelineView";
 import ReportsView from "../views/ReportsView";
 import SettingsView from "../views/SettingsView";
 import AuditView from "../views/AuditView";
-import CommandPalette from "../CommandPalette";
-import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode } from "@/lib/tauri";
+import CommandPalette from "../command-palette/CommandPalette";
+import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode, triggerFeishuCollect, createTask } from "@/lib/tauri";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeyboardShortcuts, SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
@@ -108,10 +109,43 @@ export default function MainWindow() {
   }, [updatePersistedState]);
 
   // 命令面板操作处理
-  const handleCommandAction = useCallback((action: string) => {
-    console.log("Command action:", action);
-    // TODO: 实现具体操作（新建任务、触发采集等）
-  }, []);
+  const handleCommandAction = useCallback(async (action: string) => {
+    switch (action) {
+      case "new-task": {
+        const title = prompt("请输入任务标题");
+        if (title?.trim()) {
+          try {
+            await createTask(title.trim());
+            toast.success("任务已创建");
+          } catch (err) {
+            toast.error("创建任务失败");
+          }
+        }
+        break;
+      }
+      case "trigger-collect": {
+        try {
+          const count = await triggerFeishuCollect();
+          toast.success(`采集完成，获取 ${count} 条事件`);
+        } catch (err) {
+          toast.error("采集失败");
+        }
+        break;
+      }
+      case "mark-processed": {
+        handleViewChange("events");
+        toast.info("请在事件列表中选择要标记的事件");
+        break;
+      }
+      case "ai-generate-report": {
+        handleViewChange("reports");
+        toast.info("请在报告页面生成报告");
+        break;
+      }
+      default:
+        break;
+    }
+  }, [handleViewChange]);
 
   // T3.1 全局键盘快捷键
   useKeyboardShortcuts([
@@ -133,12 +167,14 @@ export default function MainWindow() {
           onViewChange={handleViewChange}
           unprocessedCount={unprocessedCount}
           developerMode={developerMode}
+          collapsed={persistedState.sidebarCollapsed}
+          onCollapsedChange={(collapsed) => updatePersistedState("sidebarCollapsed", collapsed)}
         />
         <main className="flex-1 overflow-auto">
           <ActiveComponent />
         </main>
       </div>
-      <CommandPalette onNavigate={(view) => handleViewChange(view as ViewId)} onAction={handleCommandAction} />
+      <CommandPalette onNavigate={handleViewChange} onAction={handleCommandAction} />
       <Toaster />
     </TooltipProvider>
   );

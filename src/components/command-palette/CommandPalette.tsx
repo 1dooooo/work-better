@@ -3,6 +3,7 @@
  *
  * 集成 Variant B 设计（分类图标布局）
  * 支持：导航、操作、搜索
+ * 视觉定制：色标图标容器、分组描述、紧凑布局
  */
 
 import { useState, useCallback } from "react";
@@ -18,6 +19,8 @@ import {
 } from "@/components/ui/command";
 import { useKeyboardShortcuts, SHORTCUTS, formatShortcutHint } from "@/hooks/useKeyboardShortcuts";
 import { useCommandData } from "@/hooks/useCommandData";
+import { cn } from "@/lib/utils";
+import type { ViewId } from "@/components/layout/Sidebar";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -33,8 +36,31 @@ import {
 } from "lucide-react";
 
 interface CommandPaletteProps {
-  onNavigate: (view: string) => void;
+  onNavigate: (view: ViewId) => void;
   onAction: (action: string) => void;
+}
+
+// 色标图标容器 — 区分不同类型的命令
+function IconBox({
+  children,
+  variant = "default",
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "primary" | "accent" | "warning";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex size-8 items-center justify-center rounded-lg",
+        variant === "default" && "border border-border bg-muted/50",
+        variant === "primary" && "bg-primary text-primary-foreground",
+        variant === "accent" && "bg-blue-500/10 text-blue-500",
+        variant === "warning" && "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default function CommandPalette({ onNavigate, onAction }: CommandPaletteProps) {
@@ -57,7 +83,7 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
 
       // 导航命令
       if (command.startsWith("navigate:")) {
-        const view = command.replace("navigate:", "");
+        const view = command.replace("navigate:", "") as ViewId;
         onNavigate(view);
         return;
       }
@@ -87,14 +113,19 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
         onValueChange={setSearchQuery}
       />
       <CommandList>
-        <CommandEmpty>未找到结果</CommandEmpty>
+        <CommandEmpty>
+          <div className="flex flex-col items-center gap-1 py-4">
+            <span className="text-sm text-muted-foreground">未找到结果</span>
+            <span className="text-xs text-muted-foreground/60">尝试其他关键词</span>
+          </div>
+        </CommandEmpty>
 
         {/* 快速导航 */}
         <CommandGroup heading="快速导航">
           <CommandItem onSelect={() => handleSelect("navigate:dashboard")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox variant="accent">
               <LayoutDashboard className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>工作台</div>
               <div className="text-xs text-muted-foreground">首页概览</div>
@@ -102,9 +133,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.dashboard}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("navigate:events")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <CalendarDays className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>事件</div>
               <div className="text-xs text-muted-foreground">查看所有事件</div>
@@ -112,9 +143,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.events}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("navigate:tasks")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <CheckSquare className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>任务</div>
               <div className="text-xs text-muted-foreground">管理任务</div>
@@ -122,9 +153,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.tasks}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("navigate:timeline")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <Clock className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>时间线</div>
               <div className="text-xs text-muted-foreground">时间轴视图</div>
@@ -132,9 +163,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.timeline}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("navigate:reports")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <BarChart3 className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>报告</div>
               <div className="text-xs text-muted-foreground">数据报告</div>
@@ -142,9 +173,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.reports}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("navigate:settings")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <Settings className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>设置</div>
               <div className="text-xs text-muted-foreground">应用设置</div>
@@ -158,9 +189,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
         {/* 常用操作 */}
         <CommandGroup heading="常用操作">
           <CommandItem onSelect={() => handleSelect("new-task")}>
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <IconBox variant="primary">
               <Plus className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>新建任务</div>
               <div className="text-xs text-muted-foreground">创建新的工作任务</div>
@@ -168,18 +199,18 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandShortcut>{shortcuts.newTask}</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("trigger-collect")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox variant="accent">
               <Download className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>触发采集</div>
               <div className="text-xs text-muted-foreground">从外部系统获取数据</div>
             </div>
           </CommandItem>
           <CommandItem onSelect={() => handleSelect("mark-processed")}>
-            <div className="flex size-8 items-center justify-center rounded-md border">
+            <IconBox>
               <CheckCircle className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>标记事件已处理</div>
               <div className="text-xs text-muted-foreground">批量处理事件</div>
@@ -192,9 +223,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
         {/* AI 推荐 */}
         <CommandGroup heading="AI 推荐">
           <CommandItem onSelect={() => handleSelect("ai-generate-report")}>
-            <div className="flex size-8 items-center justify-center rounded-md bg-yellow-500 text-white">
+            <IconBox variant="warning">
               <Zap className="size-4" />
-            </div>
+            </IconBox>
             <div className="flex-1">
               <div>生成今日报告</div>
               <div className="text-xs text-muted-foreground">基于今日工作生成报告</div>
@@ -217,9 +248,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
                     key={event.id}
                     onSelect={() => handleSelect(`event-${event.id}`)}
                   >
-                    <div className="flex size-8 items-center justify-center rounded-md border">
+                    <IconBox>
                       <FileText className="size-4" />
-                    </div>
+                    </IconBox>
                     <div className="flex-1 min-w-0">
                       <div className="truncate">{content.slice(0, 50)}</div>
                       <div className="text-xs text-muted-foreground">
@@ -243,9 +274,9 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
                   key={task.id}
                   onSelect={() => handleSelect(`task-${task.id}`)}
                 >
-                  <div className="flex size-8 items-center justify-center rounded-md border">
+                  <IconBox>
                     <CheckSquare className="size-4" />
-                  </div>
+                  </IconBox>
                   <div className="flex-1 min-w-0">
                     <div className="truncate">{task.title}</div>
                     <div className="text-xs text-muted-foreground">

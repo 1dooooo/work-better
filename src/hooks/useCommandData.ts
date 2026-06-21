@@ -7,7 +7,7 @@
  * - 实时更新
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getEvents, listTasks, type Event, type TaskDto } from "@/lib/tauri";
 
 interface CommandData {
@@ -24,6 +24,17 @@ export function useCommandData(searchQuery: string = "") {
     loading: true,
     error: null,
   });
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // 搜索防抖 (150ms)
+  useEffect(() => {
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(debounceTimer.current);
+  }, [searchQuery]);
 
   // 加载数据
   const fetchData = useCallback(async () => {
@@ -53,8 +64,8 @@ export function useCommandData(searchQuery: string = "") {
 
   // 模糊搜索
   const filteredEvents = useMemo(() => {
-    if (!searchQuery) return data.events;
-    const query = searchQuery.toLowerCase();
+    if (!debouncedQuery) return data.events;
+    const query = debouncedQuery.toLowerCase();
     return data.events.filter((event) => {
       const content =
         typeof event.content === "string"
@@ -66,18 +77,18 @@ export function useCommandData(searchQuery: string = "") {
         event.type.toLowerCase().includes(query)
       );
     });
-  }, [data.events, searchQuery]);
+  }, [data.events, debouncedQuery]);
 
   const filteredTasks = useMemo(() => {
-    if (!searchQuery) return data.tasks;
-    const query = searchQuery.toLowerCase();
+    if (!debouncedQuery) return data.tasks;
+    const query = debouncedQuery.toLowerCase();
     return data.tasks.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         task.status.toLowerCase().includes(query) ||
         task.priority.toLowerCase().includes(query)
     );
-  }, [data.tasks, searchQuery]);
+  }, [data.tasks, debouncedQuery]);
 
   return {
     events: filteredEvents,

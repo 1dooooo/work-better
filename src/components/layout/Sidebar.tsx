@@ -8,6 +8,8 @@ import {
   Sun,
   Moon,
   ScrollText,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +56,8 @@ interface SidebarProps {
   onViewChange: (view: ViewId) => void;
   unprocessedCount: number;
   developerMode?: boolean;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export default function Sidebar({
@@ -61,6 +65,8 @@ export default function Sidebar({
   onViewChange,
   unprocessedCount,
   developerMode = false,
+  collapsed = false,
+  onCollapsedChange,
 }: SidebarProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -136,19 +142,36 @@ export default function Sidebar({
       {/* Footer */}
       <div className="flex items-center justify-between px-3 py-3">
         <span className="text-[11px] text-muted-foreground">v0.1.0</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          onClick={toggle}
-          title={isDark ? "切换到亮色" : "切换到暗色"}
-        >
-          {isDark ? (
-            <Sun className="h-3.5 w-3.5" />
-          ) : (
-            <Moon className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={toggle}
+            title={isDark ? "切换到亮色" : "切换到暗色"}
+          >
+            {isDark ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          {onCollapsedChange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => onCollapsedChange(!collapsed)}
+              title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-3.5 w-3.5" />
+              ) : (
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </div>
     </aside>
   );
