@@ -1,6 +1,11 @@
 ---
 name: optimizer
 description: 优化者，执行具体优化任务，搜索更好的 skill
+type: agent
+domain: optimization
+created: 2026-06-21
+updated: 2026-06-21
+status: active
 tools:
   - Read
   - Glob

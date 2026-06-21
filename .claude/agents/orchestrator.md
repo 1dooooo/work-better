@@ -1,6 +1,11 @@
 ---
 name: orchestrator
 description: 监督者，监督所有 Agent 的执行，优化编排策略
+type: agent
+domain: orchestration
+created: 2026-06-21
+updated: 2026-06-21
+status: active
 tools:
   - Read
   - Glob

@@ -1,6 +1,11 @@
 ---
 name: guardian
 description: 守护者，监督整个多 Agent 系统，发现系统性问题
+type: agent
+domain: orchestration
+created: 2026-06-21
+updated: 2026-06-21
+status: active
 tools:
   - Read
   - Glob

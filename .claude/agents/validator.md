@@ -1,6 +1,11 @@
 ---
 name: validator
 description: 验证者，管道交叉点验证，防止错误传播
+type: agent
+domain: validation
+created: 2026-06-21
+updated: 2026-06-21
+status: active
 tools:
   - Read
   - Glob
