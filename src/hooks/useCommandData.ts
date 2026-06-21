@@ -10,6 +10,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getEvents, listTasks, type Event, type TaskDto } from "@/lib/tauri";
 
+const SEARCH_DEBOUNCE_MS = 150;
+const EVENT_FETCH_LIMIT = 50;
+
 interface CommandData {
   events: Event[];
   tasks: TaskDto[];
@@ -27,12 +30,12 @@ export function useCommandData(searchQuery: string = "") {
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // 搜索防抖 (150ms)
+  // 搜索防抖
   useEffect(() => {
     clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 150);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(debounceTimer.current);
   }, [searchQuery]);
 
@@ -40,7 +43,7 @@ export function useCommandData(searchQuery: string = "") {
   const fetchData = useCallback(async () => {
     try {
       const [events, tasks] = await Promise.all([
-        getEvents(50),
+        getEvents(EVENT_FETCH_LIMIT),
         listTasks(),
       ]);
       setData({

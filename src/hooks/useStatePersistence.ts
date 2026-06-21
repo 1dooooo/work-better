@@ -34,8 +34,8 @@ const DEFAULT_STATE: PersistedState = {
   sidebarCollapsed: false,
 };
 
-// 验证并修复加载的状态
-function validateState(raw: unknown): PersistedState {
+// 验证并修复加载的状态（exported for getInitialView）
+export function validateState(raw: unknown): PersistedState {
   if (typeof raw !== "object" || raw === null) return DEFAULT_STATE;
   const obj = raw as Record<string, unknown>;
 

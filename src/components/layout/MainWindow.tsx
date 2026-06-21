@@ -8,7 +8,8 @@ import ReportsView from "../views/ReportsView";
 import SettingsView from "../views/SettingsView";
 import AuditView from "../views/AuditView";
 import CommandPalette from "../command-palette/CommandPalette";
-import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode, triggerFeishuCollect, createTask } from "@/lib/tauri";
+import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode, triggerFeishuCollect, createTask, getEvents, markEventProcessed } from "@/lib/tauri";
+import { validateState } from "@/hooks/useStatePersistence";
 import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -34,17 +35,17 @@ function getInitialView(): ViewId {
     return view;
   }
 
-  // 其次从 localStorage 读取
+  // 其次从 localStorage 读取（带 schema 验证）
   try {
     const stored = localStorage.getItem("work-better-state");
     if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.lastView && parsed.lastView in VIEW_COMPONENTS) {
-        return parsed.lastView as ViewId;
+      const validated = validateState(JSON.parse(stored));
+      if (validated.lastView in VIEW_COMPONENTS) {
+        return validated.lastView;
       }
     }
-  } catch (err) {
-    console.warn("Failed to load persisted view:", err);
+  } catch {
+    // 损坏数据，静默回退
   }
 
   return "dashboard";
@@ -133,8 +134,22 @@ export default function MainWindow() {
         break;
       }
       case "mark-processed": {
-        handleViewChange("events");
-        toast.info("请在事件列表中选择要标记的事件");
+        try {
+          const events = await getEvents(50);
+          const unprocessed = events.filter((e) => !e.processed);
+          if (unprocessed.length === 0) {
+            toast.info("没有待处理的事件");
+            break;
+          }
+          const count = Math.min(unprocessed.length, 10);
+          await Promise.all(
+            unprocessed.slice(0, count).map((e) => markEventProcessed(e.id))
+          );
+          toast.success(`已标记 ${count} 条事件为已处理`);
+          refreshCount();
+        } catch (err) {
+          toast.error("标记事件失败");
+        }
         break;
       }
       case "ai-generate-report": {

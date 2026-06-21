@@ -35,6 +35,11 @@ import {
   FileText,
 } from "lucide-react";
 
+/** 搜索结果中每类最多显示的条目数 */
+const MAX_SEARCH_RESULTS = 5;
+/** 搜索结果内容预览最大字符数 */
+const CONTENT_PREVIEW_LENGTH = 50;
+
 interface CommandPaletteProps {
   onNavigate: (view: ViewId) => void;
   onAction: (action: string) => void;
@@ -54,8 +59,8 @@ function IconBox({
         "flex size-8 items-center justify-center rounded-lg",
         variant === "default" && "border border-border bg-muted/50",
         variant === "primary" && "bg-primary text-primary-foreground",
-        variant === "accent" && "bg-blue-500/10 text-blue-500",
-        variant === "warning" && "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        variant === "accent" && "bg-info/10 text-info",
+        variant === "warning" && "bg-warning/15 text-warning"
       )}
     >
       {children}
@@ -238,7 +243,7 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
           <>
             <CommandSeparator />
             <CommandGroup heading={`事件 (${events.length})`}>
-              {events.slice(0, 5).map((event) => {
+              {events.slice(0, MAX_SEARCH_RESULTS).map((event) => {
                 const content =
                   typeof event.content === "string"
                     ? event.content
@@ -252,7 +257,7 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
                       <FileText className="size-4" />
                     </IconBox>
                     <div className="flex-1 min-w-0">
-                      <div className="truncate">{content.slice(0, 50)}</div>
+                      <div className="truncate">{content.slice(0, CONTENT_PREVIEW_LENGTH)}</div>
                       <div className="text-xs text-muted-foreground">
                         {event.source} · {event.type}
                       </div>
@@ -269,7 +274,7 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
           <>
             <CommandSeparator />
             <CommandGroup heading={`任务 (${tasks.length})`}>
-              {tasks.slice(0, 5).map((task) => (
+              {tasks.slice(0, MAX_SEARCH_RESULTS).map((task) => (
                 <CommandItem
                   key={task.id}
                   onSelect={() => handleSelect(`task-${task.id}`)}

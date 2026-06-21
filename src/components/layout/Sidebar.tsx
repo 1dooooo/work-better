@@ -80,15 +80,20 @@ export default function Sidebar({
   });
 
   return (
-    <aside className="flex h-full w-[200px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className={cn(
+      "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
+      collapsed ? "w-[52px]" : "w-[200px]"
+    )}>
       {/* Brand */}
       <div className="flex items-center gap-2 px-4 py-4">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
           <Zap className="h-4 w-4" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">
-          Work Better
-        </span>
+        {!collapsed && (
+          <span className="text-sm font-semibold tracking-tight">
+            Work Better
+          </span>
+        )}
       </div>
 
       <Separator className="bg-sidebar-border" />
@@ -104,7 +109,8 @@ export default function Sidebar({
                 <TooltipTrigger
                   onClick={() => onViewChange(item.id)}
                   className={cn(
-                    "flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
+                    "flex h-8 w-full items-center rounded-md px-2.5 text-sm transition-colors",
+                    collapsed ? "justify-center" : "gap-2.5",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                     isActive &&
@@ -112,8 +118,8 @@ export default function Sidebar({
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                  {item.id === "events" && unprocessedCount > 0 && (
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {!collapsed && item.id === "events" && unprocessedCount > 0 && (
                     <Badge
                       variant="secondary"
                       className="ml-auto h-5 min-w-5 justify-center rounded-full px-1 text-[10px]"
@@ -121,7 +127,7 @@ export default function Sidebar({
                       {unprocessedCount}
                     </Badge>
                   )}
-                  {item.shortcut && (
+                  {!collapsed && item.shortcut && (
                     <span className="ml-auto text-[10px] text-muted-foreground">
                       {item.shortcut}
                     </span>
