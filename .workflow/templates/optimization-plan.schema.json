@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Optimization Plan",
+  "description": "Optimizer Agent 生成的优化计划",
+  "type": "object",
+  "required": ["task_id", "timestamp", "optimizations", "approval_required"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "计划生成时间"
+    },
+    "optimizations": {
+      "type": "array",
+      "description": "优化列表",
+      "items": {
+        "type": "object",
+        "required": ["type", "target", "description", "changes"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["agent_prompt", "workflow_spec", "skill", "constraint"],
+            "description": "优化类型"
+          },
+          "target": {
+            "type": "string",
+            "description": "目标文件路径"
+          },
+          "description": {
+            "type": "string",
+            "description": "优化描述"
+          },
+          "changes": {
+            "type": "array",
+            "description": "变更列表",
+            "items": {
+              "type": "object",
+              "required": ["file", "action"],
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "description": "文件路径"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": ["create", "update", "delete"],
+                  "description": "变更动作"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "变更内容"
+                }
+              }
+            }
+          },
+          "expected_improvement": {
+            "type": "string",
+            "description": "预期改进"
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "description": "是否需要用户审批"
+          }
+        }
+      }
+    },
+    "skill_discoveries": {
+      "type": "array",
+      "description": "发现的 skill 列表",
+      "items": {
+        "type": "object",
+        "required": ["name", "source", "description"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "skill 名称"
+          },
+          "source": {
+            "type": "string",
+            "description": "来源（GitHub、npm、Exa 等）"
+          },
+          "description": {
+            "type": "string",
+            "description": "描述"
+          },
+          "applicability": {
+            "type": "string",
+            "description": "适用性评估"
+          },
+          "quality": {
+            "type": "string",
+            "description": "质量评估"
+          },
+          "compatibility": {
+            "type": "string",
+            "description": "兼容性评估"
+          }
+        }
+      }
+    },
+    "approval_required": {
+      "type": "boolean",
+      "description": "是否需要用户审批"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "description": "审批状态"
+    }
+  }
+}
