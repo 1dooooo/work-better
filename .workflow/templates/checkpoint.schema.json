@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checkpoint",
+  "description": "Checkpoint Manager Agent 生成的检查点",
+  "type": "object",
+  "required": ["task_id", "timestamp", "phase", "status", "artifacts"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "检查点创建时间"
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["dev", "review", "post_task", "optimization"],
+      "description": "当前阶段"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["in_progress", "completed", "failed"],
+      "description": "任务状态"
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "已创建的 artifact 列表",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "exists"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "artifact 名称"
+          },
+          "path": {
+            "type": "string",
+            "description": "artifact 路径"
+          },
+          "exists": {
+            "type": "boolean",
+            "description": "是否存在"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "description": "文件大小（字节）"
+          }
+        }
+      }
+    },
+    "agent_states": {
+      "type": "object",
+      "description": "各 Agent 状态",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["pending", "running", "completed", "failed"]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "元数据",
+      "properties": {
+        "total_agents": {
+          "type": "integer",
+          "description": "总 Agent 数量"
+        },
+        "completed_agents": {
+          "type": "integer",
+          "description": "已完成 Agent 数量"
+        },
+        "failed_agents": {
+          "type": "integer",
+          "description": "失败 Agent 数量"
+        },
+        "duration_ms": {
+          "type": "number",
+          "description": "已用时间（毫秒）"
+        }
+      }
+    }
+  }
+}
