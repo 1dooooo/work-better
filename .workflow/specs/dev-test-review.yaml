@@ -588,6 +588,33 @@ flow:
 # Checkpoint recovery (检查点恢复)
 # ----------------------------------------------------------
 # 从检查点恢复，避免从头开始。
+# ----------------------------------------------------------
+# Distributed tracing (分布式追踪)
+# ----------------------------------------------------------
+# 端到端追踪，结构化日志。
+distributed_tracing:
+  description: >
+    分布式追踪：端到端追踪，结构化日志。
+  tracing_format: structured_json
+  trace_fields:
+    - trace_id
+    - span_id
+    - parent_span_id
+    - agent_name
+    - operation
+    - start_time
+    - end_time
+    - duration_ms
+    - status
+    - error_message
+  log_levels:
+    - DEBUG
+    - INFO
+    - WARN
+    - ERROR
+  output_path: .workflow/artifacts/{task_id}/workflow.log
+  retention_days: 7
+
 checkpoint_recovery:
   description: >
     检查点恢复：从检查点恢复，避免从头开始。
