@@ -220,7 +220,7 @@ export default function EventsView() {
             <span className="text-xs">加载中...</span>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <EmptyEvents />
+          <EmptyEvents onCollect={handleCollect} />
         ) : (
           filteredEvents.map((event, index) => {
             const typeConfig = getEventType(event.type);

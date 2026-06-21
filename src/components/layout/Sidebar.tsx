@@ -8,6 +8,8 @@ import {
   Sun,
   Moon,
   ScrollText,
+  PanelLeftClose,
+  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
+import { formatShortcutHint, SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
 
 export type ViewId = "dashboard" | "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
 
@@ -28,6 +31,8 @@ interface NavItem {
   id: ViewId;
   label: string;
   icon: LucideIcon;
+  /** 快捷键提示 */
+  shortcut?: string;
   /** 是否为底部固定项（设置等） */
   isBottom?: boolean;
   /** 是否为开发者模式专属项 */
@@ -35,15 +40,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "仪表盘", icon: Zap },
-  { id: "events", label: "事件", icon: CalendarDays },
-  { id: "tasks", label: "任务", icon: CheckSquare },
-  { id: "timeline", label: "时间线", icon: Clock },
-  { id: "reports", label: "报告", icon: BarChart3 },
+  { id: "dashboard", label: "工作台", icon: Zap, shortcut: formatShortcutHint(SHORTCUTS.VIEW_DASHBOARD) },
+  { id: "events", label: "事件", icon: CalendarDays, shortcut: formatShortcutHint(SHORTCUTS.VIEW_EVENTS) },
+  { id: "tasks", label: "任务", icon: CheckSquare, shortcut: formatShortcutHint(SHORTCUTS.VIEW_TASKS) },
+  { id: "timeline", label: "时间线", icon: Clock, shortcut: formatShortcutHint(SHORTCUTS.VIEW_TIMELINE) },
+  { id: "reports", label: "报告", icon: BarChart3, shortcut: formatShortcutHint(SHORTCUTS.VIEW_REPORTS) },
   // 开发者模式专属项
   { id: "audit", label: "审计", icon: ScrollText, developerOnly: true },
   // 底部固定项
-  { id: "settings", label: "设置", icon: Settings, isBottom: true },
+  { id: "settings", label: "设置", icon: Settings, shortcut: formatShortcutHint(SHORTCUTS.VIEW_SETTINGS), isBottom: true },
 ];
 
 interface SidebarProps {
@@ -51,6 +56,8 @@ interface SidebarProps {
   onViewChange: (view: ViewId) => void;
   unprocessedCount: number;
   developerMode?: boolean;
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
 export default function Sidebar({
@@ -58,6 +65,8 @@ export default function Sidebar({
   onViewChange,
   unprocessedCount,
   developerMode = false,
+  collapsed = false,
+  onCollapsedChange,
 }: SidebarProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -71,15 +80,20 @@ export default function Sidebar({
   });
 
   return (
-    <aside className="flex h-full w-[200px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className={cn(
+      "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
+      collapsed ? "w-[52px]" : "w-[200px]"
+    )}>
       {/* Brand */}
       <div className="flex items-center gap-2 px-4 py-4">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
           <Zap className="h-4 w-4" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">
-          Work Better
-        </span>
+        {!collapsed && (
+          <span className="text-sm font-semibold tracking-tight">
+            Work Better
+          </span>
+        )}
       </div>
 
       <Separator className="bg-sidebar-border" />
@@ -95,7 +109,8 @@ export default function Sidebar({
                 <TooltipTrigger
                   onClick={() => onViewChange(item.id)}
                   className={cn(
-                    "flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors",
+                    "flex h-8 w-full items-center rounded-md px-2.5 text-sm transition-colors",
+                    collapsed ? "justify-center" : "gap-2.5",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                     isActive &&
@@ -103,8 +118,8 @@ export default function Sidebar({
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                  {item.id === "events" && unprocessedCount > 0 && (
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                  {!collapsed && item.id === "events" && unprocessedCount > 0 && (
                     <Badge
                       variant="secondary"
                       className="ml-auto h-5 min-w-5 justify-center rounded-full px-1 text-[10px]"
@@ -112,9 +127,15 @@ export default function Sidebar({
                       {unprocessedCount}
                     </Badge>
                   )}
+                  {!collapsed && item.shortcut && (
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      {item.shortcut}
+                    </span>
+                  )}
                 </TooltipTrigger>
                 <TooltipContent side="right" sideOffset={8}>
                   {item.label}
+                  {item.shortcut && ` (${item.shortcut})`}
                 </TooltipContent>
               </Tooltip>
             );
@@ -127,19 +148,36 @@ export default function Sidebar({
       {/* Footer */}
       <div className="flex items-center justify-between px-3 py-3">
         <span className="text-[11px] text-muted-foreground">v0.1.0</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          onClick={toggle}
-          title={isDark ? "切换到亮色" : "切换到暗色"}
-        >
-          {isDark ? (
-            <Sun className="h-3.5 w-3.5" />
-          ) : (
-            <Moon className="h-3.5 w-3.5" />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            onClick={toggle}
+            title={isDark ? "切换到亮色" : "切换到暗色"}
+          >
+            {isDark ? (
+              <Sun className="h-3.5 w-3.5" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          {onCollapsedChange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => onCollapsedChange(!collapsed)}
+              title={collapsed ? "展开侧边栏" : "折叠侧边栏"}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-3.5 w-3.5" />
+              ) : (
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </div>
     </aside>
   );

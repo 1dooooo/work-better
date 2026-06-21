@@ -7,10 +7,14 @@ import TimelineView from "../views/TimelineView";
 import ReportsView from "../views/ReportsView";
 import SettingsView from "../views/SettingsView";
 import AuditView from "../views/AuditView";
-import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode } from "@/lib/tauri";
+import CommandPalette from "../command-palette/CommandPalette";
+import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode, triggerFeishuCollect, createTask, getEvents, markEventProcessed } from "@/lib/tauri";
+import { validateState } from "@/hooks/useStatePersistence";
+import { toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeyboardShortcuts, SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
+import { useStatePersistence } from "@/hooks/useStatePersistence";
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   dashboard: DashboardView,
@@ -22,17 +26,33 @@ const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   audit: AuditView,
 };
 
-// 从 URL 读取初始视图（模块级，避免每次渲染重新创建）
+// 从 URL 或 localStorage 读取初始视图（模块级，避免每次渲染重新创建）
 function getInitialView(): ViewId {
+  // 优先从 URL 读取
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") as ViewId;
   if (view && view in VIEW_COMPONENTS) {
     return view;
   }
+
+  // 其次从 localStorage 读取（带 schema 验证）
+  try {
+    const stored = localStorage.getItem("work-better-state");
+    if (stored) {
+      const validated = validateState(JSON.parse(stored));
+      if (validated.lastView in VIEW_COMPONENTS) {
+        return validated.lastView;
+      }
+    }
+  } catch {
+    // 损坏数据，静默回退
+  }
+
   return "dashboard";
 }
 
 export default function MainWindow() {
+  const { state: persistedState, updateState: updatePersistedState } = useStatePersistence();
   const [activeView, setActiveView] = useState<ViewId>(getInitialView);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [developerMode, setDeveloperMode] = useState(false);
@@ -85,11 +105,66 @@ export default function MainWindow() {
   // 切换视图时刷新开发者模式（从设置页返回时立即生效）
   const handleViewChange = useCallback((view: ViewId) => {
     setActiveView(view);
+    updatePersistedState("lastView", view);
     getDeveloperMode().then(setDeveloperMode).catch(() => {});
-  }, []);
+  }, [updatePersistedState]);
+
+  // 命令面板操作处理
+  const handleCommandAction = useCallback(async (action: string) => {
+    switch (action) {
+      case "new-task": {
+        const title = prompt("请输入任务标题");
+        if (title?.trim()) {
+          try {
+            await createTask(title.trim());
+            toast.success("任务已创建");
+          } catch (err) {
+            toast.error("创建任务失败");
+          }
+        }
+        break;
+      }
+      case "trigger-collect": {
+        try {
+          const count = await triggerFeishuCollect();
+          toast.success(`采集完成，获取 ${count} 条事件`);
+        } catch (err) {
+          toast.error("采集失败");
+        }
+        break;
+      }
+      case "mark-processed": {
+        try {
+          const events = await getEvents(50);
+          const unprocessed = events.filter((e) => !e.processed);
+          if (unprocessed.length === 0) {
+            toast.info("没有待处理的事件");
+            break;
+          }
+          const count = Math.min(unprocessed.length, 10);
+          await Promise.all(
+            unprocessed.slice(0, count).map((e) => markEventProcessed(e.id))
+          );
+          toast.success(`已标记 ${count} 条事件为已处理`);
+          refreshCount();
+        } catch (err) {
+          toast.error("标记事件失败");
+        }
+        break;
+      }
+      case "ai-generate-report": {
+        handleViewChange("reports");
+        toast.info("请在报告页面生成报告");
+        break;
+      }
+      default:
+        break;
+    }
+  }, [handleViewChange]);
 
   // T3.1 全局键盘快捷键
   useKeyboardShortcuts([
+    { ...SHORTCUTS.VIEW_DASHBOARD, handler: () => handleViewChange("dashboard") },
     { ...SHORTCUTS.VIEW_EVENTS, handler: () => handleViewChange("events") },
     { ...SHORTCUTS.VIEW_TASKS, handler: () => handleViewChange("tasks") },
     { ...SHORTCUTS.VIEW_TIMELINE, handler: () => handleViewChange("timeline") },
@@ -107,11 +182,14 @@ export default function MainWindow() {
           onViewChange={handleViewChange}
           unprocessedCount={unprocessedCount}
           developerMode={developerMode}
+          collapsed={persistedState.sidebarCollapsed}
+          onCollapsedChange={(collapsed) => updatePersistedState("sidebarCollapsed", collapsed)}
         />
         <main className="flex-1 overflow-auto">
           <ActiveComponent />
         </main>
       </div>
+      <CommandPalette onNavigate={handleViewChange} onAction={handleCommandAction} />
       <Toaster />
     </TooltipProvider>
   );
