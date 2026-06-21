@@ -2,34 +2,10 @@
 //!
 //! 提供任务的 CRUD、任务发现、确认/拒绝流程。
 
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
-use wb_processor::task::discovery::{PendingTask, TaskDiscovery};
+use tauri::State;
+use wb_processor::task::discovery::PendingTask;
 use wb_processor::task::model::{Task, TaskFilter, TaskPriority, TaskSource, TaskStatus};
-use wb_processor::task::TaskManager;
-use super::CommandError;
-
-/// 全局 TaskManager 实例
-static TASK_MANAGER: OnceLock<Mutex<TaskManager>> = OnceLock::new();
-
-/// 全局 TaskDiscovery 实例
-static TASK_DISCOVERY: OnceLock<Mutex<TaskDiscovery>> = OnceLock::new();
-
-/// 初始化任务管理器（在 Tauri setup 阶段调用）
-pub fn init_task_manager() {
-    let _ = TASK_MANAGER.set(Mutex::new(TaskManager::new()));
-    let _ = TASK_DISCOVERY.set(Mutex::new(TaskDiscovery::new()));
-}
-
-/// 获取全局 TaskManager
-pub(crate) fn get_task_manager() -> &'static Mutex<TaskManager> {
-    TASK_MANAGER.get().expect("TaskManager not initialized")
-}
-
-/// 获取全局 TaskDiscovery（供 collect 模块在采集后自动发现任务）
-pub(crate) fn get_task_discovery() -> &'static Mutex<TaskDiscovery> {
-    TASK_DISCOVERY.get().expect("TaskDiscovery not initialized")
-}
+use super::{AppState, CommandError};
 
 /// 任务 DTO（前端显示用）
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -88,15 +64,13 @@ impl From<&PendingTask> for PendingTaskDto {
 }
 
 /// 从文本中发现任务（AI 驱动）
-///
-/// 所有来源统一走 AI 模型，不按 source 分发到不同关键词模块。
-/// 返回新发现的待确认任务列表。
 #[tauri::command]
 pub async fn discover_tasks_from_text(
+    state: State<'_, AppState>,
     text: String,
     source: String,
 ) -> Result<Vec<PendingTaskDto>, CommandError> {
-    let mut discovery = get_task_discovery().lock().await;
+    let mut discovery = state.task_discovery.lock().await;
 
     let source_enum = match source.as_str() {
         "message" => wb_core::event::Source::FeishuMessage,
@@ -115,39 +89,33 @@ pub async fn discover_tasks_from_text(
 
 /// 获取所有待确认任务
 #[tauri::command]
-pub async fn get_pending_tasks() -> Result<Vec<PendingTaskDto>, CommandError> {
-    let discovery = get_task_discovery().lock().await;
+pub async fn get_pending_tasks(state: State<'_, AppState>) -> Result<Vec<PendingTaskDto>, CommandError> {
+    let discovery = state.task_discovery.lock().await;
     let pending = discovery.pending();
     Ok(pending.iter().map(|p| PendingTaskDto::from(*p)).collect())
 }
 
 /// 确认待确认任务（创建为正式任务）
 #[tauri::command]
-pub async fn confirm_pending_task(pending_id: String) -> Result<TaskDto, CommandError> {
-    // 先从 discovery 中确认
+pub async fn confirm_pending_task(state: State<'_, AppState>, pending_id: String) -> Result<TaskDto, CommandError> {
     let confirmed = {
-        let mut discovery = get_task_discovery().lock().await;
+        let mut discovery = state.task_discovery.lock().await;
         discovery.confirm(&pending_id)?
     };
 
-    // 创建正式任务（确认后直接设为 Open，用户已确认无需再 Pending）
-    let manager = get_task_manager().lock().await;
+    let manager = state.task_manager.lock().await;
     let task = manager
         .create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone())
-        .await
-        ?;
-    let task = manager
-        .transition(&task.id, TaskStatus::Open)
-        .await
-        ?;
+        .await?;
+    let task = manager.transition(&task.id, TaskStatus::Open).await?;
 
     Ok(TaskDto::from(&task))
 }
 
 /// 拒绝待确认任务
 #[tauri::command]
-pub async fn reject_pending_task(pending_id: String) -> Result<(), CommandError> {
-    let mut discovery = get_task_discovery().lock().await;
+pub async fn reject_pending_task(state: State<'_, AppState>, pending_id: String) -> Result<(), CommandError> {
+    let mut discovery = state.task_discovery.lock().await;
     discovery.reject(&pending_id)?;
     Ok(())
 }
@@ -155,10 +123,11 @@ pub async fn reject_pending_task(pending_id: String) -> Result<(), CommandError>
 /// 获取所有任务列表
 #[tauri::command]
 pub async fn list_tasks(
+    state: State<'_, AppState>,
     status: Option<String>,
     priority: Option<String>,
 ) -> Result<Vec<TaskDto>, CommandError> {
-    let manager = get_task_manager().lock().await;
+    let manager = state.task_manager.lock().await;
     let filter = TaskFilter {
         status: status.and_then(|s| match s.as_str() {
             "Pending" => Some(TaskStatus::Pending),
@@ -185,6 +154,7 @@ pub async fn list_tasks(
 /// 手动创建任务
 #[tauri::command]
 pub async fn create_task(
+    state: State<'_, AppState>,
     title: String,
     priority: Option<String>,
 ) -> Result<TaskDto, CommandError> {
@@ -196,18 +166,19 @@ pub async fn create_task(
         _ => TaskPriority::P2,
     };
 
-    let manager = get_task_manager().lock().await;
-    let task = manager
-        .create(&title, p, TaskSource::Manual)
-        .await
-        ?;
+    let manager = state.task_manager.lock().await;
+    let task = manager.create(&title, p, TaskSource::Manual).await?;
 
     Ok(TaskDto::from(&task))
 }
 
 /// 更新任务状态
 #[tauri::command]
-pub async fn update_task_status(task_id: String, new_status: String) -> Result<TaskDto, CommandError> {
+pub async fn update_task_status(
+    state: State<'_, AppState>,
+    task_id: String,
+    new_status: String,
+) -> Result<TaskDto, CommandError> {
     let status = match new_status.as_str() {
         "Pending" => TaskStatus::Pending,
         "Open" => TaskStatus::Open,
@@ -217,11 +188,8 @@ pub async fn update_task_status(task_id: String, new_status: String) -> Result<T
         _ => return Err(CommandError::BadRequest(format!("无效的状态: {}", new_status))),
     };
 
-    let manager = get_task_manager().lock().await;
-    let task = manager
-        .transition(&task_id, status)
-        .await
-        ?;
+    let manager = state.task_manager.lock().await;
+    let task = manager.transition(&task_id, status).await?;
 
     Ok(TaskDto::from(&task))
 }

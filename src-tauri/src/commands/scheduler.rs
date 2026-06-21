@@ -1,17 +1,7 @@
 //! 调度器管理 Tauri 命令
 
-use std::sync::OnceLock;
-use wb_scheduler::scheduler::Scheduler;
-
-/// 全局 Scheduler 实例
-static SCHEDULER: OnceLock<Scheduler> = OnceLock::new();
-
-/// 获取全局 Scheduler 实例。
-///
-/// 首次调用时自动初始化。
-pub fn get_scheduler() -> &'static Scheduler {
-    SCHEDULER.get_or_init(Scheduler::new)
-}
+use tauri::State;
+use super::AppState;
 
 /// 已调度任务信息（序列化返回给前端）
 #[derive(serde::Serialize)]
@@ -25,8 +15,8 @@ pub struct TaskInfo {
 
 /// 列出所有已注册的定时任务
 #[tauri::command]
-pub async fn list_scheduled_tasks() -> Result<Vec<TaskInfo>, String> {
-    let scheduler = get_scheduler();
+pub async fn list_scheduled_tasks(state: State<'_, AppState>) -> Result<Vec<TaskInfo>, String> {
+    let scheduler = &state.scheduler;
     let ids = scheduler.list_tasks().await;
 
     let mut tasks = Vec::with_capacity(ids.len());
@@ -47,23 +37,20 @@ pub async fn list_scheduled_tasks() -> Result<Vec<TaskInfo>, String> {
 
 /// 暂停调度器
 #[tauri::command]
-pub async fn pause_scheduler() -> Result<(), String> {
-    let scheduler = get_scheduler();
-    scheduler.pause_all().await;
+pub async fn pause_scheduler(state: State<'_, AppState>) -> Result<(), String> {
+    state.scheduler.pause_all().await;
     Ok(())
 }
 
 /// 恢复调度器
 #[tauri::command]
-pub async fn resume_scheduler() -> Result<(), String> {
-    let scheduler = get_scheduler();
-    scheduler.resume_all().await;
+pub async fn resume_scheduler(state: State<'_, AppState>) -> Result<(), String> {
+    state.scheduler.resume_all().await;
     Ok(())
 }
 
 /// 查询调度器是否处于暂停状态
 #[tauri::command]
-pub async fn is_scheduler_paused() -> Result<bool, String> {
-    let scheduler = get_scheduler();
-    Ok(scheduler.is_paused().await)
+pub async fn is_scheduler_paused(state: State<'_, AppState>) -> Result<bool, String> {
+    Ok(state.scheduler.is_paused().await)
 }

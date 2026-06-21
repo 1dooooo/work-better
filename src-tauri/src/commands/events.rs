@@ -1,14 +1,13 @@
 //! 事件相关 Tauri 命令
 //!
 //! 持久化模型：使用文件系统上的 SQLite 数据库（`{app_data_dir}/work-better.db`）。
-//! 通过 `init_event_log` 在 Tauri setup 阶段显式初始化，之后所有命令
-//! 通过 `get_event_log()` 获取全局实例。
+//! 通过 AppState 在 Tauri setup 阶段显式初始化，之后所有命令
+//! 通过 `State<'_, AppState>` 获取依赖。
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use tauri::State;
 use wb_core::event::{Event, EventFilter, EventLog};
-use wb_storage::{ProcessingAuditInsert, SqliteEventLog};
+use wb_storage::ProcessingAuditInsert;
 use serde::{Deserialize, Serialize};
 use wb_ai::{
     adapter::ModelAdapter,
@@ -18,6 +17,8 @@ use wb_ai::{
     task_runner::{ModelSize, TaskRunner},
     OpenAIAdapter, AnthropicAdapter,
 };
+
+use super::AppState;
 
 /// 处理结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,37 +49,10 @@ pub struct PersistenceStatus {
     pub sqlite: bool,
 }
 
-/// 全局 SqliteEventLog 实例（文件持久化）
-static EVENT_LOG: OnceLock<Mutex<SqliteEventLog>> = OnceLock::new();
-
-/// 在 Tauri setup 阶段初始化 EventLog，使用文件数据库持久化。
-///
-/// 必须在任何 Tauri 命令调用之前执行。
-pub fn init_event_log(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let path_str = super::db::resolve_db_path(app)?;
-    eprintln!("[events] DB path: {}", path_str);
-
-    let log = SqliteEventLog::new(&path_str)
-        .map_err(|e| format!("Failed to initialize EventLog from file: {}", e))?;
-
-    if EVENT_LOG.set(Mutex::new(log)).is_err() {
-        return Err("EventLog already initialized".into());
-    }
-
-    Ok(())
-}
-
-/// 获取全局 EventLog 实例的引用。
-///
-/// 必须在 `init_event_log` 调用之后使用，否则会 panic。
-pub fn get_event_log() -> &'static Mutex<SqliteEventLog> {
-    EVENT_LOG.get().expect("EventLog not initialized — call init_event_log first")
-}
-
 /// 获取事件列表
 #[tauri::command]
-pub async fn get_events(limit: Option<usize>) -> Result<Vec<Event>, String> {
-    let log = get_event_log().lock().await;
+pub async fn get_events(state: State<'_, AppState>, limit: Option<usize>) -> Result<Vec<Event>, String> {
+    let log = state.event_log.lock().await;
     let filter = EventFilter {
         limit,
         ..Default::default()
@@ -88,16 +62,16 @@ pub async fn get_events(limit: Option<usize>) -> Result<Vec<Event>, String> {
 
 /// 获取未处理事件数量
 #[tauri::command]
-pub async fn get_unprocessed_count() -> Result<usize, String> {
-    let log = get_event_log().lock().await;
+pub async fn get_unprocessed_count(state: State<'_, AppState>) -> Result<usize, String> {
+    let log = state.event_log.lock().await;
     let events = log.get_unprocessed(None).await.map_err(|e| e.to_string())?;
     Ok(events.len())
 }
 
 /// 标记事件已处理
 #[tauri::command]
-pub async fn mark_event_processed(event_id: String) -> Result<(), String> {
-    let log = get_event_log().lock().await;
+pub async fn mark_event_processed(state: State<'_, AppState>, event_id: String) -> Result<(), String> {
+    let log = state.event_log.lock().await;
     log.mark_processed(&event_id)
         .await
         .map_err(|e| e.to_string())
@@ -108,8 +82,8 @@ pub async fn mark_event_processed(event_id: String) -> Result<(), String> {
 /// 委托给 `process_single_event`，使用真实 AI 模型进行分类和提取，
 /// 包含任务发现、真实 token 统计和审计日志写入。
 #[tauri::command]
-pub async fn process_event(event_id: String) -> Result<ProcessResult, String> {
-    process_single_event(&event_id).await
+pub async fn process_event(state: State<'_, AppState>, event_id: String) -> Result<ProcessResult, String> {
+    process_single_event(&state, &event_id).await
 }
 
 /// 批量处理结果
@@ -141,8 +115,8 @@ pub struct BatchProcessDetail {
 /// 遍历所有未处理事件，逐个调用处理逻辑。
 /// 用于开发者模式下的手动"主动整理"功能。
 #[tauri::command]
-pub async fn trigger_batch_process() -> Result<BatchProcessResult, String> {
-    let log = get_event_log().lock().await;
+pub async fn trigger_batch_process(state: State<'_, AppState>) -> Result<BatchProcessResult, String> {
+    let log = state.event_log.lock().await;
     let unprocessed = log.get_unprocessed(None).await.map_err(|e| e.to_string())?;
     drop(log);
 
@@ -155,7 +129,7 @@ pub async fn trigger_batch_process() -> Result<BatchProcessResult, String> {
     for event in unprocessed {
         let event_id = event.id.clone();
 
-        match process_single_event(&event_id).await {
+        match process_single_event(&state, &event_id).await {
             Ok(result) => {
                 success += 1;
                 details.push(BatchProcessDetail {
@@ -245,9 +219,9 @@ pub fn build_task_runner_from_config() -> Result<Option<TaskRunner>, String> {
 /// 处理单个事件（内部实现，供 batch 和单次调用共用）
 ///
 /// 优先使用真实大模型（classify + extract），如果 API Key 未配置则降级为关键词匹配。
-async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
+async fn process_single_event(state: &AppState, event_id: &str) -> Result<ProcessResult, String> {
     let start_time = std::time::Instant::now();
-    let log = get_event_log().lock().await;
+    let log = state.event_log.lock().await;
 
     let event = log
         .get(event_id)
@@ -272,8 +246,7 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
         _ => String::new(),
     };
 
-    let discovery = super::tasks::get_task_discovery();
-    let mut disc = discovery.lock().await;
+    let mut disc = state.task_discovery.lock().await;
 
     let (category, confidence, processing_path, model_used, token_input, token_output, step_output) =
         if let Some(mut runner) = runner_opt {
@@ -348,7 +321,7 @@ async fn process_single_event(event_id: &str) -> Result<ProcessResult, String> {
     let trace_id = uuid::Uuid::new_v4().to_string();
     let _token_total = token_input + token_output;
     let cost_estimate = estimate_cost(token_input, token_output, &model_used);
-    if let Some(audit_store) = super::audit::get_audit_log() {
+    if let Some(ref audit_store) = state.audit_log {
         let audit_conn = audit_store.lock().await;
         let _ = audit_conn.insert_processing_audit(&ProcessingAuditInsert {
             event_id: event_id.to_string(),
@@ -395,4 +368,3 @@ fn estimate_cost(token_input: u32, token_output: u32, model: &str) -> f64 {
     };
     token_input as f64 * input_price + token_output as f64 * output_price
 }
-

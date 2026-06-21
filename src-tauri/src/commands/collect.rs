@@ -1,33 +1,26 @@
 //! 采集相关 Tauri 命令
 
 use serde_json::json;
-use tauri::Emitter;
+use tauri::{Emitter, State};
 use wb_core::event::{Confidence, Event, EventLog, EventType, Source};
 use wb_collector::feishu::messages::FeishuMessageCollector;
 
-use super::collectors::get_collector_manager;
-use super::events::{build_task_runner_from_config, get_event_log};
+use super::events::build_task_runner_from_config;
 use super::settings::load_config_for_collect;
+use super::AppState;
 
 /// 飞书采集器 ID
 const FEISHU_COLLECTOR_ID: &str = "feishu";
 
 /// 触发飞书消息采集
-///
-/// 通过 CollectorManager 调用，支持 enable/disable 状态检查。
-/// 采集成功后通过 Tauri 事件系统通知前端。
-///
-/// # 参数
-/// - `app`: Tauri AppHandle，用于发射事件
-/// - `chat_id`: 可选的飞书会话 ID；若不传则从配置读取
-/// - `limit`: 最大采集数量
 #[tauri::command]
 pub async fn trigger_feishu_collect(
+    state: State<'_, AppState>,
     app: tauri::AppHandle,
     chat_id: Option<String>,
     limit: Option<u32>,
 ) -> Result<usize, String> {
-    let manager = get_collector_manager();
+    let manager = &state.collector_manager;
 
     // 检查采集器是否启用
     if !manager.is_enabled(FEISHU_COLLECTOR_ID).await {
@@ -43,16 +36,13 @@ pub async fn trigger_feishu_collect(
     };
 
     let events = if let Some(ref cid) = explicit_chat_id {
-        // 用户显式传入 chat_id，直接调用采集（绕过 Manager 中注册的默认 chat_id）
         FeishuMessageCollector::collect(cid, limit)
             .map_err(|e| format!("飞书采集失败: {e}"))?
     } else {
-        // 未传入 chat_id，尝试通过 Manager 采集（使用注册时的配置）
         match manager.collect_one(FEISHU_COLLECTOR_ID).await {
             Some(Ok(events)) => events,
             Some(Err(e)) => return Err(format!("飞书采集失败: {e}")),
             None => {
-                // 采集器未注册到 Manager，从配置读取 chat_id
                 let config = load_config_for_collect()?;
                 let cid = config
                     .collectors
@@ -70,17 +60,14 @@ pub async fn trigger_feishu_collect(
 
     let count = events.len();
 
-    let log = get_event_log().lock().await;
+    let log = state.event_log.lock().await;
     for event in &events {
         log.append(event).await.map_err(|e| e.to_string())?;
     }
     drop(log);
 
-    // 任务发现由 Pipeline 的 Step 4.5 处理（通过 ModelRouter 路由到小/大模型），
-    // 采集器只负责收集事件并存入 EventLog，不再重复调用 AI。
     eprintln!("[collect] 飞书采集完成: {} 条事件", count);
 
-    // 通知前端采集完成
     app.emit("feishu:collect-complete", count)
         .map_err(|e| format!("发射事件失败: {e}"))?;
 
@@ -88,11 +75,12 @@ pub async fn trigger_feishu_collect(
 }
 
 /// 手动捕获事件（AI 驱动任务发现）
-///
-/// 从数据库查询最近的 UserCapture 事件作为上下文，
-/// 让 AI 能判断新消息是"新任务"还是"已有任务的状态更新"。
 #[tauri::command]
-pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Result<Event, String> {
+pub async fn trigger_manual_capture(
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+    text: String,
+) -> Result<Event, String> {
     let event = Event::new(
         Source::UserCapture,
         Confidence::High,
@@ -101,7 +89,7 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
         json!({"text": text}).to_string(),
     );
 
-    let log = get_event_log().lock().await;
+    let log = state.event_log.lock().await;
     log.append(&event).await.map_err(|e| e.to_string())?;
 
     // 从数据库查询最近的 UserCapture 事件作为上下文
@@ -116,7 +104,7 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
     // 构建任务上下文：从最近事件中提取文本
     let existing_tasks: Vec<wb_ai::TaskContext> = recent_events
         .iter()
-        .filter(|e| e.id != event.id)  // 排除当前事件
+        .filter(|e| e.id != event.id)
         .enumerate()
         .map(|(i, e)| {
             let text = match &e.content {
@@ -140,7 +128,7 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
         existing_tasks.len()
     );
 
-    // AI 驱动：通过 TaskRunner.run_extract() 调用 AI，自动路由到小/大模型
+    // AI 驱动：通过 TaskRunner.run_extract() 调用 AI
     let mut runner = build_task_runner_from_config()
         .map_err(|e| format!("AI 模型配置错误: {}", e))?
         .ok_or("AI 模型未配置。请在设置中配置 API Key。")?;
@@ -163,25 +151,18 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
     };
 
     if extraction.is_status_update {
-        // AI 判断为状态更新 → 确认 pending 任务并标记为 Done
         eprintln!(
             "[capture] status_update: text='{}', related_task_id={:?}",
             text, extraction.related_task_id
         );
 
-        // 在 TaskDiscovery 的 pending 列表中查找匹配的任务
-        let discovery = super::tasks::get_task_discovery();
-        let mut disc = discovery.lock().await;
+        let mut disc = state.task_discovery.lock().await;
         let pending_tasks: Vec<_> = disc.pending().iter().map(|p| (p.id.clone(), p.title.clone())).collect();
 
-        // 找到与 related_task_id 匹配的 pending 任务
-        // related_task_id 可能是 UUID（pending 任务 id）或 "recent-N"（existing_tasks 索引）
         let related_title = extraction.related_task_id.as_ref()
             .and_then(|id| {
-                // 首先尝试直接匹配 pending 任务 id（UUID 格式）
                 pending_tasks.iter().find(|(pid, _)| pid == id).map(|(_, title)| title.clone())
                     .or_else(|| {
-                        // 如果直接匹配失败，尝试解析 "recent-N" 格式，从 existing_tasks 中获取标题
                         id.strip_prefix("recent-")
                             .and_then(|idx_str| idx_str.parse::<usize>().ok())
                             .and_then(|idx| existing_tasks.get(idx))
@@ -192,11 +173,10 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
         if let Some(ref title) = related_title {
             eprintln!("[capture] found related task title: '{}'", title);
 
-            // 用标题在 pending 列表中查找
             if let Some((pid, _)) = pending_tasks.iter().find(|(_, t)| t == title) {
                 if let Ok(confirmed) = disc.confirm(pid) {
                     drop(disc);
-                    let manager = super::tasks::get_task_manager().lock().await;
+                    let manager = state.task_manager.lock().await;
                     if let Ok(task) = manager.create(&confirmed.title, confirmed.priority.clone(), confirmed.source.clone()).await {
                         if let Err(e) = manager.transition(&task.id, wb_processor::task::model::TaskStatus::Open).await {
                             eprintln!("[capture] WARN: transition to Open failed: {}", e);
@@ -212,9 +192,8 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
                     }
                 }
             } else {
-                // pending 中没找到，用标题在 TaskManager 中查找
                 drop(disc);
-                let manager = super::tasks::get_task_manager().lock().await;
+                let manager = state.task_manager.lock().await;
                 let all_tasks = manager.list(wb_processor::task::model::TaskFilter::default()).await.unwrap_or_default();
                 if let Some(task) = all_tasks.iter().find(|t| {
                     t.status != wb_processor::task::model::TaskStatus::Done &&
@@ -230,14 +209,11 @@ pub async fn trigger_manual_capture(app: tauri::AppHandle, text: String) -> Resu
                 }
             }
         } else {
-            // 无法确定关联任务
             drop(disc);
             eprintln!("[capture] no matching task found for status update");
         }
     } else if !extraction.title.is_empty() && extraction.confidence >= 0.5 {
-        // AI 判断为新任务
-        let discovery = super::tasks::get_task_discovery();
-        let mut disc = discovery.lock().await;
+        let mut disc = state.task_discovery.lock().await;
         let pending = wb_processor::task::discovery::PendingTask::new(
             &extraction.title,
             extraction.summary.as_str().into(),

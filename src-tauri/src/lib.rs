@@ -177,10 +177,23 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            commands::events::init_event_log(app.handle())
+            // 初始化 SQLite EventLog
+            let db_path = commands::db::resolve_db_path(app.handle())
                 .map_err(|e| e.to_string())?;
-            commands::audit::init_audit_log(app.handle())
-                .map_err(|e| e.to_string())?;
+            eprintln!("[events] DB path: {}", db_path);
+            let event_log = wb_storage::SqliteEventLog::new(&db_path)
+                .map_err(|e| format!("Failed to initialize EventLog: {}", e))?;
+
+            // 初始化 AuditLogStore
+            let audit_conn = rusqlite::Connection::open(&db_path)
+                .map_err(|e| format!("Failed to open database for audit: {}", e))?;
+            wb_storage::sqlite::schema::initialize_schema(&audit_conn)
+                .map_err(|e| format!("Failed to initialize audit schema: {}", e))?;
+            let audit_log = wb_storage::AuditLogStore::new(audit_conn);
+
+            // 构建 AppState 并注入
+            let state = commands::AppState::new(event_log, Some(audit_log));
+            app.manage(state);
 
             // 初始化 Obsidian vault 目录结构
             let vault_config = commands::settings::load_config_for_collect()
@@ -202,23 +215,21 @@ pub fn run() {
                 }
             }
 
-            // 初始化任务管理器
-            commands::tasks::init_task_manager();
-
             // 异步注册内置采集器并启动调度器
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                let state = handle.state::<commands::AppState>();
+
                 // 注册采集器
-                commands::collectors::register_builtin_collectors().await;
+                commands::collectors::register_builtin_collectors(&state).await;
 
-                // 获取采集器管理器
-                let manager = commands::collectors::get_collector_manager();
-
-                // 创建调度器并注册采集任务
-                let scheduler = commands::scheduler::get_scheduler();
+                // 获取采集器管理器和调度器
+                let manager = &state.collector_manager;
+                let scheduler = &state.scheduler;
 
                 // 注册执行日志回调：任务完成后写入 execution_logs 表
-                scheduler.set_on_complete(Arc::new(|result| {
+                let cb_handle = handle.clone();
+                scheduler.set_on_complete(Arc::new(move |result| {
                     let status = match result.status {
                         wb_scheduler::task::TaskStatus::Success => "Success",
                         wb_scheduler::task::TaskStatus::Failed => "Failed",
@@ -235,15 +246,16 @@ pub fn run() {
                         output: Some(result.summary.clone()),
                         error: result.error.clone(),
                     };
-                    if let Some(store) = commands::audit::get_audit_log() {
-                        // 在新 tokio task 中执行异步写入，避免阻塞调度器
-                        tokio::spawn(async move {
+                    // 在新 tokio task 中执行异步写入，避免阻塞调度器
+                    let audit_log = cb_handle.state::<commands::AppState>().audit_log.clone();
+                    tokio::spawn(async move {
+                        if let Some(store) = audit_log {
                             let guard = store.lock().await;
                             if let Err(e) = guard.insert_execution_log(&record) {
                                 eprintln!("[audit] Failed to write execution log: {}", e);
                             }
-                        });
-                    }
+                        }
+                    });
                 })).await;
 
                 // 按照产品设计注册采集任务
@@ -294,6 +306,8 @@ pub fn run() {
             // 注册全局快捷键（从用户配置读取，默认 Cmd+Shift+Space + Cmd+Shift+S）
             let config = commands::settings::load_config_for_collect().unwrap_or_default();
             register_shortcuts(app.handle(), &config).map_err(|e| e.to_string())?;
+
+            eprintln!("[app] AppState initialized");
 
             Ok(())
         })

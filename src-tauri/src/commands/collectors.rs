@@ -1,24 +1,15 @@
 //! 采集器管理 Tauri 命令
 
-use std::sync::{Arc, OnceLock};
-use wb_collector::manager::CollectorManager;
+use std::sync::Arc;
+use tauri::State;
+use super::AppState;
 
-/// 全局 CollectorManager 实例
-static COLLECTOR_MANAGER: OnceLock<Arc<CollectorManager>> = OnceLock::new();
-
-/// 获取全局 CollectorManager 实例。
-///
-/// 首次调用时自动初始化。
-pub fn get_collector_manager() -> &'static Arc<CollectorManager> {
-    COLLECTOR_MANAGER.get_or_init(|| Arc::new(CollectorManager::new()))
-}
-
-/// 注册内置采集器到全局 CollectorManager。
+/// 注册内置采集器到 AppState 中的 CollectorManager。
 ///
 /// 应在 Tauri setup 阶段调用，确保采集器在任何命令调用之前就绪。
 /// 从配置文件读取启用状态，确保与前端显示一致。
-pub async fn register_builtin_collectors() {
-    let manager = get_collector_manager();
+pub async fn register_builtin_collectors(state: &AppState) {
+    let manager = &state.collector_manager;
 
     // 从配置读取 chat_id 和启用状态
     let config = super::settings::load_config_for_collect().ok();
@@ -42,30 +33,26 @@ pub async fn register_builtin_collectors() {
         .unwrap_or(true);
 
     // ===== 飞书采集器 =====
-    // 已实现 Collector trait 的模块直接使用，未实现的使用 wrapper
     let feishu_collectors: Vec<(String, std::sync::Arc<dyn wb_collector::traits::Collector>)> = vec![
-        // 消息采集器（wrapper）
-        ("feishu".to_string(), std::sync::Arc::new(wb_collector::feishu::collector::FeishuCollector::new(chat_id.clone(), 50))),
-        // 以下模块已实现 Collector trait，直接使用
-        ("feishu.bitable".to_string(), std::sync::Arc::new(wb_collector::feishu::bitable::FeishuBitableCollector)),
-        ("feishu.meetings".to_string(), std::sync::Arc::new(wb_collector::feishu::meetings::FeishuMeetingCollector)),
-        ("feishu.emails".to_string(), std::sync::Arc::new(wb_collector::feishu::emails::FeishuEmailCollector)),
-        ("feishu.minutes".to_string(), std::sync::Arc::new(wb_collector::feishu::minutes::FeishuMinutesCollector)),
-        ("feishu.okr".to_string(), std::sync::Arc::new(wb_collector::feishu::okr::FeishuOkrCollector)),
-        ("feishu.wiki".to_string(), std::sync::Arc::new(wb_collector::feishu::wiki::FeishuWikiCollector)),
-        ("feishu.spreadsheets".to_string(), std::sync::Arc::new(wb_collector::feishu::spreadsheets::FeishuSpreadsheetCollector)),
-        // 以下模块需要 wrapper
-        ("feishu.docs".to_string(), std::sync::Arc::new(wb_collector::feishu::wrappers::FeishuDocsCollectorWrapper::new(50))),
-        ("feishu.projects".to_string(), std::sync::Arc::new(wb_collector::feishu::wrappers::FeishuProjectsCollectorWrapper::new(50))),
-        ("feishu.calendar".to_string(), std::sync::Arc::new(wb_collector::feishu::wrappers::FeishuCalendarCollectorWrapper::new(50))),
-        ("feishu.approvals".to_string(), std::sync::Arc::new(wb_collector::feishu::wrappers::FeishuApprovalsCollectorWrapper::new(50))),
+        ("feishu".to_string(), Arc::new(wb_collector::feishu::collector::FeishuCollector::new(chat_id.clone(), 50))),
+        ("feishu.bitable".to_string(), Arc::new(wb_collector::feishu::bitable::FeishuBitableCollector)),
+        ("feishu.meetings".to_string(), Arc::new(wb_collector::feishu::meetings::FeishuMeetingCollector)),
+        ("feishu.emails".to_string(), Arc::new(wb_collector::feishu::emails::FeishuEmailCollector)),
+        ("feishu.minutes".to_string(), Arc::new(wb_collector::feishu::minutes::FeishuMinutesCollector)),
+        ("feishu.okr".to_string(), Arc::new(wb_collector::feishu::okr::FeishuOkrCollector)),
+        ("feishu.wiki".to_string(), Arc::new(wb_collector::feishu::wiki::FeishuWikiCollector)),
+        ("feishu.spreadsheets".to_string(), Arc::new(wb_collector::feishu::spreadsheets::FeishuSpreadsheetCollector)),
+        ("feishu.docs".to_string(), Arc::new(wb_collector::feishu::wrappers::FeishuDocsCollectorWrapper::new(50))),
+        ("feishu.projects".to_string(), Arc::new(wb_collector::feishu::wrappers::FeishuProjectsCollectorWrapper::new(50))),
+        ("feishu.calendar".to_string(), Arc::new(wb_collector::feishu::wrappers::FeishuCalendarCollectorWrapper::new(50))),
+        ("feishu.approvals".to_string(), Arc::new(wb_collector::feishu::wrappers::FeishuApprovalsCollectorWrapper::new(50))),
     ];
 
     for (id, collector) in feishu_collectors {
         let enabled = config
             .as_ref()
             .and_then(|c| c.collectors.enabled.get(&id).copied())
-            .unwrap_or(true); // 默认启用
+            .unwrap_or(true);
         manager.register(collector).await;
         if !enabled {
             manager.disable(&id).await;
@@ -74,15 +61,15 @@ pub async fn register_builtin_collectors() {
 
     // ===== 系统采集器 =====
     let system_collectors: Vec<(String, std::sync::Arc<dyn wb_collector::traits::Collector>)> = vec![
-        ("system.app_switch".to_string(), std::sync::Arc::new(wb_collector::system::app_switch::AppSwitchCollector::new())),
-        ("system.browser_history".to_string(), std::sync::Arc::new(wb_collector::system::browser::BrowserHistoryCollector::new())),
+        ("system.app_switch".to_string(), Arc::new(wb_collector::system::app_switch::AppSwitchCollector::new())),
+        ("system.browser_history".to_string(), Arc::new(wb_collector::system::browser::BrowserHistoryCollector::new())),
     ];
 
     for (id, collector) in system_collectors {
         let enabled = config
             .as_ref()
             .and_then(|c| c.collectors.enabled.get(&id).copied())
-            .unwrap_or(true); // 默认启用
+            .unwrap_or(true);
         manager.register(collector).await;
         if !enabled {
             manager.disable(&id).await;
@@ -111,38 +98,28 @@ pub struct CollectorHealthInfo {
 
 /// 列出所有已注册的采集器 ID
 #[tauri::command]
-pub async fn list_collectors() -> Result<Vec<String>, String> {
-    let manager = get_collector_manager();
-    Ok(manager.list().await)
+pub async fn list_collectors(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    Ok(state.collector_manager.list().await)
 }
 
 /// 验证采集器 ID 是否有效
-///
-/// 检查 ID 是否为已注册的采集器，防止无效或恶意输入。
 fn validate_collector_id(id: &str) -> Result<(), String> {
     let trimmed = id.trim();
     if trimmed.is_empty() {
         return Err("采集器 ID 不能为空".to_string());
     }
-    // 允许的字符：字母、数字、下划线、点
-    if !trimmed
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
-    {
+    if !trimmed.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.') {
         return Err(format!("采集器 ID 包含非法字符: '{}'", id));
     }
     Ok(())
 }
 
 /// 验证采集器分组 ID 是否有效
-///
-/// 只允许已知的分组：feishu、system。
 fn validate_group_id(group_id: &str) -> Result<(), String> {
     let trimmed = group_id.trim();
     if trimmed.is_empty() {
         return Err("分组 ID 不能为空".to_string());
     }
-    // 只允许已知分组
     if !["feishu", "system"].contains(&trimmed) {
         return Err(format!("未知的分组 ID: '{}'", group_id));
     }
@@ -150,48 +127,31 @@ fn validate_group_id(group_id: &str) -> Result<(), String> {
 }
 
 /// 启用指定采集器
-///
-/// 同时更新内存中的 CollectorManager 和配置文件，确保状态一致。
 #[tauri::command]
-pub async fn enable_collector(id: String) -> Result<(), String> {
+pub async fn enable_collector(state: State<'_, AppState>, id: String) -> Result<(), String> {
     validate_collector_id(&id)?;
-
-    // 1. 更新内存状态
-    let manager = get_collector_manager();
-    manager.enable(&id).await;
-
-    // 2. 持久化到配置文件
+    state.collector_manager.enable(&id).await;
     let mut config = super::settings::load_config()?;
     config.collectors.enabled.insert(id, true);
     super::settings::save_config_pub(&config)?;
-
     Ok(())
 }
 
 /// 禁用指定采集器
-///
-/// 同时更新内存中的 CollectorManager 和配置文件，确保状态一致。
 #[tauri::command]
-pub async fn disable_collector(id: String) -> Result<(), String> {
+pub async fn disable_collector(state: State<'_, AppState>, id: String) -> Result<(), String> {
     validate_collector_id(&id)?;
-
-    // 1. 更新内存状态
-    let manager = get_collector_manager();
-    manager.disable(&id).await;
-
-    // 2. 持久化到配置文件
+    state.collector_manager.disable(&id).await;
     let mut config = super::settings::load_config()?;
     config.collectors.enabled.insert(id, false);
     super::settings::save_config_pub(&config)?;
-
     Ok(())
 }
 
 /// 查询指定采集器的健康状态
 #[tauri::command]
-pub async fn check_collector_health(id: String) -> Result<CollectorHealthInfo, String> {
-    let manager = get_collector_manager();
-    let status = manager
+pub async fn check_collector_health(state: State<'_, AppState>, id: String) -> Result<CollectorHealthInfo, String> {
+    let status = state.collector_manager
         .health_check(&id)
         .await
         .ok_or_else(|| format!("Collector '{}' not found", id))?;
@@ -200,8 +160,7 @@ pub async fn check_collector_health(id: String) -> Result<CollectorHealthInfo, S
         wb_collector::traits::HealthLevel::Healthy => "healthy",
         wb_collector::traits::HealthLevel::Degraded => "degraded",
         wb_collector::traits::HealthLevel::Unhealthy => "unhealthy",
-    }
-    .to_string();
+    }.to_string();
 
     Ok(CollectorHealthInfo {
         level,
@@ -233,13 +192,10 @@ pub struct CollectorGroupDto {
 }
 
 /// 获取所有采集器的详细状态
-///
-/// 包含启用状态、健康状态、最近执行结果等信息。
-/// 用于前端展示采集器的实时工作状态。
 #[tauri::command]
-pub async fn get_collector_statuses() -> Result<Vec<CollectorDetailedStatus>, String> {
-    let manager = get_collector_manager();
-    let scheduler = super::scheduler::get_scheduler();
+pub async fn get_collector_statuses(state: State<'_, AppState>) -> Result<Vec<CollectorDetailedStatus>, String> {
+    let manager = &state.collector_manager;
+    let scheduler = &state.scheduler;
 
     let collector_ids = manager.list().await;
     let mut statuses = Vec::with_capacity(collector_ids.len());
@@ -260,7 +216,6 @@ pub async fn get_collector_statuses() -> Result<Vec<CollectorDetailedStatus>, St
             None => ("unknown".to_string(), None),
         };
 
-        // 从调度器获取最近执行结果
         let task_info = scheduler.get_task_info(id).await;
         let last_result = scheduler.get_last_result(id).await;
 
@@ -280,7 +235,6 @@ pub async fn get_collector_statuses() -> Result<Vec<CollectorDetailedStatus>, St
             (None, None, None)
         };
 
-        // 获取采集器名称
         let name = match id.as_str() {
             "feishu" => "飞书消息",
             "system.app_switch" => "前台应用",
@@ -305,47 +259,31 @@ pub async fn get_collector_statuses() -> Result<Vec<CollectorDetailedStatus>, St
 
 /// 启用采集器分组
 #[tauri::command]
-pub async fn enable_collector_group(group_id: String) -> Result<(), String> {
+pub async fn enable_collector_group(state: State<'_, AppState>, group_id: String) -> Result<(), String> {
     validate_group_id(&group_id)?;
-
-    let manager = get_collector_manager();
-    manager.enable_group(&group_id).await;
-
-    // 持久化到配置文件
+    state.collector_manager.enable_group(&group_id).await;
     let mut config = super::settings::load_config()?;
-    config
-        .collectors
-        .group_enabled
-        .insert(group_id, true);
+    config.collectors.group_enabled.insert(group_id, true);
     super::settings::save_config_pub(&config)?;
-
     Ok(())
 }
 
 /// 禁用采集器分组
 #[tauri::command]
-pub async fn disable_collector_group(group_id: String) -> Result<(), String> {
+pub async fn disable_collector_group(state: State<'_, AppState>, group_id: String) -> Result<(), String> {
     validate_group_id(&group_id)?;
-
-    let manager = get_collector_manager();
-    manager.disable_group(&group_id).await;
-
-    // 持久化到配置文件
+    state.collector_manager.disable_group(&group_id).await;
     let mut config = super::settings::load_config()?;
-    config
-        .collectors
-        .group_enabled
-        .insert(group_id, false);
+    config.collectors.group_enabled.insert(group_id, false);
     super::settings::save_config_pub(&config)?;
-
     Ok(())
 }
 
 /// 获取采集器分组信息
 #[tauri::command]
-pub async fn get_collector_groups() -> Result<Vec<CollectorGroupDto>, String> {
-    let manager = get_collector_manager();
-    let scheduler = super::scheduler::get_scheduler();
+pub async fn get_collector_groups(state: State<'_, AppState>) -> Result<Vec<CollectorGroupDto>, String> {
+    let manager = &state.collector_manager;
+    let scheduler = &state.scheduler;
 
     let groups = manager.get_groups().await;
     let mut result = Vec::with_capacity(groups.len());
@@ -388,7 +326,6 @@ pub async fn get_collector_groups() -> Result<Vec<CollectorGroupDto>, String> {
                 (None, None, None)
             };
 
-            // 获取采集器名称
             let name = match id.as_str() {
                 "feishu" => "消息",
                 "feishu.docs" => "文档",
@@ -433,8 +370,6 @@ pub async fn get_collector_groups() -> Result<Vec<CollectorGroupDto>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ===== validate_collector_id 测试 =====
 
     #[test]
     fn test_validate_collector_id_empty_string() {
@@ -486,8 +421,6 @@ mod tests {
     fn test_validate_collector_id_invalid_quote() {
         assert!(validate_collector_id("feishu\"").is_err());
     }
-
-    // ===== validate_group_id 测试 =====
 
     #[test]
     fn test_validate_group_id_empty_string() {
