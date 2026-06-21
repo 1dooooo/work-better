@@ -580,6 +580,38 @@ flow:
 # Quality evaluation (质量评估)
 # ----------------------------------------------------------
 # 5 个核心评估维度，确保输出质量。
+# ----------------------------------------------------------
+# Chaos testing framework (混沌测试框架)
+# ----------------------------------------------------------
+# 系统化测试韧性，随机故障注入。
+chaos_testing_framework:
+  description: >
+    混沌测试框架：系统化测试韧性，随机故障注入。
+  fault_types:
+    - name: agent_timeout
+      description: Agent 执行超时
+      probability: 0.1
+    - name: agent_output_error
+      description: Agent 输出格式错误
+      probability: 0.05
+    - name: artifact_corruption
+      description: Artifact 文件损坏
+      probability: 0.02
+    - name: schema_validation_failure
+      description: Schema 验证失败
+      probability: 0.03
+  testing_modes:
+    - name: manual
+      description: 手动触发
+    - name: scheduled
+      description: 定期触发
+    - name: on_release
+      description: 发布前触发
+  reporting:
+    - generate_report: true
+    - notify_user: true
+    - log_details: true
+
 quality_evaluation:
   description: >
     质量评估：5 个核心评估维度，确保输出质量。
