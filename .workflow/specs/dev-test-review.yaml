@@ -569,6 +569,38 @@ flow:
       goto: done
 
 # ----------------------------------------------------------
+# Circuit breaker (熔断器)
+# ----------------------------------------------------------
+# 当 Agent 持续失败时，停止重试，防止级联故障。
+circuit_breaker:
+  description: >
+    熔断器机制：当 Agent 持续失败时，停止重试，防止级联故障。
+  states:
+    - name: closed
+      description: 正常状态，允许重试
+    - name: open
+      description: 熔断状态，停止重试
+    - name: half_open
+      description: 半开状态，允许少量请求测试恢复
+  rules:
+    - agent: dev-agent
+      failure_threshold: 3
+      recovery_timeout: 5m
+    - agent: test-agent
+      failure_threshold: 2
+      recovery_timeout: 3m
+    - agent: review-agent
+      failure_threshold: 2
+      recovery_timeout: 3m
+    - agent: product-reviewer
+      failure_threshold: 2
+      recovery_timeout: 3m
+  on_trip:
+    - notify_user: true
+    - log_reason: true
+    - skip_remaining_agents: true
+
+# ----------------------------------------------------------
 # Retry strategy
 # ----------------------------------------------------------
 # 注意：error_response_phase（错误响应协议）优先于所有重试策略。
