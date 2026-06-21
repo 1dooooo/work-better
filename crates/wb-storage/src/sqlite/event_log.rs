@@ -169,7 +169,6 @@ impl EventLog for SqliteEventLog {
         if let Some(ref until) = filter.until {
             sql.push_str(&format!(" AND timestamp <= ?{}", param_idx));
             param_values.push(Box::new(until.to_rfc3339()));
-            param_idx += 1;
         }
 
         sql.push_str(" ORDER BY timestamp DESC");

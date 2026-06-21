@@ -17,8 +17,6 @@ const PLACEHOLDER_DB_PATH: &str = "~/.work-better/data.db";
 ///
 /// 返回绝对路径字符串。所有错误均通过 `Err` 返回，不会 panic。
 pub fn resolve_db_path(app: &tauri::AppHandle) -> Result<String, Box<dyn std::error::Error>> {
-    use tauri::Manager;
-
     // 尝试从配置文件读取 db_path
     if let Ok(config) = super::settings::load_config() {
         let db_path = &config.storage.db_path;

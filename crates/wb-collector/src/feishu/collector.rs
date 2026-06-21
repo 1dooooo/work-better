@@ -67,6 +67,9 @@ impl Collector for FeishuCollector {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
+        if !runner::check_tool_available(LARK_CLI) {
+            return Ok(Vec::new());
+        }
         FeishuMessageCollector::collect(&self.chat_id, self.limit)
     }
 

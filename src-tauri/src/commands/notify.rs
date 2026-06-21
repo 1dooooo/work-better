@@ -41,9 +41,9 @@ pub struct NotificationRecord {
     pub created_at: String,
 }
 
-/// 内存中的待通知列表
-///
-/// TODO: 后续迁移到 SQLite notifications 表
+// 内存中的待通知列表
+//
+// TODO: 后续迁移到 SQLite notifications 表
 lazy_static::lazy_static! {
     static ref PENDING_NOTIFICATIONS: Mutex<Vec<NotificationRecord>> = Mutex::new(Vec::new());
 }

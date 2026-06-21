@@ -4,9 +4,11 @@
  * 集成 Variant B 设计（分类图标布局）
  * 支持：导航、操作、搜索
  * 视觉定制：色标图标容器、分组描述、紧凑布局
+ *
+ * 使用数据驱动渲染，减少重复 JSX
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, type ReactNode } from "react";
 import {
   CommandDialog,
   CommandInput,
@@ -19,7 +21,7 @@ import {
 } from "@/components/ui/command";
 import { useKeyboardShortcuts, SHORTCUTS, formatShortcutHint } from "@/hooks/useKeyboardShortcuts";
 import { useCommandData } from "@/hooks/useCommandData";
-import { cn } from "@/lib/utils";
+import { cn, getContentString } from "@/lib/utils";
 import type { ViewId } from "@/components/layout/Sidebar";
 import {
   LayoutDashboard,
@@ -33,12 +35,54 @@ import {
   CheckCircle,
   Zap,
   FileText,
+  type LucideIcon,
 } from "lucide-react";
 
 /** 搜索结果中每类最多显示的条目数 */
 const MAX_SEARCH_RESULTS = 5;
 /** 搜索结果内容预览最大字符数 */
 const CONTENT_PREVIEW_LENGTH = 50;
+
+// ─── 数据定义 ────────────────────────────────────────────────────────
+
+interface NavigationItem {
+  view: ViewId;
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  shortcutKey: keyof typeof SHORTCUTS;
+  iconVariant?: "default" | "primary" | "accent" | "warning";
+}
+
+interface ActionItem {
+  action: string;
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  shortcutKey?: keyof typeof SHORTCUTS;
+  iconVariant?: "default" | "primary" | "accent" | "warning";
+}
+
+const NAVIGATION_ITEMS: NavigationItem[] = [
+  { view: "dashboard", icon: LayoutDashboard, label: "工作台", description: "首页概览", shortcutKey: "VIEW_DASHBOARD", iconVariant: "accent" },
+  { view: "events", icon: CalendarDays, label: "事件", description: "查看所有事件", shortcutKey: "VIEW_EVENTS" },
+  { view: "tasks", icon: CheckSquare, label: "任务", description: "管理任务", shortcutKey: "VIEW_TASKS" },
+  { view: "timeline", icon: Clock, label: "时间线", description: "时间轴视图", shortcutKey: "VIEW_TIMELINE" },
+  { view: "reports", icon: BarChart3, label: "报告", description: "数据报告", shortcutKey: "VIEW_REPORTS" },
+  { view: "settings", icon: Settings, label: "设置", description: "应用设置", shortcutKey: "VIEW_SETTINGS" },
+];
+
+const ACTION_ITEMS: ActionItem[] = [
+  { action: "new-task", icon: Plus, label: "新建任务", description: "创建新的工作任务", shortcutKey: "NEW_TASK", iconVariant: "primary" },
+  { action: "trigger-collect", icon: Download, label: "触发采集", description: "从外部系统获取数据", iconVariant: "accent" },
+  { action: "mark-processed", icon: CheckCircle, label: "标记事件已处理", description: "批量处理事件" },
+];
+
+const AI_ITEMS: ActionItem[] = [
+  { action: "ai-generate-report", icon: Zap, label: "生成今日报告", description: "基于今日工作生成报告", iconVariant: "warning" },
+];
+
+// ─── 子组件 ──────────────────────────────────────────────────────────
 
 interface CommandPaletteProps {
   onNavigate: (view: ViewId) => void;
@@ -50,7 +94,7 @@ function IconBox({
   children,
   variant = "default",
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   variant?: "default" | "primary" | "accent" | "warning";
 }) {
   return (
@@ -67,6 +111,38 @@ function IconBox({
     </div>
   );
 }
+
+/** 渲染单个命令项（导航或操作） */
+function CommandItemRow({
+  icon: Icon,
+  label,
+  description,
+  shortcut,
+  iconVariant = "default",
+  onSelect,
+}: {
+  icon: LucideIcon;
+  label: string;
+  description: string;
+  shortcut?: string;
+  iconVariant?: "default" | "primary" | "accent" | "warning";
+  onSelect: () => void;
+}) {
+  return (
+    <CommandItem onSelect={onSelect}>
+      <IconBox variant={iconVariant}>
+        <Icon className="size-4" />
+      </IconBox>
+      <div className="flex-1">
+        <div>{label}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      {shortcut && <CommandShortcut>{shortcut}</CommandShortcut>}
+    </CommandItem>
+  );
+}
+
+// ─── 主组件 ──────────────────────────────────────────────────────────
 
 export default function CommandPalette({ onNavigate, onAction }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
@@ -110,6 +186,17 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
     newTask: formatShortcutHint(SHORTCUTS.NEW_TASK),
   };
 
+  // 快捷键映射
+  const shortcutMap: Record<string, string> = {
+    VIEW_DASHBOARD: shortcuts.dashboard,
+    VIEW_EVENTS: shortcuts.events,
+    VIEW_TASKS: shortcuts.tasks,
+    VIEW_TIMELINE: shortcuts.timeline,
+    VIEW_REPORTS: shortcuts.reports,
+    VIEW_SETTINGS: shortcuts.settings,
+    NEW_TASK: shortcuts.newTask,
+  };
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
@@ -127,115 +214,50 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
 
         {/* 快速导航 */}
         <CommandGroup heading="快速导航">
-          <CommandItem onSelect={() => handleSelect("navigate:dashboard")}>
-            <IconBox variant="accent">
-              <LayoutDashboard className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>工作台</div>
-              <div className="text-xs text-muted-foreground">首页概览</div>
-            </div>
-            <CommandShortcut>{shortcuts.dashboard}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("navigate:events")}>
-            <IconBox>
-              <CalendarDays className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>事件</div>
-              <div className="text-xs text-muted-foreground">查看所有事件</div>
-            </div>
-            <CommandShortcut>{shortcuts.events}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("navigate:tasks")}>
-            <IconBox>
-              <CheckSquare className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>任务</div>
-              <div className="text-xs text-muted-foreground">管理任务</div>
-            </div>
-            <CommandShortcut>{shortcuts.tasks}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("navigate:timeline")}>
-            <IconBox>
-              <Clock className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>时间线</div>
-              <div className="text-xs text-muted-foreground">时间轴视图</div>
-            </div>
-            <CommandShortcut>{shortcuts.timeline}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("navigate:reports")}>
-            <IconBox>
-              <BarChart3 className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>报告</div>
-              <div className="text-xs text-muted-foreground">数据报告</div>
-            </div>
-            <CommandShortcut>{shortcuts.reports}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("navigate:settings")}>
-            <IconBox>
-              <Settings className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>设置</div>
-              <div className="text-xs text-muted-foreground">应用设置</div>
-            </div>
-            <CommandShortcut>{shortcuts.settings}</CommandShortcut>
-          </CommandItem>
+          {NAVIGATION_ITEMS.map((item) => (
+            <CommandItemRow
+              key={item.view}
+              icon={item.icon}
+              label={item.label}
+              description={item.description}
+              shortcut={shortcutMap[item.shortcutKey]}
+              iconVariant={item.iconVariant}
+              onSelect={() => handleSelect(`navigate:${item.view}`)}
+            />
+          ))}
         </CommandGroup>
 
         <CommandSeparator />
 
         {/* 常用操作 */}
         <CommandGroup heading="常用操作">
-          <CommandItem onSelect={() => handleSelect("new-task")}>
-            <IconBox variant="primary">
-              <Plus className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>新建任务</div>
-              <div className="text-xs text-muted-foreground">创建新的工作任务</div>
-            </div>
-            <CommandShortcut>{shortcuts.newTask}</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("trigger-collect")}>
-            <IconBox variant="accent">
-              <Download className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>触发采集</div>
-              <div className="text-xs text-muted-foreground">从外部系统获取数据</div>
-            </div>
-          </CommandItem>
-          <CommandItem onSelect={() => handleSelect("mark-processed")}>
-            <IconBox>
-              <CheckCircle className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>标记事件已处理</div>
-              <div className="text-xs text-muted-foreground">批量处理事件</div>
-            </div>
-          </CommandItem>
+          {ACTION_ITEMS.map((item) => (
+            <CommandItemRow
+              key={item.action}
+              icon={item.icon}
+              label={item.label}
+              description={item.description}
+              shortcut={item.shortcutKey ? shortcutMap[item.shortcutKey] : undefined}
+              iconVariant={item.iconVariant}
+              onSelect={() => handleSelect(item.action)}
+            />
+          ))}
         </CommandGroup>
 
         <CommandSeparator />
 
         {/* AI 推荐 */}
         <CommandGroup heading="AI 推荐">
-          <CommandItem onSelect={() => handleSelect("ai-generate-report")}>
-            <IconBox variant="warning">
-              <Zap className="size-4" />
-            </IconBox>
-            <div className="flex-1">
-              <div>生成今日报告</div>
-              <div className="text-xs text-muted-foreground">基于今日工作生成报告</div>
-            </div>
-          </CommandItem>
+          {AI_ITEMS.map((item) => (
+            <CommandItemRow
+              key={item.action}
+              icon={item.icon}
+              label={item.label}
+              description={item.description}
+              iconVariant={item.iconVariant}
+              onSelect={() => handleSelect(item.action)}
+            />
+          ))}
         </CommandGroup>
 
         {/* 搜索结果：事件 */}
@@ -244,10 +266,7 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             <CommandSeparator />
             <CommandGroup heading={`事件 (${events.length})`}>
               {events.slice(0, MAX_SEARCH_RESULTS).map((event) => {
-                const content =
-                  typeof event.content === "string"
-                    ? event.content
-                    : JSON.stringify(event.content);
+                const content = getContentString(event.content);
                 return (
                   <CommandItem
                     key={event.id}

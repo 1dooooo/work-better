@@ -9,6 +9,8 @@ import {
   getStatusIcon,
   truncateText,
   truncateWords,
+  getContentString,
+  getEventType,
 } from "./utils";
 
 describe("Time Formatting (D2-01)", () => {
@@ -249,5 +251,87 @@ describe("Text Truncation (D2-05)", () => {
     it("throws RangeError for negative maxWords", () => {
       expect(() => truncateWords("hello", -1)).toThrow(RangeError);
     });
+  });
+});
+
+describe("Content Helpers (D2-06)", () => {
+  describe("getContentString", () => {
+    it("returns string content as-is", () => {
+      expect(getContentString("hello")).toBe("hello");
+    });
+
+    it("returns empty string as-is", () => {
+      expect(getContentString("")).toBe("");
+    });
+
+    it("stringifies object content", () => {
+      const obj = { key: "value" };
+      expect(getContentString(obj)).toBe('{"key":"value"}');
+    });
+
+    it("stringifies array content", () => {
+      expect(getContentString([1, 2, 3])).toBe("[1,2,3]");
+    });
+
+    it("stringifies null", () => {
+      expect(getContentString(null)).toBe("null");
+    });
+
+    it("stringifies number", () => {
+      expect(getContentString(42)).toBe("42");
+    });
+  });
+});
+
+describe("Event Type Mapping (D2-07)", () => {
+  it("returns message config for 'message' type", () => {
+    const result = getEventType("message");
+    expect(result.label).toBe("MSG");
+    expect(result.className).toContain("event-blue");
+  });
+
+  it("returns message config for Chinese '消息' type", () => {
+    const result = getEventType("新消息");
+    expect(result.label).toBe("MSG");
+  });
+
+  it("returns issue config for 'issue' type", () => {
+    const result = getEventType("issue");
+    expect(result.label).toBe("ISS");
+    expect(result.className).toContain("event-amber");
+  });
+
+  it("returns PR config for 'pr' type", () => {
+    const result = getEventType("pr");
+    expect(result.label).toBe("PR");
+    expect(result.className).toContain("event-green");
+  });
+
+  it("returns PR config for 'pull_request' type", () => {
+    const result = getEventType("pull_request");
+    expect(result.label).toBe("PR");
+  });
+
+  it("returns document config for 'document' type", () => {
+    const result = getEventType("document");
+    expect(result.label).toBe("DOC");
+    expect(result.className).toContain("event-gray");
+  });
+
+  it("returns document config for Chinese '文档' type", () => {
+    const result = getEventType("共享文档");
+    expect(result.label).toBe("DOC");
+  });
+
+  it("returns default config for unknown type", () => {
+    const result = getEventType("unknown");
+    expect(result.label).toBe("EVT");
+    expect(result.className).toContain("event-gray");
+  });
+
+  it("handles case-insensitive matching", () => {
+    expect(getEventType("MESSAGE").label).toBe("MSG");
+    expect(getEventType("Issue").label).toBe("ISS");
+    expect(getEventType("PR").label).toBe("PR");
   });
 });

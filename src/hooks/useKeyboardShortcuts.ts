@@ -24,11 +24,17 @@ interface Shortcut {
   allowInInput?: boolean;
 }
 
+// ─── 平台检测 ──────────────────────────────────────────────────────
+
+/** 检测当前平台是否为 macOS（模块级常量，避免重复计算） */
+const IS_MAC = typeof navigator !== "undefined"
+  ? /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+  : false;
+
 // ─── 快捷键匹配 ──────────────────────────────────────────────
 
 function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
-  const isMac = navigator.platform.includes("Mac");
-  const modKey = isMac ? e.metaKey : e.ctrlKey;
+  const modKey = IS_MAC ? e.metaKey : e.ctrlKey;
 
   return (
     e.key.toLowerCase() === shortcut.key.toLowerCase() &&
@@ -119,17 +125,16 @@ export function formatShortcutHint(shortcut: {
   shiftKey?: boolean;
   altKey?: boolean;
 }): string {
-  const isMac = navigator.platform.includes("Mac");
   const parts: string[] = [];
 
   if (shortcut.metaKey) {
-    parts.push(isMac ? "⌘" : "Ctrl");
+    parts.push(IS_MAC ? "⌘" : "Ctrl");
   }
   if (shortcut.shiftKey) {
-    parts.push(isMac ? "⇧" : "Shift");
+    parts.push(IS_MAC ? "⇧" : "Shift");
   }
   if (shortcut.altKey) {
-    parts.push(isMac ? "⌥" : "Alt");
+    parts.push(IS_MAC ? "⌥" : "Alt");
   }
 
   // 特殊键名映射
@@ -144,5 +149,5 @@ export function formatShortcutHint(shortcut: {
   };
 
   parts.push(keyMap[shortcut.key] || shortcut.key.toUpperCase());
-  return parts.join(isMac ? "" : "+");
+  return parts.join(IS_MAC ? "" : "+");
 }

@@ -52,6 +52,9 @@ impl Collector for FeishuDocsCollectorWrapper {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
+        if !is_lark_cli_available() {
+            return Ok(Vec::new());
+        }
         super::docs::FeishuDocsCollector::collect(self.limit)
     }
 
@@ -98,6 +101,9 @@ impl Collector for FeishuProjectsCollectorWrapper {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
+        if !is_lark_cli_available() {
+            return Ok(Vec::new());
+        }
         super::projects::FeishuProjectsCollector::collect(self.limit)
     }
 
@@ -144,6 +150,9 @@ impl Collector for FeishuCalendarCollectorWrapper {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
+        if !is_lark_cli_available() {
+            return Ok(Vec::new());
+        }
         super::calendar::FeishuCalendarCollector::collect(self.limit)
     }
 
@@ -190,6 +199,9 @@ impl Collector for FeishuApprovalsCollectorWrapper {
     }
 
     async fn collect(&self) -> Result<Vec<Event>> {
+        if !is_lark_cli_available() {
+            return Ok(Vec::new());
+        }
         super::approvals::FeishuApprovalsCollector::collect(self.limit)
     }
 

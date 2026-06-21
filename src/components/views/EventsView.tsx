@@ -26,17 +26,9 @@ import {
 import { toast } from "sonner";
 import { useListNavigation } from "@/hooks/useListNavigation";
 import { EmptyEvents } from "@/components/ui/empty-state";
+import { formatRelativeTime, truncateText, getEventType, getContentString } from "@/lib/utils";
 
 type FilterSource = "all" | string;
-
-// 事件类型配置
-const EVENT_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
-  message: { label: "MSG", className: "bg-event-blue-bg text-event-blue-text" },
-  issue: { label: "ISS", className: "bg-event-amber-bg text-event-amber-text" },
-  pr: { label: "PR", className: "bg-event-green-bg text-event-green-text" },
-  document: { label: "DOC", className: "bg-event-gray-bg text-event-gray-text" },
-  default: { label: "EVT", className: "bg-event-gray-bg text-event-gray-text" },
-};
 
 export default function EventsView() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -132,35 +124,6 @@ export default function EventsView() {
 
   const sources = Array.from(new Set(events.map((e) => e.source)));
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "刚刚";
-    if (diffMins < 60) return `${diffMins}分钟前`;
-    if (diffHours < 24) return `${diffHours}小时前`;
-    if (diffDays < 7) return `${diffDays}天前`;
-    return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
-  };
-
-  const truncateContent = (content: string, maxLength: number = 100) => {
-    if (content.length <= maxLength) return content;
-    return content.slice(0, maxLength) + "...";
-  };
-
-  const getEventType = (type: string) => {
-    const lowerType = type.toLowerCase();
-    if (lowerType.includes("message") || lowerType.includes("消息")) return EVENT_TYPE_CONFIG.message;
-    if (lowerType.includes("issue")) return EVENT_TYPE_CONFIG.issue;
-    if (lowerType.includes("pr") || lowerType.includes("pull")) return EVENT_TYPE_CONFIG.pr;
-    if (lowerType.includes("doc") || lowerType.includes("文档")) return EVENT_TYPE_CONFIG.document;
-    return EVENT_TYPE_CONFIG.default;
-  };
-
   const unprocessedCount = filteredEvents.filter((e) => !e.processed).length;
 
   return (
@@ -225,10 +188,7 @@ export default function EventsView() {
           filteredEvents.map((event, index) => {
             const typeConfig = getEventType(event.type);
             const isExpanded = expandedEvents.has(event.id);
-            const contentStr =
-              typeof event.content === "string"
-                ? event.content
-                : JSON.stringify(event.content);
+            const contentStr = getContentString(event.content);
             return (
               <div key={event.id} className={`border-b border-border/50 ${index === focusedIndex ? "border-l-2 border-l-primary bg-muted/30" : ""}`}>
                 {/* Event row - clickable to toggle expand */}
@@ -264,7 +224,7 @@ export default function EventsView() {
 
                   {/* 内容摘要 (80 chars when collapsed) */}
                   <span className="flex-1 text-xs text-foreground truncate mr-3">
-                    {truncateContent(contentStr, 80)}
+                    {truncateText(contentStr, 80)}
                   </span>
 
                   {/* 标签 */}
@@ -283,7 +243,7 @@ export default function EventsView() {
 
                   {/* 时间 */}
                   <span className="text-[10px] text-muted-foreground flex-shrink-0 min-w-[60px] text-right mr-3">
-                    {formatTime(event.timestamp)}
+                    {formatRelativeTime(event.timestamp)}
                   </span>
 
                   {/* 操作按钮 */}

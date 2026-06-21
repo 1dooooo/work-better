@@ -111,3 +111,42 @@ export function truncateWords(text: string, maxWords: number): string {
   if (maxWords === 0) return "";
   return words.slice(0, maxWords).join(" ") + "…";
 }
+
+// ─── Content Helpers ──────────────────────────────────────────────────
+
+/**
+ * 将 event.content 转换为字符串
+ * content 可能是 string 或 object（需要 JSON.stringify）
+ */
+export function getContentString(content: unknown): string {
+  if (typeof content === "string") return content;
+  return JSON.stringify(content);
+}
+
+// ─── Event Type Mapping ───────────────────────────────────────────────
+
+interface EventTypeConfig {
+  label: string;
+  className: string;
+}
+
+const EVENT_TYPE_CONFIG: Record<string, EventTypeConfig> = {
+  message: { label: "MSG", className: "bg-event-blue-bg text-event-blue-text" },
+  issue: { label: "ISS", className: "bg-event-amber-bg text-event-amber-text" },
+  pr: { label: "PR", className: "bg-event-green-bg text-event-green-text" },
+  document: { label: "DOC", className: "bg-event-gray-bg text-event-gray-text" },
+  default: { label: "EVT", className: "bg-event-gray-bg text-event-gray-text" },
+};
+
+/**
+ * 根据事件类型字符串返回对应的配置（label + className）
+ * 支持中英文匹配
+ */
+export function getEventType(type: string): EventTypeConfig {
+  const lowerType = type.toLowerCase();
+  if (lowerType.includes("message") || lowerType.includes("消息")) return EVENT_TYPE_CONFIG.message;
+  if (lowerType.includes("issue")) return EVENT_TYPE_CONFIG.issue;
+  if (lowerType.includes("pr") || lowerType.includes("pull")) return EVENT_TYPE_CONFIG.pr;
+  if (lowerType.includes("doc") || lowerType.includes("文档")) return EVENT_TYPE_CONFIG.document;
+  return EVENT_TYPE_CONFIG.default;
+}

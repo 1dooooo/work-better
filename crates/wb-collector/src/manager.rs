@@ -94,7 +94,6 @@ impl CollectorManager {
     /// 获取所有分组信息
     pub async fn get_groups(&self) -> Vec<CollectorGroupInfo> {
         let collectors = self.collectors.read().await;
-        let enabled = self.enabled.read().await;
         let group_enabled = self.group_enabled.read().await;
 
         let mut groups: HashMap<String, CollectorGroupInfo> = HashMap::new();

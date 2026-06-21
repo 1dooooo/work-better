@@ -11,6 +11,16 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  Clock,
+  ListTodo,
+  Radio,
+  FileText,
+  Download,
+  Plus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -59,17 +69,6 @@ export function EmptyState({
 }
 
 // ─── 预设空状态（渐进式引导）──────────────────────────────────────
-
-import {
-  Activity,
-  CheckCircle2,
-  Clock,
-  ListTodo,
-  Radio,
-  FileText,
-  Download,
-  Plus,
-} from "lucide-react";
 
 interface EmptyEventsProps {
   onCollect?: () => void;

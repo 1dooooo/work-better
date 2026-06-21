@@ -127,16 +127,6 @@ pub async fn save_model_config(config: ModelConfig) -> Result<(), String> {
     save_config(&app_config)
 }
 
-/// 获取采集器状态列表（简单版本，供内部使用）
-///
-/// 注意：此函数不再作为 Tauri 命令暴露。
-/// 前端应使用 `collectors::get_collector_statuses` 获取更详细的状态信息。
-pub fn get_collector_statuses_internal() -> Result<Vec<CollectorStatus>, String> {
-    let app_config = load_config()?;
-    let statuses = build_collector_statuses(&app_config.collectors);
-    Ok(statuses)
-}
-
 /// 检查 lark-cli 工具是否真实可用
 fn check_lark_cli_available() -> bool {
     runner::check_tool_available(LARK_CLI)
@@ -319,15 +309,6 @@ pub async fn save_shortcut_config(app: AppHandle, config: Vec<ShortcutConfig>) -
 }
 
 // ─── 系统状态 ─────────────────────────────────────────────────
-
-/// 采集器简要状态
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CollectorBrief {
-    pub id: String,
-    pub name: String,
-    pub enabled: bool,
-    pub healthy: bool,
-}
 
 /// 系统状态（供菜单栏展示）
 #[derive(Debug, Clone, Serialize, Deserialize)]

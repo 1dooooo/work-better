@@ -106,7 +106,9 @@ export default function MainWindow() {
   const handleViewChange = useCallback((view: ViewId) => {
     setActiveView(view);
     updatePersistedState("lastView", view);
-    getDeveloperMode().then(setDeveloperMode).catch(() => {});
+    getDeveloperMode().then(setDeveloperMode).catch((err) => {
+      console.error("Failed to refresh developer mode:", err);
+    });
   }, [updatePersistedState]);
 
   // 命令面板操作处理
@@ -119,6 +121,7 @@ export default function MainWindow() {
             await createTask(title.trim());
             toast.success("任务已创建");
           } catch (err) {
+            console.error("Failed to create task:", err);
             toast.error("创建任务失败");
           }
         }
@@ -129,6 +132,7 @@ export default function MainWindow() {
           const count = await triggerFeishuCollect();
           toast.success(`采集完成，获取 ${count} 条事件`);
         } catch (err) {
+          console.error("Failed to trigger collect:", err);
           toast.error("采集失败");
         }
         break;
@@ -148,6 +152,7 @@ export default function MainWindow() {
           toast.success(`已标记 ${count} 条事件为已处理`);
           refreshCount();
         } catch (err) {
+          console.error("Failed to mark events processed:", err);
           toast.error("标记事件失败");
         }
         break;
@@ -160,7 +165,7 @@ export default function MainWindow() {
       default:
         break;
     }
-  }, [handleViewChange]);
+  }, [handleViewChange, refreshCount]);
 
   // T3.1 全局键盘快捷键
   useKeyboardShortcuts([
