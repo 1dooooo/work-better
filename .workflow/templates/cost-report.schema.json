@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cost Report",
+  "description": "Cost Tracker Agent 生成的成本报告",
+  "type": "object",
+  "required": ["task_id", "timestamp", "total_cost_usd", "agent_costs", "metrics"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "报告生成时间"
+    },
+    "total_cost_usd": {
+      "type": "number",
+      "description": "总成本（美元）"
+    },
+    "agent_costs": {
+      "type": "array",
+      "description": "各 Agent 成本列表",
+      "items": {
+        "type": "object",
+        "required": ["agent", "model", "input_tokens", "output_tokens", "total_tokens", "cost_usd"],
+        "properties": {
+          "agent": {
+            "type": "string",
+            "description": "Agent 名称"
+          },
+          "model": {
+            "type": "string",
+            "description": "模型名称"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "description": "输入 token 数"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "description": "输出 token 数"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "description": "总 token 数"
+          },
+          "cost_usd": {
+            "type": "number",
+            "description": "成本（美元）"
+          }
+        }
+      }
+    },
+    "cost_analysis": {
+      "type": "object",
+      "properties": {
+        "most_expensive_agent": {
+          "type": "string",
+          "description": "最昂贵的 Agent"
+        },
+        "average_cost_per_agent": {
+          "type": "number",
+          "description": "每 Agent 平均成本"
+        },
+        "cost_distribution": {
+          "type": "object",
+          "description": "成本分布",
+          "additionalProperties": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "optimization_suggestions": {
+      "type": "array",
+      "description": "优化建议列表",
+      "items": {
+        "type": "object",
+        "required": ["type", "description"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["model_selection", "prompt_optimization", "caching"],
+            "description": "建议类型"
+          },
+          "description": {
+            "type": "string",
+            "description": "建议描述"
+          },
+          "expected_savings_usd": {
+            "type": "number",
+            "description": "预期节省（美元）"
+          },
+          "expected_savings_percent": {
+            "type": "number",
+            "description": "预期节省百分比"
+          }
+        }
+      }
+    },
+    "budget_status": {
+      "type": "object",
+      "properties": {
+        "budget_usd": {
+          "type": "number",
+          "description": "预算（美元）"
+        },
+        "spent_usd": {
+          "type": "number",
+          "description": "已花费（美元）"
+        },
+        "remaining_usd": {
+          "type": "number",
+          "description": "剩余（美元）"
+        },
+        "utilization_percent": {
+          "type": "number",
+          "description": "使用率百分比"
+        }
+      }
+    }
+  }
+}
