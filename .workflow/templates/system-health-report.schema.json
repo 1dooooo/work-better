@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "System Health Report",
+  "description": "Guardian Agent 生成的系统健康报告",
+  "type": "object",
+  "required": ["task_id", "timestamp", "overall_health", "issues", "metrics"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "报告生成时间"
+    },
+    "overall_health": {
+      "type": "string",
+      "enum": ["healthy", "warning", "critical"],
+      "description": "系统整体健康状况"
+    },
+    "issues": {
+      "type": "array",
+      "description": "发现的问题列表",
+      "items": {
+        "type": "object",
+        "required": ["type", "severity", "description"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["system", "agent"],
+            "description": "问题类型"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"],
+            "description": "问题严重程度"
+          },
+          "description": {
+            "type": "string",
+            "description": "问题描述"
+          },
+          "affected_agent": {
+            "type": "string",
+            "description": "受影响的 Agent 名称（仅 Agent 级问题）"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "建议的解决方案"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["total_agents", "successful_agents", "failed_agents"],
+      "properties": {
+        "total_agents": {
+          "type": "integer",
+          "description": "总 Agent 数量"
+        },
+        "successful_agents": {
+          "type": "integer",
+          "description": "成功的 Agent 数量"
+        },
+        "failed_agents": {
+          "type": "integer",
+          "description": "失败的 Agent 数量"
+        },
+        "average_duration_ms": {
+          "type": "number",
+          "description": "平均执行时间（毫秒）"
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "建议列表",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
