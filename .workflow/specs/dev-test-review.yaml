@@ -451,6 +451,123 @@ flow:
     - step: write_final_report
       description: 写入 final-report.json，status=done
 
+  # ---- 阶段 4：监督和优化（任务完成后） ----
+  post_task_phase:
+    description: >
+      任务完成后的监督和优化阶段。
+      并行触发 guardian-agent、orchestrator-agent、cost-tracker-agent。
+    steps:
+      - step: run_guardian
+        description: >
+          触发 guardian-agent 监督整个系统健康状况。
+          读取所有 artifact，分析系统级问题。
+        agent: guardian-agent
+        parallel_group: post_task
+        timeout: 2m
+        outputs: system-health-report.json
+
+      - step: run_orchestrator
+        description: >
+          触发 orchestrator-agent 监督执行效率。
+          读取所有 artifact，分析执行问题。
+        agent: orchestrator-agent
+        parallel_group: post_task
+        timeout: 2m
+        outputs: orchestration-report.json
+
+      - step: run_cost_tracker
+        description: >
+          触发 cost-tracker-agent 追踪 token 使用和成本。
+          读取所有 artifact，计算成本。
+        agent: cost-tracker-agent
+        parallel_group: post_task
+        timeout: 1m
+        outputs: cost-report.json
+
+      - step: run_validator
+        description: >
+          触发 validator-agent 验证所有 artifact。
+          进行 schema 验证、一致性检查、完整性检查。
+        agent: validator-agent
+        parallel_group: post_task
+        timeout: 1m
+        outputs: validation-report.json
+
+    on_complete:
+      goto: check_post_task_results
+
+  check_post_task_results:
+    - condition: "all of system-health-report.json, orchestration-report.json, cost-report.json, validation-report.json exist"
+      goto: evaluate_post_task_results
+    - condition: "any output missing"
+      goto: handle_post_task_failure
+      with:
+        reason: "监督 agent 未全部完成"
+
+  evaluate_post_task_results:
+    - step: check_system_health
+      description: 检查系统健康状况
+      condition: "system-health-report.json.overall_health == 'critical'"
+      goto: handle_system_issue
+      with:
+        source: guardian-agent
+        reason: "系统健康状况严重"
+        priority: highest
+
+    - step: check_validation
+      description: 检查验证结果
+      condition: "validation-report.json.overall_valid == false"
+      goto: handle_validation_failure
+      with:
+        source: validator-agent
+        reason: "artifact 验证失败"
+        priority: high
+
+    - condition: "all passed"
+      goto: optimization_phase
+
+  optimization_phase:
+    description: >
+      优化阶段：当 guardian-agent 发现 Agent 级问题时，
+      触发 optimizer-agent 生成优化计划。
+    trigger: "system-health-report.json contains agent-level issues"
+    steps:
+      - step: run_optimizer
+        description: >
+          触发 optimizer-agent 分析优化点，生成优化计划。
+          需要用户审批后才能执行优化。
+        agent: optimizer-agent
+        timeout: 5m
+        outputs: optimization-plan.json
+        requires_approval: true
+
+    on_complete:
+      goto: done
+
+  handle_system_issue:
+    - step: notify_user
+      description: 通知用户系统级问题
+      action: 展示 system-health-report.json
+    - step: wait_for_user_decision
+      description: 等待用户决定如何处理
+      goto: done
+
+  handle_validation_failure:
+    - step: notify_user
+      description: 通知用户验证失败
+      action: 展示 validation-report.json
+    - step: wait_for_user_decision
+      description: 等待用户决定如何处理
+      goto: done
+
+  handle_post_task_failure:
+    - step: log_failure
+      description: 记录监督 agent 失败
+      action: 写入 workflow.log
+    - step: continue_workflow
+      description: 继续 workflow，不阻塞主流程
+      goto: done
+
 # ----------------------------------------------------------
 # Retry strategy
 # ----------------------------------------------------------
@@ -511,6 +628,31 @@ artifacts:
       writer: workflow-runner
       readers: [user]
       schema: .workflow/templates/final-report.schema.json
+    system_health_report:
+      path: system-health-report.json
+      writer: guardian-agent
+      readers: [workflow-runner, user, optimizer-agent]
+      schema: .workflow/templates/system-health-report.schema.json
+    orchestration_report:
+      path: orchestration-report.json
+      writer: orchestrator-agent
+      readers: [workflow-runner, user]
+      schema: .workflow/templates/orchestration-report.schema.json
+    cost_report:
+      path: cost-report.json
+      writer: cost-tracker-agent
+      readers: [workflow-runner, user]
+      schema: .workflow/templates/cost-report.schema.json
+    validation_report:
+      path: validation-report.json
+      writer: validator-agent
+      readers: [workflow-runner, user]
+      schema: .workflow/templates/validation-report.schema.json
+    optimization_plan:
+      path: optimization-plan.json
+      writer: optimizer-agent
+      readers: [workflow-runner, user, guardian-agent]
+      schema: .workflow/templates/optimization-plan.schema.json
 
 # ----------------------------------------------------------
 # Uncovered paths detection (P2)
