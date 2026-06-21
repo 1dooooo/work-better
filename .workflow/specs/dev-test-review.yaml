@@ -576,6 +576,38 @@ flow:
 # Cost limits (成本限制)
 # ----------------------------------------------------------
 # 设置每个 workflow 的 token 上限，控制成本。
+# ----------------------------------------------------------
+# Quality evaluation (质量评估)
+# ----------------------------------------------------------
+# 5 个核心评估维度，确保输出质量。
+quality_evaluation:
+  description: >
+    质量评估：5 个核心评估维度，确保输出质量。
+  dimensions:
+    - name: task_completion
+      description: 任务完成度评估
+      weight: 0.30
+    - name: faithfulness
+      description: 忠实度/依据性评估
+      weight: 0.25
+    - name: refusal_correctness
+      description: 拒绝正确性评估
+      weight: 0.15
+    - name: guardrail_compliance
+      description: 护栏合规性评估
+      weight: 0.15
+    - name: tool_selection_accuracy
+      description: 工具选择准确性评估
+      weight: 0.15
+  evaluation_triggers:
+    - after_each_task
+    - on_release
+    - on_flagged_interactions
+  scoring:
+    scale: 0-100
+    passing_threshold: 70
+    excellent_threshold: 90
+
 cost_limits:
   description: >
     成本限制：设置每个 workflow 的 token 上限，控制成本。
