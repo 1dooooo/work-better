@@ -12,6 +12,7 @@ import { getUnprocessedCount, onFeishuCollectComplete, getDeveloperMode } from "
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useKeyboardShortcuts, SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
+import { useStatePersistence } from "@/hooks/useStatePersistence";
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   dashboard: DashboardView,
@@ -23,17 +24,33 @@ const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   audit: AuditView,
 };
 
-// 从 URL 读取初始视图（模块级，避免每次渲染重新创建）
+// 从 URL 或 localStorage 读取初始视图（模块级，避免每次渲染重新创建）
 function getInitialView(): ViewId {
+  // 优先从 URL 读取
   const params = new URLSearchParams(window.location.search);
   const view = params.get("view") as ViewId;
   if (view && view in VIEW_COMPONENTS) {
     return view;
   }
+
+  // 其次从 localStorage 读取
+  try {
+    const stored = localStorage.getItem("work-better-state");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.lastView && parsed.lastView in VIEW_COMPONENTS) {
+        return parsed.lastView as ViewId;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load persisted view:", err);
+  }
+
   return "dashboard";
 }
 
 export default function MainWindow() {
+  const { state: persistedState, updateState: updatePersistedState } = useStatePersistence();
   const [activeView, setActiveView] = useState<ViewId>(getInitialView);
   const [unprocessedCount, setUnprocessedCount] = useState(0);
   const [developerMode, setDeveloperMode] = useState(false);
@@ -86,8 +103,9 @@ export default function MainWindow() {
   // 切换视图时刷新开发者模式（从设置页返回时立即生效）
   const handleViewChange = useCallback((view: ViewId) => {
     setActiveView(view);
+    updatePersistedState("lastView", view);
     getDeveloperMode().then(setDeveloperMode).catch(() => {});
-  }, []);
+  }, [updatePersistedState]);
 
   // 命令面板操作处理
   const handleCommandAction = useCallback((action: string) => {
