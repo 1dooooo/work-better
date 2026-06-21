@@ -584,6 +584,29 @@ flow:
 # Chaos testing framework (混沌测试框架)
 # ----------------------------------------------------------
 # 系统化测试韧性，随机故障注入。
+# ----------------------------------------------------------
+# Checkpoint recovery (检查点恢复)
+# ----------------------------------------------------------
+# 从检查点恢复，避免从头开始。
+checkpoint_recovery:
+  description: >
+    检查点恢复：从检查点恢复，避免从头开始。
+  checkpoint_triggers:
+    - after_each_phase
+    - after_agent_failure
+    - after_validation_failure
+  recovery_strategies:
+    - name: resume_from_checkpoint
+      description: 从最近的检查点恢复
+    - name: restart_phase
+      description: 重新开始当前阶段
+    - name: restart_workflow
+      description: 重新开始整个 workflow
+  checkpoint_storage:
+    - path: .workflow/artifacts/{task_id}/checkpoint.json
+    - max_checkpoints: 10
+    - retention_hours: 24
+
 chaos_testing_framework:
   description: >
     混沌测试框架：系统化测试韧性，随机故障注入。
