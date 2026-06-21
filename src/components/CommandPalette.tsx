@@ -64,15 +64,15 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
     [onNavigate, onAction]
   );
 
-  // 键盘快捷键提示
+  // 键盘快捷键提示（与 SHORTCUTS 常量对齐）
   const shortcuts = {
-    dashboard: formatShortcutHint({ key: "1", metaKey: true }),
-    events: formatShortcutHint({ key: "2", metaKey: true }),
-    tasks: formatShortcutHint({ key: "3", metaKey: true }),
-    timeline: formatShortcutHint({ key: "4", metaKey: true }),
-    reports: formatShortcutHint({ key: "5", metaKey: true }),
-    settings: formatShortcutHint({ key: ",", metaKey: true }),
-    newTask: formatShortcutHint({ key: "n", metaKey: true }),
+    dashboard: formatShortcutHint(SHORTCUTS.VIEW_DASHBOARD),
+    events: formatShortcutHint(SHORTCUTS.VIEW_EVENTS),
+    tasks: formatShortcutHint(SHORTCUTS.VIEW_TASKS),
+    timeline: formatShortcutHint(SHORTCUTS.VIEW_TIMELINE),
+    reports: formatShortcutHint(SHORTCUTS.VIEW_REPORTS),
+    settings: formatShortcutHint(SHORTCUTS.VIEW_SETTINGS),
+    newTask: formatShortcutHint(SHORTCUTS.NEW_TASK),
   };
 
   return (

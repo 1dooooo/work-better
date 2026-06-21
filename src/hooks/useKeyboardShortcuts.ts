@@ -87,10 +87,11 @@ export function useKeyboardShortcuts(shortcuts: Shortcut[]) {
 export const SHORTCUTS = {
   // 全局快捷键
   COMMAND_PALETTE: { key: "k", metaKey: true, description: "打开命令面板" },
-  VIEW_EVENTS: { key: "1", metaKey: true, description: "查看事件" },
-  VIEW_TASKS: { key: "2", metaKey: true, description: "查看任务" },
-  VIEW_TIMELINE: { key: "3", metaKey: true, description: "查看时间线" },
-  VIEW_REPORTS: { key: "4", metaKey: true, description: "查看报告" },
+  VIEW_DASHBOARD: { key: "1", metaKey: true, description: "查看工作台" },
+  VIEW_EVENTS: { key: "2", metaKey: true, description: "查看事件" },
+  VIEW_TASKS: { key: "3", metaKey: true, description: "查看任务" },
+  VIEW_TIMELINE: { key: "4", metaKey: true, description: "查看时间线" },
+  VIEW_REPORTS: { key: "5", metaKey: true, description: "查看报告" },
   VIEW_SETTINGS: { key: ",", metaKey: true, description: "打开设置" },
   NEW_TASK: { key: "n", metaKey: true, description: "新建任务" },
   NEW_EVENT: { key: "n", metaKey: true, shiftKey: true, description: "新建事件" },

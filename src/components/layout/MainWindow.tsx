@@ -97,6 +97,7 @@ export default function MainWindow() {
 
   // T3.1 全局键盘快捷键
   useKeyboardShortcuts([
+    { ...SHORTCUTS.VIEW_DASHBOARD, handler: () => handleViewChange("dashboard") },
     { ...SHORTCUTS.VIEW_EVENTS, handler: () => handleViewChange("events") },
     { ...SHORTCUTS.VIEW_TASKS, handler: () => handleViewChange("tasks") },
     { ...SHORTCUTS.VIEW_TIMELINE, handler: () => handleViewChange("timeline") },
@@ -119,7 +120,7 @@ export default function MainWindow() {
           <ActiveComponent />
         </main>
       </div>
-      <CommandPalette onNavigate={handleViewChange} onAction={handleCommandAction} />
+      <CommandPalette onNavigate={(view) => handleViewChange(view as ViewId)} onAction={handleCommandAction} />
       <Toaster />
     </TooltipProvider>
   );
