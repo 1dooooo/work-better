@@ -10,10 +10,11 @@
 # ============================================================
 
 name: dev-test-review
-version: "2.0"
+version: "3.0"
 description: >
-  开发-测试-审查 workflow（v2 并行版）。当开发任务启动时触发，
-  workflow-runner 编排：dev-agent 开发 → test-agent/review-agent/product-reviewer 并行审查。
+  开发-测试-审查 workflow（v3 主 Agent 编排版）。
+  主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent，始终持有控制权。
+  简单任务使用内联编排，复杂任务调用预定义 workflow。
 
 # ----------------------------------------------------------
 # Agent registry
@@ -235,11 +236,50 @@ gate_inference:
       gate: L2
 
 # ----------------------------------------------------------
-# Execution flow (v2 并行版)
+# Execution flow (v3 主 Agent 编排版)
 # ----------------------------------------------------------
-# 核心变化：dev-agent 完成后，test-agent/review-agent/product-reviewer
-# 三者并行执行，workflow-runner 汇总结果。
+# 核心变化：主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent。
+# 简单任务使用内联编排，复杂任务调用预定义 workflow。
+# 主 Agent 始终持有控制权，根据中间结果动态调整策略。
 # ----------------------------------------------------------
+main_agent_orchestration:
+  description: >
+    主 Agent 编排流程。主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent。
+  steps:
+    - step: read_workflow_spec
+      description: 主 Agent 读取 workflow spec，理解流程
+      action: 读取 .workflow/specs/dev-test-review.yaml
+
+    - step: judge_task_complexity
+      description: 主 Agent 判断任务复杂度
+      criteria:
+        simple:
+          - 单文件修改
+          - 无依赖变更
+          - 无需并行审查
+        complex:
+          - 多文件修改
+          - 有依赖变更
+          - 需要并行审查
+
+    - step: choose_orchestration_method
+      description: 主 Agent 选择编排方式
+      simple_task: 内联编排，直接调用 dev-agent
+      complex_task: 调用预定义 workflow('dev-test-review', { task_id })
+
+    - step: execute_orchestration
+      description: 主 Agent 执行编排
+      inline: 使用 Workflow tool 的 agent() 调用
+      workflow: 使用 Workflow tool 的 workflow() 调用
+
+    - step: monitor_execution
+      description: 主 Agent 监控执行过程
+      action: 根据中间结果动态调整策略
+
+    - step: aggregate_results
+      description: 主 Agent 汇总 subagent 输出
+      action: 做出最终决策
+
 flow:
   # ---- 阶段 0：错误响应（最高优先级，按需触发） ----
   error_response_phase:
