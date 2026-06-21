@@ -1,3 +1,12 @@
+---
+title: Agent Guide
+type: guide
+domain: development
+created: 2026-06-07
+updated: 2026-06-21
+status: active
+---
+
 # Agent Guide
 
 **Work Better**：以 Obsidian 为中心的 AI 工作观察者。
@@ -7,6 +16,8 @@
 1. 观察者姿态——被动采集、主动整理
 2. Obsidian 为中心——数据归用户所有
 3. 自主但可干预——私有数据自主，共享数据需确认
+4. 专业分工——每个 Agent 只做一件事，不越界
+5. 自我进化——Agent 完成任务后记录优化点，持续改进
 
 ## 代码导航
 
@@ -23,6 +34,60 @@
 | 前端 | `src/` + `src-tauri/` | [frontend.codemap.md](docs/CODEMAPS/frontend.codemap.md) | React UI + Tauri 命令 |
 
 **渐进式读取**：`CLAUDE.md` → CODEMAP → 目标源文件（最多 3 层定位）
+
+## 多 Agent 协作
+
+本项目采用多 Agent 协作开发模式。**主 Agent 是指挥官**，使用 Workflow tool 直接编排 subagent，始终持有控制权。
+
+### Agent 职责矩阵
+
+| Agent | 职责 | 写代码 | 写测试 | 审查代码 | 编排调度 | 监督优化 |
+|-------|------|--------|--------|---------|---------|---------|
+| **主 Agent** | 指挥官，编排 subagent | ❌ | ❌ | ❌ | ✅ | ❌ |
+| dev-agent | 功能开发 + L1-L2 测试 | ✅ | ✅ | ❌ | ❌ | ❌ |
+| test-agent | 测试执行 + L4-L5 测试生成 | ❌ | ✅ | ❌ | ❌ | ❌ |
+| review-agent | 代码审查 + H3-H5 安全测试 | ❌ | ✅ | ✅ | ❌ | ❌ |
+| product-reviewer | 产品定义符合性审查 | ❌ | ❌ | ✅ | ❌ | ❌ |
+| guardian Agent | 守护者，监督整个系统 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| optimizer Agent | 优化者，执行具体优化任务 | ✅ | ❌ | ❌ | ❌ | ✅ |
+| orchestrator-agent | 监督者，监督所有 Agent | ❌ | ❌ | ❌ | ✅ | ✅ |
+| validator-agent | 验证者，管道交叉点验证 | ❌ | ❌ | ✅ | ❌ | ❌ |
+| cost-tracker-agent | 成本追踪者，追踪 token 使用 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| chaos-tester-agent | 混沌测试者，随机故障注入 | ❌ | ✅ | ❌ | ❌ | ❌ |
+| checkpoint-manager-agent | 检查点管理者，管理恢复点 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| workflow-runner | 可选的编排辅助工具 | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+### 编排方式
+
+- **简单任务**：主 Agent 内联编排，直接调用 dev-agent
+- **复杂任务**：主 Agent 调用预定义 workflow
+- **任务复杂度**：由专门的 agent 判断
+
+### 通信机制
+
+- **文件契约通信**：通过 `.workflow/artifacts/` 下的 JSON 文件传递信息
+- **Schema 验证**：所有 artifact 必须符合对应的 schema
+- **Handoff skill**：用于会话传递
+
+### 自迭代机制
+
+- 每个 agent 完成任务后记录 improvements
+- guardian Agent 审查并生成优化计划
+- 用户审批后，optimizer Agent 执行优化
+- optimizer Agent 自己验证优化效果
+
+### 约束机制
+
+约束分为两个层次：
+
+**软约束（强烈推荐，违反需给出理由）**：
+- **决策级约束**：CLAUDE.md — 定义项目准则和协作规则
+- **流程级约束**：.claude/rules/ — 定义编码规范和测试要求
+- **编排级约束**：.workflow/specs/ — 定义 workflow 流程
+- **角色级约束**：.claude/agents/*.md — 定义每个 Agent 的职责边界
+
+**硬约束（代码级强制，不可绕过）**：
+- **执行级约束**：.claude/hooks/hooks.json — 工具级拦截和验证
 
 ## 关键引用
 

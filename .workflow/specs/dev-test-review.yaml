@@ -59,6 +59,118 @@ agents:
     outputs:
       - .workflow/artifacts/{task_id}/review-report.json
 
+  guardian-agent:
+    role: guardian
+    description: 守护者，监督整个系统，发现系统性问题
+    config: .claude/agents/guardian.md
+    inputs:
+      - .workflow/artifacts/{task_id}/*.json
+    outputs:
+      - .workflow/artifacts/{task_id}/system-health-report.json
+    trigger: after_each_task
+
+  optimizer-agent:
+    role: optimizer
+    description: 优化者，执行具体优化任务，搜索更好的 skill
+    config: .claude/agents/optimizer.md
+    inputs:
+      - .workflow/artifacts/{task_id}/system-health-report.json
+    outputs:
+      - .workflow/artifacts/{task_id}/optimization-plan.json
+    trigger: guardian_agent_trigger_with_user_approval
+    requires_approval: true
+
+  orchestrator-agent:
+    role: orchestrator_supervisor
+    description: 监督者，监督所有 Agent 的执行
+    config: .claude/agents/orchestrator.md
+    inputs:
+      - .workflow/artifacts/{task_id}/*.json
+    outputs:
+      - .workflow/artifacts/{task_id}/orchestration-report.json
+    trigger: after_each_task
+
+  validator-agent:
+    role: validator
+    description: 验证者，管道交叉点验证，防止错误传播
+    config: .claude/agents/validator.md
+    inputs:
+      - .workflow/artifacts/{task_id}/*.json
+    outputs:
+      - .workflow/artifacts/{task_id}/validation-report.json
+    trigger: after_each_phase
+
+  cost-tracker-agent:
+    role: cost_tracker
+    description: 成本追踪者，追踪 token 使用和成本
+    config: .claude/agents/cost-tracker-agent.md
+    inputs:
+      - .workflow/artifacts/{task_id}/*.json
+    outputs:
+      - .workflow/artifacts/{task_id}/cost-report.json
+    trigger: after_each_agent
+
+  chaos-tester-agent:
+    role: chaos_tester
+    description: 混沌测试者，随机故障注入测试
+    config: .claude/agents/chaos-tester-agent.md
+    inputs:
+      - .workflow/specs/dev-test-review.yaml
+    outputs:
+      - .workflow/artifacts/{task_id}/chaos-test-report.json
+    trigger: manual
+
+  checkpoint-manager-agent:
+    role: checkpoint_manager
+    description: 检查点管理者，管理恢复点
+    config: .claude/agents/checkpoint-manager-agent.md
+    inputs:
+      - .workflow/artifacts/{task_id}/*.json
+    outputs:
+      - .workflow/artifacts/{task_id}/checkpoint.json
+    trigger: after_each_phase
+
+# ----------------------------------------------------------
+# Trigger schema (触发器枚举定义)
+# ----------------------------------------------------------
+trigger_schema:
+  description: >
+    定义 Agent 触发器的枚举值。每个 Agent 的 trigger 字段必须使用以下值之一。
+  values:
+    - name: after_each_task
+      description: 每个任务完成后触发
+    - name: after_each_phase
+      description: 每个阶段完成后触发
+    - name: after_each_agent
+      description: 每个 Agent 完成后触发
+    - name: guardian_agent_trigger
+      description: guardian Agent 审查后触发，需要用户审批
+    - name: manual
+      description: 手动触发
+    - name: error_response
+      description: 错误响应时触发
+
+# ----------------------------------------------------------
+# Task complexity routing (任务复杂度路由)
+# ----------------------------------------------------------
+task_routing:
+  description: >
+    任务复杂度由专门的 agent 判断，决定使用内联编排还是预定义 workflow。
+  simple_task:
+    description: 简单任务，主 Agent 内联编排
+    criteria:
+      - 单文件修改
+      - 无依赖变更
+      - 无需并行审查
+    action: 直接调用 dev-agent
+  complex_task:
+    description: 复杂任务，主 Agent 调用预定义 workflow
+    criteria:
+      - 多文件修改
+      - 有依赖变更
+      - 需要并行审查
+    action: 调用 workflow('dev-test-review', { task_id })
+
 # ----------------------------------------------------------
 # Trigger rules (三级触发，按优先级)
 # ----------------------------------------------------------
