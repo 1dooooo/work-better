@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { formatShortcutHint } from "@/hooks/useKeyboardShortcuts";
+import { formatShortcutHint, SHORTCUTS } from "@/hooks/useKeyboardShortcuts";
 
 export type ViewId = "dashboard" | "events" | "tasks" | "timeline" | "reports" | "settings" | "audit";
 
@@ -38,15 +38,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "仪表盘", icon: Zap, shortcut: formatShortcutHint({ key: "1", metaKey: true }) },
-  { id: "events", label: "事件", icon: CalendarDays, shortcut: formatShortcutHint({ key: "2", metaKey: true }) },
-  { id: "tasks", label: "任务", icon: CheckSquare, shortcut: formatShortcutHint({ key: "3", metaKey: true }) },
-  { id: "timeline", label: "时间线", icon: Clock, shortcut: formatShortcutHint({ key: "4", metaKey: true }) },
-  { id: "reports", label: "报告", icon: BarChart3, shortcut: formatShortcutHint({ key: "5", metaKey: true }) },
+  { id: "dashboard", label: "工作台", icon: Zap, shortcut: formatShortcutHint(SHORTCUTS.VIEW_DASHBOARD) },
+  { id: "events", label: "事件", icon: CalendarDays, shortcut: formatShortcutHint(SHORTCUTS.VIEW_EVENTS) },
+  { id: "tasks", label: "任务", icon: CheckSquare, shortcut: formatShortcutHint(SHORTCUTS.VIEW_TASKS) },
+  { id: "timeline", label: "时间线", icon: Clock, shortcut: formatShortcutHint(SHORTCUTS.VIEW_TIMELINE) },
+  { id: "reports", label: "报告", icon: BarChart3, shortcut: formatShortcutHint(SHORTCUTS.VIEW_REPORTS) },
   // 开发者模式专属项
   { id: "audit", label: "审计", icon: ScrollText, developerOnly: true },
   // 底部固定项
-  { id: "settings", label: "设置", icon: Settings, shortcut: formatShortcutHint({ key: ",", metaKey: true }), isBottom: true },
+  { id: "settings", label: "设置", icon: Settings, shortcut: formatShortcutHint(SHORTCUTS.VIEW_SETTINGS), isBottom: true },
 ];
 
 interface SidebarProps {
