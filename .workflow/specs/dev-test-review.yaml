@@ -572,6 +572,34 @@ flow:
 # Circuit breaker (熔断器)
 # ----------------------------------------------------------
 # 当 Agent 持续失败时，停止重试，防止级联故障。
+# ----------------------------------------------------------
+# Cost limits (成本限制)
+# ----------------------------------------------------------
+# 设置每个 workflow 的 token 上限，控制成本。
+cost_limits:
+  description: >
+    成本限制：设置每个 workflow 的 token 上限，控制成本。
+  default_budget_usd: 1.00
+  warning_threshold_percent: 80
+  hard_limit_percent: 100
+  per_agent_limits:
+    dev-agent:
+      max_tokens: 100000
+      max_cost_usd: 0.50
+    test-agent:
+      max_tokens: 50000
+      max_cost_usd: 0.25
+    review-agent:
+      max_tokens: 30000
+      max_cost_usd: 0.15
+    product-reviewer:
+      max_tokens: 20000
+      max_cost_usd: 0.10
+  on_limit_exceeded:
+    - notify_user: true
+    - stop_workflow: false
+    - log_reason: true
+
 circuit_breaker:
   description: >
     熔断器机制：当 Agent 持续失败时，停止重试，防止级联故障。
