@@ -9,6 +9,14 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/ts/setup.ts"],
+    // 限制并发，避免内存爆炸
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    maxWorkers: 1,
   },
   resolve: {
     alias: {

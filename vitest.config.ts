@@ -16,5 +16,14 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}", "tests/ts/**/*.test.{ts,tsx}"],
     reporters: ["json", "default"],
     outputFile: "./test-results/vitest-results.json",
+    // 限制并发，避免内存爆炸
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    // 限制单个 vitest 实例的最大并发
+    maxWorkers: 1,
   },
 });
