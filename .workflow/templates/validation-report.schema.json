@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Validation Report",
+  "description": "Validator Agent 生成的验证报告",
+  "type": "object",
+  "required": ["task_id", "timestamp", "phase", "overall_valid", "validations", "metrics"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "报告生成时间"
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["dev", "review", "final"],
+      "description": "验证阶段"
+    },
+    "overall_valid": {
+      "type": "boolean",
+      "description": "整体是否有效"
+    },
+    "validations": {
+      "type": "array",
+      "description": "验证结果列表",
+      "items": {
+        "type": "object",
+        "required": ["artifact", "type", "valid"],
+        "properties": {
+          "artifact": {
+            "type": "string",
+            "description": "artifact 名称"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["schema", "consistency", "completeness"],
+            "description": "验证类型"
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "是否有效"
+          },
+          "errors": {
+            "type": "array",
+            "description": "错误列表",
+            "items": {
+              "type": "object",
+              "required": ["field", "message", "severity"],
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "description": "字段路径"
+                },
+                "message": {
+                  "type": "string",
+                  "description": "错误描述"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["error", "warning"],
+                  "description": "严重程度"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocking_errors": {
+      "type": "array",
+      "description": "阻断性错误列表",
+      "items": {
+        "type": "object",
+        "required": ["artifact", "field", "message"],
+        "properties": {
+          "artifact": {
+            "type": "string",
+            "description": "artifact 名称"
+          },
+          "field": {
+            "type": "string",
+            "description": "字段路径"
+          },
+          "message": {
+            "type": "string",
+            "description": "错误描述"
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["total_artifacts", "valid_artifacts", "invalid_artifacts"],
+      "properties": {
+        "total_artifacts": {
+          "type": "integer",
+          "description": "总 artifact 数量"
+        },
+        "valid_artifacts": {
+          "type": "integer",
+          "description": "有效的 artifact 数量"
+        },
+        "invalid_artifacts": {
+          "type": "integer",
+          "description": "无效的 artifact 数量"
+        },
+        "total_errors": {
+          "type": "integer",
+          "description": "总错误数"
+        },
+        "blocking_errors": {
+          "type": "integer",
+          "description": "阻断性错误数"
+        }
+      }
+    }
+  }
+}
