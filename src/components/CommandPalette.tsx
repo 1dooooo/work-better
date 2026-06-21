@@ -17,6 +17,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useKeyboardShortcuts, SHORTCUTS, formatShortcutHint } from "@/hooks/useKeyboardShortcuts";
+import { useCommandData } from "@/hooks/useCommandData";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -28,6 +29,7 @@ import {
   Download,
   CheckCircle,
   Zap,
+  FileText,
 } from "lucide-react";
 
 interface CommandPaletteProps {
@@ -37,6 +39,8 @@ interface CommandPaletteProps {
 
 export default function CommandPalette({ onNavigate, onAction }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { events, tasks, loading } = useCommandData(searchQuery);
 
   // 注册 ⌘K 快捷键
   useKeyboardShortcuts([
@@ -77,7 +81,11 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="搜索命令、事件、任务..." />
+      <CommandInput
+        placeholder="搜索命令、事件、任务..."
+        value={searchQuery}
+        onValueChange={setSearchQuery}
+      />
       <CommandList>
         <CommandEmpty>未找到结果</CommandEmpty>
 
@@ -193,6 +201,62 @@ export default function CommandPalette({ onNavigate, onAction }: CommandPaletteP
             </div>
           </CommandItem>
         </CommandGroup>
+
+        {/* 搜索结果：事件 */}
+        {!loading && events.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading={`事件 (${events.length})`}>
+              {events.slice(0, 5).map((event) => {
+                const content =
+                  typeof event.content === "string"
+                    ? event.content
+                    : JSON.stringify(event.content);
+                return (
+                  <CommandItem
+                    key={event.id}
+                    onSelect={() => handleSelect(`event-${event.id}`)}
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-md border">
+                      <FileText className="size-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate">{content.slice(0, 50)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {event.source} · {event.type}
+                      </div>
+                    </div>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </>
+        )}
+
+        {/* 搜索结果：任务 */}
+        {!loading && tasks.length > 0 && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading={`任务 (${tasks.length})`}>
+              {tasks.slice(0, 5).map((task) => (
+                <CommandItem
+                  key={task.id}
+                  onSelect={() => handleSelect(`task-${task.id}`)}
+                >
+                  <div className="flex size-8 items-center justify-center rounded-md border">
+                    <CheckSquare className="size-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{task.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {task.status} · {task.priority}优先级
+                    </div>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </>
+        )}
       </CommandList>
     </CommandDialog>
   );
