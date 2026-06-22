@@ -758,6 +758,7 @@ artifacts:
       path: error-response.json
       writer: workflow-runner
       readers: [dev-agent, user]
+      schema: .workflow/templates/error-response.schema.json
       description: 错误响应协议输出，记录现象、根因、改进措施和修复结果
     dev_output:
       path: dev-output.json

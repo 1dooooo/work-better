@@ -1,6 +1,11 @@
 ---
 name: cost-tracker-agent
 description: 成本追踪者，追踪 token 使用和成本
+type: agent
+domain: cost
+created: 2026-06-21
+updated: 2026-06-21
+status: active
 tools:
   - Read
   - Glob

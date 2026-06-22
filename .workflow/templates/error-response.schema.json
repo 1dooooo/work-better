@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ErrorResponse",
+  "description": "错误响应协议输出，记录现象、根因、改进措施和修复结果",
+  "type": "object",
+  "required": ["error_id", "timestamp", "phenomenon", "root_cause", "improvement", "fix_result"],
+  "properties": {
+    "error_id": {
+      "type": "string",
+      "description": "错误唯一标识"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "错误发生时间"
+    },
+    "phenomenon": {
+      "type": "string",
+      "description": "错误现象描述"
+    },
+    "root_cause": {
+      "type": "string",
+      "description": "根本原因分析"
+    },
+    "improvement": {
+      "type": "string",
+      "description": "改进措施"
+    },
+    "fix_result": {
+      "type": "string",
+      "description": "修复结果"
+    }
+  }
+}
