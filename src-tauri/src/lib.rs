@@ -363,6 +363,8 @@ pub fn run() {
             commands::tasks::list_tasks,
             commands::tasks::create_task,
             commands::tasks::update_task_status,
+            commands::window::show_main_window,
+            commands::window::get_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

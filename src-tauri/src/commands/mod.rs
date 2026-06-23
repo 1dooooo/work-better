@@ -10,6 +10,7 @@ pub mod notify;
 pub mod scheduler;
 pub mod settings;
 pub mod tasks;
+pub mod window;
 
 use std::sync::Arc;
 use serde::Serialize;

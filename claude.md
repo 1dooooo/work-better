@@ -3,7 +3,7 @@ title: Agent Guide
 type: guide
 domain: development
 created: 2026-06-07
-updated: 2026-06-21
+updated: 2026-06-23
 status: active
 ---
 
@@ -35,68 +35,35 @@ status: active
 
 **渐进式读取**：`CLAUDE.md` → CODEMAP → 目标源文件（最多 3 层定位）
 
-## 多 Agent 协作
+## 编排规则（唯一强制规则）
 
-本项目采用多 Agent 协作开发模式。**主 Agent 是指挥官**，使用 Workflow tool 直接编排 subagent，始终持有控制权。
+**所有代码变更（crates/、src/、src-tauri/），主 Agent 必须：**
 
-### Agent 职责矩阵
+1. 调用 `workflow-runner`，传入任务描述
+2. 等待 workflow-runner 返回结果
+3. 将结果汇报给用户
 
-| Agent | 职责 | 写代码 | 写测试 | 审查代码 | 编排调度 | 监督优化 |
-|-------|------|--------|--------|---------|---------|---------|
-| **主 Agent** | 指挥官，编排 subagent | ❌ | ❌ | ❌ | ✅ | ❌ |
-| dev-agent | 功能开发 + L1-L2 测试 | ✅ | ✅ | ❌ | ❌ | ❌ |
-| test-agent | 测试执行 + L4-L5 测试生成 | ❌ | ✅ | ❌ | ❌ | ❌ |
-| review-agent | 代码审查 + H3-H5 安全测试 | ❌ | ✅ | ✅ | ❌ | ❌ |
-| product-reviewer | 产品定义符合性审查 | ❌ | ❌ | ✅ | ❌ | ❌ |
-| guardian Agent | 守护者，监督整个系统 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| optimizer Agent | 优化者，执行具体优化任务 | ✅ | ❌ | ❌ | ❌ | ✅ |
-| orchestrator-agent | 监督者，监督所有 Agent | ❌ | ❌ | ❌ | ✅ | ✅ |
-| validator-agent | 验证者，管道交叉点验证 | ❌ | ❌ | ✅ | ❌ | ❌ |
-| cost-tracker-agent | 成本追踪者，追踪 token 使用 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| chaos-tester-agent | 混沌测试者，随机故障注入 | ❌ | ✅ | ❌ | ❌ | ❌ |
-| checkpoint-manager-agent | 检查点管理者，管理恢复点 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| workflow-runner | 可选的编排辅助工具 | ❌ | ❌ | ❌ | ✅ | ❌ |
+**主 Agent 禁止：**
 
-### 编排方式
+- 直接调用 dev-agent、test-agent、review-agent、product-reviewer
+- 直接写代码（由 workflow-runner 委托 dev-agent 完成）
+- 直接运行测试（由 workflow-runner 委托 test-agent 完成）
 
-- **主 Agent 禁止直接派发子 Agent**（dev-agent、test-agent、review-agent、product-reviewer）
-- **所有代码变更的子 Agent 调度必须通过 `workflow-runner` 进行**
-- workflow-runner 收到任务后自行判断：
-  - 简单变更 → workflow-runner 直接完成
-  - 复杂变更 → 按 spec 派发子 Agent
-- **主 Agent 自己也不能直接写代码**（Edit/Write/Bash 修改 crates/、src/、src-tauri/ 下的文件会被 hook 阻止）
+**workflow-runner 负责：**
 
-### 通信机制
+- 按固定流程编排：dev → test+review+product-review → validator
+- 管理重试逻辑和熔断器
+- 生成最终报告
 
-- **文件契约通信**：通过 `.workflow/artifacts/` 下的 JSON 文件传递信息
-- **Schema 验证**：所有 artifact 必须符合对应的 schema
-- **Handoff skill**：用于会话传递
+**Hook 自动保障：**
 
-### 自迭代机制
+- PreToolUse hook 在代码变更时自动创建 workflow artifact
+- 无需手动创建 dev-output.json
 
-- 每个 agent 完成任务后记录 improvements
-- guardian Agent 审查并生成优化计划
-- 用户审批后，optimizer Agent 执行优化
-- optimizer Agent 自己验证优化效果
-
-### 约束机制
-
-约束分为两个层次：
-
-**软约束（强烈推荐，违反需给出理由）**：
-- **决策级约束**：CLAUDE.md — 定义项目准则和协作规则
-- **流程级约束**：.claude/rules/ — 定义编码规范和测试要求
-- **编排级约束**：.workflow/specs/ — 定义 workflow 流程
-- **角色级约束**：.claude/agents/*.md — 定义每个 Agent 的职责边界
-
-**硬约束（代码级强制，不可绕过）**：
-- **执行级约束**：.claude/hooks/hooks.json — 工具级拦截和验证
+→ [workflow-runner 定义](.claude/agents/workflow-runner.md) — 完整流程和路由表
 
 ## 关键引用
 
-→ [多 Agent 协作规范](docs/development/multi-agent-collaboration.md) — 强制约束、路由架构、协作流程
+→ [多 Agent 协作规范](docs/development/multi-agent-collaboration.md) — 协作流程详情
 → [错误响应协议](docs/development/error-response-protocol.md) — 错误时必须先反思流程
-→ [自定义 Agent 注册](docs/development/custom-agents.md) — Agent 定义和注册方式
-→ [文档规范](docs/conventions.md) — frontmatter、索引更新、底线规则
 → [CODEMAP 索引](docs/CODEMAPS/_index.md) — 代码导航入口
-→ [Workflow Spec](.workflow/specs/dev-test-review.yaml) — 测试+审查流程定义

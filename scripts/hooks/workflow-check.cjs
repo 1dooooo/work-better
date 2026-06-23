@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // ============================================================
-// workflow-check.js — PreToolUse hook
+// workflow-check.cjs — PreToolUse hook
 // 检查 Edit/Write/Bash 操作是否需要先创建 workflow
+// 如果需要且不存在，自动创建 artifact 目录和 dev-output.json
 // stdin: Claude Code hook JSON { tool_name, tool_input, ... }
-// exit 0: 允许（警告或无关）
-// exit 2: 阻止（需要先创建 workflow）
+// exit 0: 允许（已有 workflow 或已自动创建）
+// exit 2: 阻止（无法自动创建）
 // ============================================================
 
 const fs = require('fs');
@@ -35,23 +36,19 @@ const EXCLUDED_PATTERNS = [
 ];
 
 // Bash 命令中可能写入文件的模式
-// 匹配: sed -i, tee, cp/mv 到受保护目录, echo/cat/printf 重定向, awk -i inplace 等
 const BASH_WRITE_PATTERNS = [
-  /\bsed\s+(-[iI]\b|--in-place)/,           // sed -i or sed --in-place
-  /\btee\b/,                                  // tee (writes to file)
-  /\bcp\b.*\s+(crates|src|src-tauri)\//,     // cp to protected dir
-  /\bmv\b.*\s+(crates|src|src-tauri)\//,     // mv to protected dir
-  />\s*(crates|src|src-tauri)\//,             // redirect > to protected dir
-  />>\s*(crates|src|src-tauri)\//,            // append >> to protected dir
-  /\bawk\b.*-i\s+inplace/,                   // awk -i inplace
-  /\binstall\b.*\s+(crates|src|src-tauri)\//, // install to protected dir
-  /\bcp\b.*\s+(crates|src|src-tauri)\//,     // cp to protected dir
+  /\bsed\s+(-[iI]\b|--in-place)/,
+  /\btee\b/,
+  /\bcp\b.*\s+(crates|src|src-tauri)\//,
+  /\bmv\b.*\s+(crates|src|src-tauri)\//,
+  />\s*(crates|src|src-tauri)\//,
+  />>\s*(crates|src|src-tauri)\//,
+  /\bawk\b.*-i\s+inplace/,
+  /\binstall\b.*\s+(crates|src|src-tauri)\//,
 ];
 
 /**
  * 检查文件路径是否需要 workflow
- * @param {string} filePath
- * @returns {{ needsWorkflow: boolean, reason: string }}
  */
 function checkFilePath(filePath) {
   if (!filePath) return { needsWorkflow: false, reason: 'empty path' };
@@ -67,15 +64,11 @@ function checkFilePath(filePath) {
 
 /**
  * 从 Bash 命令中提取可能被写入的文件路径
- * @param {string} command
- * @returns {string[]} 被写入的文件路径列表
  */
 function extractBashWriteTargets(command) {
   if (!command) return [];
-
   const targets = [];
 
-  // 匹配 sed -i 's/.../' file 或 sed -i file
   const sedMatch = command.match(/\bsed\s+(?:-[iI]\b|--in-place)\s*(?:'[^']*'|"[^"]*")*\s+(\S+)/g);
   if (sedMatch) {
     for (const m of sedMatch) {
@@ -84,7 +77,6 @@ function extractBashWriteTargets(command) {
     }
   }
 
-  // 匹配 redirect: > file or >> file (with optional space)
   const redirectMatches = command.match(/>{1,2}\s*([^\s;|&]+)/g);
   if (redirectMatches) {
     for (const m of redirectMatches) {
@@ -93,7 +85,6 @@ function extractBashWriteTargets(command) {
     }
   }
 
-  // 匹配 tee file
   const teeMatch = command.match(/\btee\s+(?:-[a]+\s+)?(\S+)/g);
   if (teeMatch) {
     for (const m of teeMatch) {
@@ -102,7 +93,6 @@ function extractBashWriteTargets(command) {
     }
   }
 
-  // 匹配 cp/mv source dest (last arg is dest)
   const cpMvMatch = command.match(/\b(?:cp|mv)\s+(?:-[a-zA-Z]+\s+)?\S+\s+(\S+)\s*$/gm);
   if (cpMvMatch) {
     for (const m of cpMvMatch) {
@@ -116,21 +106,16 @@ function extractBashWriteTargets(command) {
 
 /**
  * 检查 Bash 命令是否可能写入受保护目录的文件
- * @param {string} command
- * @returns {{ blocked: boolean, filePath: string }}
  */
 function checkBashCommand(command) {
   if (!command) return { blocked: false, filePath: '' };
 
-  // 快速检查：命令是否包含受保护目录引用（使用不带 ^ 锚点的模式匹配命令中任意位置）
   const hasProtectedRef = WORKFLOW_REQUIRED_PATTERNS_IN_COMMAND.some(p => p.test(command));
   if (!hasProtectedRef) return { blocked: false, filePath: '' };
 
-  // 检查是否有写入操作模式
   const hasWritePattern = BASH_WRITE_PATTERNS.some(p => p.test(command));
   if (!hasWritePattern) return { blocked: false, filePath: '' };
 
-  // 提取具体被写入的文件路径
   const targets = extractBashWriteTargets(command);
   for (const target of targets) {
     const { needsWorkflow } = checkFilePath(target);
@@ -139,19 +124,15 @@ function checkBashCommand(command) {
     }
   }
 
-  // 如果提取到了目标但都被排除，允许执行
   if (targets.length > 0) {
     return { blocked: false, filePath: '' };
   }
 
-  // 如果有写入模式但无法提取具体路径，保守阻止
   return { blocked: true, filePath: '(detected write to protected dir)' };
 }
 
 /**
  * 检查文件路径列表中是否有需要 workflow 的文件
- * @param {string[]} filePaths
- * @returns {{ needsWorkflow: boolean, filePath: string }}
  */
 function checkFilePaths(filePaths) {
   if (!Array.isArray(filePaths) || filePaths.length === 0) {
@@ -168,6 +149,84 @@ function checkFilePaths(filePaths) {
   return { needsWorkflow: false, filePath: '' };
 }
 
+/**
+ * 查找项目根目录
+ */
+function findProjectRoot() {
+  let dir = process.cwd();
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, '.git'))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  return null;
+}
+
+/**
+ * 自动创建 workflow artifact 目录和 dev-output.json
+ * @param {string} projectRoot
+ * @param {string} filePath - 触发的文件路径
+ * @returns {{ created: boolean, taskId: string, error: string }}
+ */
+function autoCreateWorkflow(projectRoot, filePath) {
+  const artifactsDir = path.join(projectRoot, '.workflow', 'artifacts');
+
+  // 确保 artifacts 目录存在
+  if (!fs.existsSync(artifactsDir)) {
+    fs.mkdirSync(artifactsDir, { recursive: true });
+  }
+
+  // 检查是否已有活跃 workflow
+  if (fs.existsSync(artifactsDir)) {
+    const existingTasks = fs.readdirSync(artifactsDir).filter(d => {
+      const devOutput = path.join(artifactsDir, d, 'dev-output.json');
+      return fs.existsSync(devOutput);
+    });
+
+    for (const t of existingTasks) {
+      const finalReport = path.join(artifactsDir, t, 'final-report.json');
+      if (!fs.existsSync(finalReport)) {
+        // 已有活跃 workflow，不需要创建
+        return { created: false, taskId: t, error: '' };
+      }
+    }
+  }
+
+  // 生成 task_id：feat-auto-{timestamp}
+  const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  const taskId = `feat-auto-${timestamp}`;
+  const taskDir = path.join(artifactsDir, taskId);
+
+  try {
+    fs.mkdirSync(taskDir, { recursive: true });
+
+    // 生成 dev-output.json
+    const devOutput = {
+      task_id: taskId,
+      task_description: `Auto-detected code change: ${filePath}`,
+      changed_files: [filePath],
+      timestamp: new Date().toISOString(),
+      auto_created: true,
+    };
+
+    fs.writeFileSync(
+      path.join(taskDir, 'dev-output.json'),
+      JSON.stringify(devOutput, null, 2)
+    );
+
+    console.error(`[workflow-check] ✅ Auto-created workflow: ${taskId}`);
+    console.error(`[workflow-check] Artifact dir: ${taskDir}`);
+    console.error(`[workflow-check] Please call workflow-runner to continue.`);
+
+    return { created: true, taskId, error: '' };
+  } catch (e) {
+    return { created: false, taskId: '', error: e.message };
+  }
+}
+
+// ─── Main ───────────────────────────────────────────────────
+
 let input = '';
 process.stdin.on('data', chunk => input += chunk);
 process.stdin.on('end', () => {
@@ -178,23 +237,20 @@ process.stdin.on('end', () => {
 
     // 确定要检查的文件路径
     let filePath = '';
-    let isBlocked = false;
+    let needsWorkflow = false;
 
     if (toolName === 'Bash') {
-      // Bash 工具：检查命令是否包含文件写入操作
       const command = toolInput.command || '';
       const bashCheck = checkBashCommand(command);
       if (!bashCheck.blocked) {
         process.exit(0);
       }
       filePath = bashCheck.filePath;
-      isBlocked = true;
+      needsWorkflow = true;
     } else if (toolName === 'MultiEdit') {
-      // MultiEdit 工具：检查 file_paths 数组（复数）
       const filePaths = toolInput.file_paths || [];
-      const { needsWorkflow, filePath: matchedPath } = checkFilePaths(filePaths);
-      if (!needsWorkflow) {
-        // 也检查 file_path（单数）作为降级
+      const { needsWorkflow: nw, filePath: matchedPath } = checkFilePaths(filePaths);
+      if (!nw) {
         const singleCheck = checkFilePath(toolInput.file_path || '');
         if (!singleCheck.needsWorkflow) {
           process.exit(0);
@@ -203,91 +259,41 @@ process.stdin.on('end', () => {
       } else {
         filePath = matchedPath;
       }
+      needsWorkflow = true;
     } else if (toolName === 'Edit' || toolName === 'Write') {
-      // Edit/Write 工具：检查 file_path
       filePath = toolInput.file_path || '';
-      const { needsWorkflow } = checkFilePath(filePath);
-      if (!needsWorkflow) {
+      const check = checkFilePath(filePath);
+      if (!check.needsWorkflow) {
         process.exit(0);
       }
+      needsWorkflow = true;
     } else {
-      // 其他工具不检查
+      process.exit(0);
+    }
+
+    if (!needsWorkflow) {
       process.exit(0);
     }
 
     // 查找项目根目录
     const projectRoot = findProjectRoot();
     if (!projectRoot) {
-      console.error('[workflow-check] WARNING: Could not find project root, skipping workflow check');
-      process.exit(2); // fail-closed: 无法确定项目根目录时阻止
+      console.error('[workflow-check] WARNING: Could not find project root');
+      process.exit(2);
     }
 
-    // 检查是否有活跃的 workflow artifacts
-    const artifactsDir = path.join(projectRoot, '.workflow', 'artifacts');
-    if (!fs.existsSync(artifactsDir)) {
-      console.error('[workflow-check] ❌ BLOCKED: No active workflow found.');
-      console.error(`[workflow-check] You are editing code file: ${filePath}`);
-      console.error('[workflow-check] According to workflow rules, code changes require a workflow.');
-      console.error('[workflow-check] Please create a workflow first:');
-      console.error('[workflow-check]   1. Run: ./scripts/create-dev-output.sh <task_id>');
-      console.error('[workflow-check]   2. Run: ./scripts/run-workflow.sh <task_id>');
-      console.error('[workflow-check] Cannot continue without workflow.');
-      process.exit(2); // 强制阻止
+    // 自动创建 workflow artifact
+    const result = autoCreateWorkflow(projectRoot, filePath);
+
+    if (result.error) {
+      console.error(`[workflow-check] ❌ Failed to auto-create workflow: ${result.error}`);
+      process.exit(2);
     }
 
-    // 检查是否有活跃的任务（有 dev-output.json 但没有 final-report.json）
-    const tasks = fs.readdirSync(artifactsDir).filter(d => {
-      const devOutput = path.join(artifactsDir, d, 'dev-output.json');
-      return fs.existsSync(devOutput);
-    });
-
-    if (tasks.length === 0) {
-      console.error('[workflow-check] ❌ BLOCKED: No active workflow task found.');
-      console.error(`[workflow-check] You are editing code file: ${filePath}`);
-      console.error('[workflow-check] According to workflow rules, code changes require a workflow.');
-      console.error('[workflow-check] Please create a workflow first:');
-      console.error('[workflow-check]   1. Run: ./scripts/create-dev-output.sh <task_id>');
-      console.error('[workflow-check]   2. Run: ./scripts/run-workflow.sh <task_id>');
-      console.error('[workflow-check] Cannot continue without workflow.');
-      process.exit(2); // 强制阻止
-    }
-
-    // 使用 mtime 排序获取最新任务（而非字典序）
-    const latestTask = tasks.sort((a, b) => {
-      const mtimeA = fs.statSync(path.join(artifactsDir, a)).mtimeMs;
-      const mtimeB = fs.statSync(path.join(artifactsDir, b)).mtimeMs;
-      return mtimeB - mtimeA;
-    })[0];
-
-    const finalReport = path.join(artifactsDir, latestTask, 'final-report.json');
-    if (fs.existsSync(finalReport)) {
-      console.error('[workflow-check] ❌ BLOCKED: Latest workflow task already completed.');
-      console.error(`[workflow-check] You are editing code file: ${filePath}`);
-      console.error('[workflow-check] According to workflow rules, code changes require a workflow.');
-      console.error('[workflow-check] Please create a new workflow:');
-      console.error('[workflow-check]   1. Run: ./scripts/create-dev-output.sh <task_id>');
-      console.error('[workflow-check]   2. Run: ./scripts/run-workflow.sh <task_id>');
-      console.error('[workflow-check] Cannot continue without workflow.');
-      process.exit(2); // 强制阻止
-    }
-
-    // 有活跃的 workflow，允许继续
-    console.error(`[workflow-check] ✅ Active workflow found: ${latestTask}`);
+    // 允许操作继续
     process.exit(0);
   } catch (e) {
     console.error(`[workflow-check] Error: ${e.message}`);
-    process.exit(2); // fail-closed: 出错时阻止（安全关键组件应采用 fail-closed 策略）
+    process.exit(2);
   }
 });
-
-function findProjectRoot() {
-  // 从当前目录向上查找 .git 目录
-  let dir = process.cwd();
-  while (dir !== path.dirname(dir)) {
-    if (fs.existsSync(path.join(dir, '.git'))) {
-      return dir;
-    }
-    dir = path.dirname(dir);
-  }
-  return null;
-}
