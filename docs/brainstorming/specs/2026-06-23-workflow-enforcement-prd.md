@@ -93,6 +93,14 @@ workflow-runner 根据任务描述自动匹配任务类型，决定调用哪些 
 | 文档变更 | 跳过 workflow | — |
 | 配置变更 | dev → test → validator | review |
 
+**所有代码变更都走完整流程，不可跳过任何阶段。**
+
+**Effort 控制：**
+根据任务复杂度选择 effort 级别，传递给每个 agent 控制执行深度：
+- low：变更文件 ≤ 2 且行数 ≤ 20（typo、注释、格式）
+- medium：变更文件 ≤ 5 且行数 ≤ 100（小功能、小 bug）
+- high：其他（复杂功能、架构变更）
+
 ### 3. 规则瘦身
 
 **CLAUDE.md 简化为一条硬规则：**
