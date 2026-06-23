@@ -1,10 +1,18 @@
 /**
- * MenuBar — macOS 菜单栏面板（Raycast/Fantastical 风格）
+ * MenuBar — macOS 菜单栏面板
  *
- * 设计参考：
+ * 设计参考（来自网络搜索）：
  * - Raycast: 深色毛玻璃、高密度、原生 macOS 语言
  * - Fantastical: 清晰分组、语义化颜色、一键操作
- * - Apple HIG: SF Pro 字体、8pt 圆角、系统强调色
+ * - bjango.com: 模板图标 16×16pt，自动适配深色/浅色
+ * - techconcepts.org: 320×400 常见尺寸，.transient 行为
+ * - Medium (anhphong): NSMenu 即时响应，模板图像自动适配
+ *
+ * 设计规范：
+ * - 菜单栏面板始终使用深色毛玻璃（与 Raycast 一致）
+ * - 分层展示：主状态 → 次要信息 → 详情
+ * - 使用 CSS 变量实现主题一致性
+ * - 图标尺寸：12-16px（菜单栏上下文适配）
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -44,32 +52,95 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ─── 常量 ──────────────────────────────────────────────────────
+
+/** 每组通知最多显示条数 */
+const MAX_NOTIFICATIONS_PER_GROUP = 3;
+
+/** 最多显示的待办数 */
+const MAX_PENDING_TASKS = 3;
+
+/** 最多显示的事件数 */
+const MAX_EVENTS = 10;
+
+/** 自动刷新间隔（毫秒） */
+const REFRESH_INTERVAL = 30_000;
+
 // ─── 事件类型配色（macOS 系统色）─────────────────────────────────
 
-const EVENT_TYPE_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+const EVENT_TYPE_CONFIG: Record<
+  string,
+  { color: string; bg: string; label: string }
+> = {
   // PascalCase（后端 Rust 枚举序列化格式）
   Message: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MSG" },
-  DocumentChange: { color: "text-macos-gray", bg: "bg-white/5", label: "DOC" },
-  TaskUpdate: { color: "text-macos-pink", bg: "bg-macos-pink/10", label: "TASK" },
-  Meeting: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "MTG" },
-  CalendarEvent: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "CAL" },
+  DocumentChange: {
+    color: "text-macos-gray",
+    bg: "bg-white/5",
+    label: "DOC",
+  },
+  TaskUpdate: {
+    color: "text-macos-pink",
+    bg: "bg-macos-pink/10",
+    label: "TASK",
+  },
+  Meeting: {
+    color: "text-macos-orange",
+    bg: "bg-macos-orange/10",
+    label: "MTG",
+  },
+  CalendarEvent: {
+    color: "text-macos-orange",
+    bg: "bg-macos-orange/10",
+    label: "CAL",
+  },
   Email: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MAIL" },
-  Approval: { color: "text-macos-green", bg: "bg-macos-green/10", label: "APPR" },
-  OkrUpdate: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "OKR" },
+  Approval: {
+    color: "text-macos-green",
+    bg: "bg-macos-green/10",
+    label: "APPR",
+  },
+  OkrUpdate: {
+    color: "text-macos-purple",
+    bg: "bg-macos-purple/10",
+    label: "OKR",
+  },
   Browsing: { color: "text-macos-gray", bg: "bg-white/5", label: "WEB" },
-  AppActivity: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "APP" },
-  ManualNote: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "NOTE" },
+  AppActivity: {
+    color: "text-macos-blue",
+    bg: "bg-macos-blue/10",
+    label: "APP",
+  },
+  ManualNote: {
+    color: "text-macos-purple",
+    bg: "bg-macos-purple/10",
+    label: "NOTE",
+  },
   // snake_case 兼容
   message: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MSG" },
-  issue: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "ISS" },
+  issue: {
+    color: "text-macos-orange",
+    bg: "bg-macos-orange/10",
+    label: "ISS",
+  },
   pr: { color: "text-macos-green", bg: "bg-macos-green/10", label: "PR" },
   document: { color: "text-macos-gray", bg: "bg-white/5", label: "DOC" },
-  note: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "NOTE" },
+  note: {
+    color: "text-macos-purple",
+    bg: "bg-macos-purple/10",
+    label: "NOTE",
+  },
   task: { color: "text-macos-pink", bg: "bg-macos-pink/10", label: "TASK" },
 };
 
 function getEventTypeConfig(type: string) {
-  return EVENT_TYPE_CONFIG[type] ?? { color: "text-macos-gray", bg: "bg-white/5", label: type.slice(0, 4).toUpperCase() };
+  return (
+    EVENT_TYPE_CONFIG[type] ?? {
+      color: "text-macos-gray",
+      bg: "bg-white/5",
+      label: type.slice(0, 4).toUpperCase(),
+    }
+  );
 }
 
 // ─── 通知分组配置 ─────────────────────────────────────────────
@@ -120,7 +191,10 @@ function formatRelativeTime(timestamp: string): string {
   if (diffMins < 60) return `${diffMins}分`;
   if (diffHours < 24) return `${diffHours}时`;
   if (diffDays < 7) return `${diffDays}天`;
-  return new Date(timestamp).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  return new Date(timestamp).toLocaleDateString("zh-CN", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ─── 事件内容摘要 ──────────────────────────────────────────────
@@ -137,7 +211,17 @@ function getEventSummary(content: unknown): string {
   const obj = content as Record<string, unknown>;
 
   // 第一优先：按优先级提取可读文本字段
-  const textKeys = ["summary", "title", "text", "message", "content", "body", "description", "name", "subject"];
+  const textKeys = [
+    "summary",
+    "title",
+    "text",
+    "message",
+    "content",
+    "body",
+    "description",
+    "name",
+    "subject",
+  ];
   for (const key of textKeys) {
     if (typeof obj[key] === "string" && obj[key].trim()) {
       return (obj[key] as string).slice(0, 60);
@@ -146,10 +230,28 @@ function getEventSummary(content: unknown): string {
 
   // 第二优先：组合多个有意义字段
   const parts: string[] = [];
-  const detailKeys = ["sender", "app", "url", "action", "status", "approved", "chat_id", "doc_id", "okr_id", "meeting_id", "event_id", "duration_min"];
+  const detailKeys = [
+    "sender",
+    "app",
+    "url",
+    "action",
+    "status",
+    "approved",
+    "chat_id",
+    "doc_id",
+    "okr_id",
+    "meeting_id",
+    "event_id",
+    "duration_min",
+  ];
   for (const key of detailKeys) {
     if (obj[key] !== undefined && obj[key] !== null) {
-      const val = typeof obj[key] === "boolean" ? (obj[key] ? "✓" : "✗") : String(obj[key]);
+      const val =
+        typeof obj[key] === "boolean"
+          ? obj[key]
+            ? "✓"
+            : "✗"
+          : String(obj[key]);
       parts.push(`${key}: ${val}`);
       if (parts.length >= 2) break;
     }
@@ -193,6 +295,99 @@ function useGroupedNotifications(notifications: NotificationRecord[]) {
   }, [notifications]);
 }
 
+// ─── 子组件：区域标题 ─────────────────────────────────────────
+
+function SectionHeader({
+  icon: Icon,
+  label,
+  count,
+  action,
+}: {
+  icon: typeof Clock;
+  label: string;
+  count?: number;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between px-3 py-1.5">
+      <div className="flex items-center gap-1.5">
+        <Icon className="h-3 w-3 text-white/40" />
+        <span className="text-[10px] font-medium text-white/50 uppercase tracking-wider">
+          {label}
+        </span>
+        {count !== undefined && count > 0 && (
+          <span className="text-[9px] text-white/30 tabular-nums">
+            {count}
+          </span>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// ─── 子组件：快捷操作按钮 ──────────────────────────────────────
+
+function ActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled,
+  spinning,
+  accent,
+}: {
+  icon: typeof Monitor;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  spinning?: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <button
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all duration-150",
+        "active:scale-[0.97] active:opacity-80",
+        accent
+          ? "bg-macos-blue/20 text-macos-blue hover:bg-macos-blue/30"
+          : "text-white/50 hover:text-white/80 hover:bg-white/[0.06]",
+        disabled && "opacity-40 cursor-not-allowed",
+      )}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+    >
+      <Icon
+        className={cn("h-3.5 w-3.5", spinning && "animate-spin")}
+        strokeWidth={1.8}
+      />
+      <span className="text-[10px] font-medium leading-none">{label}</span>
+    </button>
+  );
+}
+
+// ─── 子组件：骨架屏 ───────────────────────────────────────────
+
+function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5">
+      <div className="h-4 w-8 rounded bg-white/[0.06] animate-pulse" />
+      <div className="flex-1 h-3.5 rounded bg-white/[0.06] animate-pulse" />
+      <div className="h-3 w-6 rounded bg-white/[0.06] animate-pulse" />
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-1 py-2">
+      {Array.from({ length: 4 }, (_, i) => (
+        <SkeletonRow key={i} />
+      ))}
+    </div>
+  );
+}
+
 // ─── MenuBar 组件 ──────────────────────────────────────────────
 
 export default function MenuBar() {
@@ -208,13 +403,14 @@ export default function MenuBar() {
 
   const refresh = useCallback(async () => {
     try {
-      const [count, recentEvents, pendingNotifs, tasks, status] = await Promise.all([
-        getUnprocessedCount(),
-        getEvents(10),
-        getPendingNotifications().catch(() => []),
-        getPendingTasks().catch(() => []),
-        getSystemStatus().catch(() => null),
-      ]);
+      const [count, recentEvents, pendingNotifs, tasks, status] =
+        await Promise.all([
+          getUnprocessedCount(),
+          getEvents(MAX_EVENTS),
+          getPendingNotifications().catch(() => []),
+          getPendingTasks().catch(() => []),
+          getSystemStatus().catch(() => null),
+        ]);
       setUnprocessedCount(count);
       setEvents(recentEvents);
       setNotifications(pendingNotifs);
@@ -229,7 +425,7 @@ export default function MenuBar() {
 
   useEffect(() => {
     refresh();
-    const interval = setInterval(refresh, 30_000);
+    const interval = setInterval(refresh, REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [refresh]);
 
@@ -276,185 +472,282 @@ export default function MenuBar() {
     invoke("show_main_window").catch(() => {});
   };
 
-  const activeGroups = (["Confirm", "Reminder", "TaskDone"] as NotifyKind[]).filter(
-    (kind) => groupedNotifications[kind].length > 0
-  );
+  const activeGroups = (
+    ["Confirm", "Reminder", "TaskDone"] as NotifyKind[]
+  ).filter((kind) => groupedNotifications[kind].length > 0);
+
+  // ─── 渲染 ─────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full flex-col bg-[var(--glass-bg)] backdrop-blur-[var(--glass-blur)] text-white select-none overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]">
-      {/* ── Header (merged with status) ── */}
-      <header className="flex items-center justify-between px-3 py-1.5">
-        <div className="flex items-center gap-1.5">
-          <div className="flex h-4 w-4 items-center justify-center rounded bg-macos-blue/20">
-            <Zap className="h-2.5 w-2.5 text-macos-blue" />
+    <div
+      className={cn(
+        "flex h-full flex-col select-none overflow-hidden",
+        // 深色毛玻璃 — 始终使用深色（与 Raycast/Fantastical 一致）
+        "bg-[oklch(13%_0_0_/_0.92)] backdrop-blur-xl",
+        "text-white font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]",
+        // 顶部圆角（macOS popover 风格）
+        "rounded-xl border border-white/[0.08]",
+      )}
+    >
+      {/* ── Header：应用名 + 系统状态 ── */}
+      <header className="flex items-center justify-between px-3.5 py-2 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-macos-blue/20">
+            <Zap className="h-3 w-3 text-macos-blue" strokeWidth={2.2} />
           </div>
-          <span className="text-[11px] font-semibold text-white/90">Work Better</span>
-          {systemStatus && (
-            <div className="flex items-center gap-1 ml-1.5">
-              <span className={cn("h-1.5 w-1.5 rounded-full", systemStatus.scheduler_running ? "bg-macos-green" : "bg-macos-gray")} />
-              <span className="text-[9px] text-macos-gray">
-                {systemStatus.collectors_healthy}/{systemStatus.collectors_total} 采集
-              </span>
-              <span className="text-[9px] text-macos-dark-gray">·</span>
-              <span className="text-[9px] text-macos-gray">
-                {systemStatus.scheduler_running ? "调度中" : "已暂停"}
-              </span>
-            </div>
-          )}
+          <span className="text-[12px] font-semibold text-white/90 tracking-tight">
+            Work Better
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {systemStatus && systemStatus.today_processed_count > 0 && (
-            <span className="text-[9px] text-macos-gray tabular-nums">今日 {systemStatus.today_processed_count}</span>
+
+        <div className="flex items-center gap-2">
+          {systemStatus && (
+            <>
+              {/* 采集器健康状态 */}
+              <div className="flex items-center gap-1">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    systemStatus.collectors_healthy > 0
+                      ? "bg-macos-green"
+                      : "bg-macos-gray",
+                  )}
+                />
+                <span className="text-[9px] text-white/40 tabular-nums">
+                  {systemStatus.collectors_healthy}/
+                  {systemStatus.collectors_total}
+                </span>
+              </div>
+
+              {/* 分隔符 */}
+              <span className="text-[9px] text-white/20">·</span>
+
+              {/* 调度状态 */}
+              <span className="text-[9px] text-white/40">
+                {systemStatus.scheduler_running ? "运行中" : "已暂停"}
+              </span>
+            </>
           )}
+
+          {/* 今日处理数 */}
+          {systemStatus && systemStatus.today_processed_count > 0 && (
+            <>
+              <span className="text-[9px] text-white/20">·</span>
+              <span className="text-[9px] text-white/40 tabular-nums">
+                今日 {systemStatus.today_processed_count}
+              </span>
+            </>
+          )}
+
+          {/* 未处理数 */}
           {unprocessedCount > 0 && (
-            <span className="flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-macos-blue px-1 text-[8px] font-semibold text-white tabular-nums">
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-macos-blue px-1 text-[9px] font-semibold text-white tabular-nums">
               {unprocessedCount}
             </span>
           )}
         </div>
       </header>
 
-      {/* ── 最近事件 ── */}
+      {/* ── 主内容区 ── */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="flex items-center justify-between px-3 py-1">
-          <div className="flex items-center gap-1">
-            <Clock className="h-2.5 w-2.5 text-macos-dark-gray" />
-            <span className="text-[9px] font-medium text-macos-dark-gray uppercase tracking-wider">最近事件</span>
-          </div>
-          <button
-            className="flex h-4 w-4 items-center justify-center rounded text-macos-dark-gray hover:text-white hover:bg-white/10 transition-colors"
-            onClick={refresh}
-          >
-            <RefreshCw className="h-2.5 w-2.5" />
-          </button>
-        </div>
+        {/* ── 最近事件 ── */}
+        <SectionHeader
+          icon={Clock}
+          label="最近事件"
+          action={
+            <button
+              className="flex h-5 w-5 items-center justify-center rounded-md text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+              onClick={refresh}
+              aria-label="刷新"
+            >
+              <RefreshCw className="h-3 w-3" />
+            </button>
+          }
+        />
 
-        <div className="flex-1 overflow-y-auto px-1.5 min-h-0">
+        <div className="flex-1 overflow-y-auto px-2 min-h-0">
           {loading ? (
-            <div className="flex items-center justify-center py-6 text-[11px] text-macos-dark-gray">加载中...</div>
+            <LoadingSkeleton />
           ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-macos-dark-gray">
-              <Activity className="h-4 w-4 mb-1" />
+            <div className="flex flex-col items-center justify-center py-8 text-white/30">
+              <Activity className="h-5 w-5 mb-1.5" strokeWidth={1.5} />
               <span className="text-[11px]">暂无事件</span>
+              <span className="text-[9px] text-white/20 mt-0.5">
+                采集器运行后会自动显示
+              </span>
             </div>
           ) : (
-            events.map((event) => {
-              const typeConfig = getEventTypeConfig(event.type);
-              return (
-                <div
-                  key={event.id}
-                  className="group flex items-center gap-2 rounded-md px-2 py-[4px] hover:bg-white/[0.06] transition-colors cursor-default"
-                >
-                  {/* 类型色块 */}
-                  <span className={cn("text-[8px] font-bold w-7 flex-shrink-0 tabular-nums rounded px-1 py-0.5 text-center", typeConfig.color, typeConfig.bg)}>
-                    {typeConfig.label}
-                  </span>
-                  {/* 内容摘要 */}
-                  <span className="flex-1 text-[11px] text-white/80 truncate min-w-0">{getEventSummary(event.content)}</span>
-                  {/* 时间 */}
-                  <span className="text-[8px] text-macos-dark-gray flex-shrink-0 tabular-nums">{formatRelativeTime(event.timestamp)}</span>
-                </div>
-              );
-            })
+            <div className="space-y-px">
+              {events.map((event) => {
+                const typeConfig = getEventTypeConfig(event.type);
+                return (
+                  <div
+                    key={event.id}
+                    className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-white/[0.05] transition-colors cursor-default"
+                  >
+                    {/* 类型标签 */}
+                    <span
+                      className={cn(
+                        "text-[8px] font-bold w-8 flex-shrink-0 tabular-nums rounded px-1 py-0.5 text-center",
+                        typeConfig.color,
+                        typeConfig.bg,
+                      )}
+                    >
+                      {typeConfig.label}
+                    </span>
+                    {/* 内容摘要 */}
+                    <span className="flex-1 text-[11px] text-white/70 truncate min-w-0">
+                      {getEventSummary(event.content)}
+                    </span>
+                    {/* 时间 */}
+                    <span className="text-[9px] text-white/25 flex-shrink-0 tabular-nums">
+                      {formatRelativeTime(event.timestamp)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
+
+        {/* ── 今日待办 ── */}
+        {pendingTasks.length > 0 && (
+          <div className="border-t border-white/[0.06]">
+            <SectionHeader
+              icon={ListTodo}
+              label="今日待办"
+              count={pendingTasks.length}
+            />
+            <div className="px-2 pb-1 space-y-px">
+              {pendingTasks.slice(0, MAX_PENDING_TASKS).map((task) => (
+                <div
+                  key={task.id}
+                  className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-white/[0.05] transition-colors cursor-pointer"
+                >
+                  <div className="flex h-3.5 w-3.5 items-center justify-center rounded border border-white/20">
+                    <ListTodo className="h-2 w-2 text-white/40" />
+                  </div>
+                  <span className="flex-1 text-[11px] text-white/70 truncate min-w-0">
+                    {task.title}
+                  </span>
+                  <ChevronRight className="h-3 w-3 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── 通知中心 ── */}
+        {activeGroups.length > 0 && (
+          <div className="border-t border-white/[0.06]">
+            <SectionHeader
+              icon={Bell}
+              label="通知"
+              count={notifications.length}
+            />
+            <div className="max-h-[120px] overflow-y-auto px-2 pb-1 space-y-0.5">
+              {activeGroups.map((kind) => {
+                const group = NOTIFY_GROUP_CONFIG[kind];
+                const items = groupedNotifications[kind];
+                const GroupIcon = group.icon;
+                return (
+                  <div key={kind}>
+                    {/* 分组标题 */}
+                    <div className="flex items-center gap-1 px-1 mb-0.5">
+                      <GroupIcon
+                        className={cn("h-3 w-3", group.color)}
+                        strokeWidth={1.8}
+                      />
+                      <span
+                        className={cn(
+                          "text-[9px] font-medium",
+                          group.color,
+                        )}
+                      >
+                        {group.label}
+                      </span>
+                      <span className="text-[9px] text-white/25 tabular-nums">
+                        {items.length}
+                      </span>
+                    </div>
+                    {/* 通知列表 */}
+                    <div className="space-y-px">
+                      {items
+                        .slice(0, MAX_NOTIFICATIONS_PER_GROUP)
+                        .map((notif) => (
+                          <div
+                            key={notif.id}
+                            className={cn(
+                              "group flex items-center gap-2 rounded-lg border-l-2 px-2 py-[4px] cursor-pointer transition-colors",
+                              group.bg,
+                              group.border,
+                              "hover:bg-white/[0.06]",
+                            )}
+                            onClick={() => handleNotificationClick(notif)}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] text-white/80 truncate leading-tight">
+                                {notif.title}
+                              </p>
+                              {notif.body && (
+                                <p className="text-[9px] text-white/35 truncate mt-0.5">
+                                  {notif.body}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              {notif.action_url && (
+                                <ExternalLink className="h-3 w-3 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              )}
+                              <button
+                                className="flex h-5 w-5 items-center justify-center rounded-md text-white/30 hover:text-white/70 hover:bg-white/[0.08] transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDismissNotification(notif.id);
+                                }}
+                                aria-label="标记已读"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      {items.length > MAX_NOTIFICATIONS_PER_GROUP && (
+                        <p className="text-[9px] text-white/20 pl-2 py-0.5">
+                          +{items.length - MAX_NOTIFICATIONS_PER_GROUP} 更多
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── 今日待办 ── */}
-      {pendingTasks.length > 0 && (
-        <div className="border-t border-white/[0.06]">
-          <div className="flex items-center gap-1.5 px-3 py-1">
-            <ListTodo className="h-2.5 w-2.5 text-macos-blue" />
-            <span className="text-[9px] font-medium text-macos-dark-gray uppercase tracking-wider">
-              今日待办
-            </span>
-            <span className="text-[8px] text-macos-dark-gray tabular-nums">{pendingTasks.length}</span>
-          </div>
-          <div className="px-2 pb-1 space-y-0.5">
-            {pendingTasks.slice(0, 3).map((task) => (
-              <div
-                key={task.id}
-                className="group flex items-center gap-2 rounded-md px-2 py-[4px] hover:bg-white/[0.06] transition-colors cursor-pointer"
-              >
-                <div className="flex h-3 w-3 items-center justify-center rounded-sm border border-macos-blue/40">
-                  <ListTodo className="h-1.5 w-1.5 text-macos-blue" />
-                </div>
-                <span className="flex-1 text-[11px] text-white/80 truncate min-w-0">
-                  {task.title}
-                </span>
-                <ChevronRight className="h-2.5 w-2.5 text-macos-dark-gray opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </div>
-            ))}
-          </div>
+      {/* ── 快捷操作栏 ── */}
+      <div className="flex items-center justify-between border-t border-white/[0.06] px-2 py-1.5">
+        <div className="flex items-center gap-0.5">
+          <ActionButton
+            icon={Monitor}
+            label="主窗口"
+            onClick={handleOpenMainWindow}
+          />
+          <ActionButton
+            icon={PenLine}
+            label="速记"
+            onClick={() => showCaptureWindow()}
+          />
+          <ActionButton
+            icon={Camera}
+            label="截图"
+            onClick={() => invoke("take_screenshot")}
+          />
         </div>
-      )}
-
-      {/* ── 通知中心 ── */}
-      {activeGroups.length > 0 && (
-        <div className="border-t border-white/[0.06]">
-          <div className="flex items-center gap-1 px-3 py-1">
-            <Bell className="h-2.5 w-2.5 text-macos-dark-gray" />
-            <span className="text-[9px] font-medium text-macos-dark-gray uppercase tracking-wider">通知</span>
-            <span className="text-[8px] text-macos-dark-gray tabular-nums">{notifications.length}</span>
-          </div>
-          <div className="max-h-[120px] overflow-y-auto px-1.5 pb-1 space-y-0.5">
-            {activeGroups.map((kind) => {
-              const group = NOTIFY_GROUP_CONFIG[kind];
-              const items = groupedNotifications[kind];
-              const GroupIcon = group.icon;
-              return (
-                <div key={kind}>
-                  <div className="flex items-center gap-1 px-1 mb-0.5">
-                    <GroupIcon className={cn("h-2.5 w-2.5", group.color)} />
-                    <span className={cn("text-[8px] font-medium", group.color)}>{group.label}</span>
-                    <span className="text-[8px] text-macos-dark-gray tabular-nums">{items.length}</span>
-                  </div>
-                  <div className="space-y-0.5">
-                    {items.slice(0, 3).map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={cn(
-                          "group flex items-center gap-2 rounded-md border-l-2 px-2 py-[3px] cursor-pointer transition-colors",
-                          group.bg, group.border, "hover:bg-white/[0.06]"
-                        )}
-                        onClick={() => handleNotificationClick(notif)}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-white/90 truncate leading-tight">{notif.title}</p>
-                          {notif.body && <p className="text-[9px] text-macos-gray truncate mt-0.5">{notif.body}</p>}
-                        </div>
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          {notif.action_url && (
-                            <ExternalLink className="h-2.5 w-2.5 text-macos-dark-gray opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                          <button
-                            className="flex h-4 w-4 items-center justify-center rounded text-macos-dark-gray hover:text-white hover:bg-white/10 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); handleDismissNotification(notif.id); }}
-                          >
-                            <Check className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {items.length > 3 && (
-                      <p className="text-[8px] text-macos-dark-gray pl-2 py-0.5">+{items.length - 3} 更多</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── 快捷操作 ── */}
-      <div className="flex items-center justify-center gap-0.5 border-t border-white/[0.06] px-2 py-1.5">
-        <ActionButton icon={Monitor} label="主窗口" onClick={handleOpenMainWindow} />
-        <ActionButton icon={PenLine} label="速记" onClick={() => showCaptureWindow()} />
-        <ActionButton icon={Camera} label="截图" onClick={() => invoke("take_screenshot")} />
         <ActionButton
           icon={Play}
-          label={processing ? "处理中" : "处理"}
+          label={processing ? "处理中..." : "处理"}
           onClick={handleTriggerProcess}
           disabled={processing}
           spinning={processing}
@@ -462,42 +755,5 @@ export default function MenuBar() {
         />
       </div>
     </div>
-  );
-}
-
-// ─── 快捷操作按钮 ──────────────────────────────────────────────
-
-function ActionButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-  spinning,
-  accent,
-}: {
-  icon: typeof Monitor;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  spinning?: boolean;
-  accent?: boolean;
-}) {
-  return (
-    <button
-      className={cn(
-        "flex items-center gap-1 rounded-md px-2 py-1 transition-all duration-150",
-        "active:scale-95 active:opacity-80",
-        accent
-          ? "bg-macos-blue/15 text-macos-blue hover:bg-macos-blue/25"
-          : "text-white/60 hover:text-white hover:bg-white/[0.08]",
-        disabled && "opacity-50 cursor-not-allowed"
-      )}
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-    >
-      <Icon className={cn("h-3 w-3", spinning && "animate-spin")} />
-      <span className="text-[9px] font-medium leading-none">{label}</span>
-    </button>
   );
 }

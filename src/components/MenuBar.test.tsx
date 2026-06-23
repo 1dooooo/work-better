@@ -158,9 +158,9 @@ describe("MenuBar", () => {
 
       await waitFor(() => {
         // Header 状态区域
-        expect(screen.getByText(/4\/5 采集/)).toBeInTheDocument();
-        expect(screen.getByText("调度中")).toBeInTheDocument();
-        expect(screen.getByText("今日 15")).toBeInTheDocument();
+        expect(screen.getByText(/4\/5/)).toBeInTheDocument();
+        expect(screen.getByText("运行中")).toBeInTheDocument();
+        expect(screen.getByText(/今日 15/)).toBeInTheDocument();
         expect(screen.getByText("3")).toBeInTheDocument(); // unprocessed badge
 
         // 事件列表区域
@@ -582,7 +582,9 @@ describe("MenuBar", () => {
       });
 
       // 查找通知容器（包含 max-h-[120px] 的元素）
-      const notificationContainer = screen.getByText("通知").closest("div")?.parentElement?.querySelector(".max-h-\\[120px\\]");
+      // SectionHeader 结构变化：需要多向上一级到 border-t 包装器
+      const sectionWrapper = screen.getByText("通知").closest("[class*='border-t']");
+      const notificationContainer = sectionWrapper?.querySelector("[class*='max-h']");
       expect(notificationContainer).toBeTruthy();
       expect(notificationContainer).toHaveClass("overflow-y-auto");
     });
@@ -658,8 +660,8 @@ describe("MenuBar", () => {
       await user.click(screen.getByLabelText("处理"));
 
       await waitFor(() => {
-        // aria-label 应更新为 "处理中"
-        expect(screen.getByLabelText("处理中")).toBeInTheDocument();
+        // aria-label 应更新为 "处理中..."
+        expect(screen.getByLabelText("处理中...")).toBeInTheDocument();
       });
     });
   });
@@ -684,9 +686,9 @@ describe("MenuBar", () => {
         expect(screen.getByText("Work Better")).toBeInTheDocument();
 
         // 系统状态信息在同一行
-        expect(screen.getByText(/3\/5 采集/)).toBeInTheDocument();
+        expect(screen.getByText(/3\/5/)).toBeInTheDocument();
         expect(screen.getByText("已暂停")).toBeInTheDocument();
-        expect(screen.getByText("今日 8")).toBeInTheDocument();
+        expect(screen.getByText(/今日 8/)).toBeInTheDocument();
       });
     });
 
@@ -803,7 +805,7 @@ describe("MenuBar", () => {
   it("shows scheduler status when running", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("调度中")).toBeInTheDocument();
+      expect(screen.getByText("运行中")).toBeInTheDocument();
     });
   });
 
