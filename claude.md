@@ -59,9 +59,12 @@ status: active
 
 ### 编排方式
 
-- **简单任务**：主 Agent 内联编排，直接调用 dev-agent
-- **复杂任务**：主 Agent 调用预定义 workflow
-- **任务复杂度**：由专门的 agent 判断
+- **主 Agent 禁止直接派发子 Agent**（dev-agent、test-agent、review-agent、product-reviewer）
+- **所有代码变更的子 Agent 调度必须通过 `workflow-runner` 进行**
+- workflow-runner 收到任务后自行判断：
+  - 简单变更 → workflow-runner 直接完成
+  - 复杂变更 → 按 spec 派发子 Agent
+- **主 Agent 自己也不能直接写代码**（Edit/Write/Bash 修改 crates/、src/、src-tauri/ 下的文件会被 hook 阻止）
 
 ### 通信机制
 

@@ -27,6 +27,57 @@ workflow-runner 收到任务后自行判断是否需要多 Agent：
 
 **不触发**：仅修改文档 (`docs/`)、配置文件 (`.config/`)、脚本 (`scripts/`)
 
+## Hook 自动检查机制（强制执行）
+
+为了确保 workflow 规则被正确执行，项目配置了两个 hook。**这些 hook 是强制性的，违反将导致操作被阻止。**
+
+### PreToolUse Hook: workflow-check（阻止性）
+
+**文件**: `scripts/hooks/workflow-check.cjs`
+**触发时机**: 每次 Edit/Write/MultiEdit/Bash 操作前
+**行为**:
+1. **Edit/Write**: 检查目标文件路径是否在 `crates/`、`src/`、`src-tauri/` 下
+2. **MultiEdit**: 检查 `file_paths` 数组中的每个文件路径
+3. **Bash**: 检查命令是否包含对受保护目录的文件写入操作（`sed -i`、`tee`、重定向 `>`、`cp`/`mv` 到受保护目录等）
+4. 如果匹配，检查是否有活跃的 workflow（dev-output.json 存在且未完成）
+5. **如果没有，强制阻止操作（exit 2）并要求创建 workflow**
+
+**排除的文件**（不需要 workflow）：
+- 测试文件（*.test.ts, *.spec.ts）
+- 文档文件（*.md）
+- 配置文件（*.json, *.yaml, *.yml）
+- 样式文件（*.css）
+
+**重要**：此 hook 是阻止性的，不是警告。主 Agent 在编辑代码前必须确保 workflow 存在。即使通过 Bash 命令（如 `sed -i`、`echo >`）修改代码文件也会被阻止。
+
+### PostToolUse Hook: workflow-trigger
+
+**文件**: `scripts/hooks/workflow-trigger.cjs`
+**触发时机**: 每次 Write/Edit 操作后
+**功能**:
+1. 检测 `dev-output.json` 被写入后自动触发 `run-workflow.sh`
+2. 检测 `git commit` 执行后自动触发 workflow（如果有活跃的任务）
+
+### 配置位置
+
+两个 hook 都配置在 `.claude/hooks/hooks.json` 中：
+- `pre:edit-write:workflow-check` (PreToolUse, matcher: `Edit|Write|MultiEdit|Bash`)
+- `post:edit-write:workflow-trigger` (PostToolUse)
+
+## 主 Agent 检查点（强制）
+
+**在编辑代码文件前，主 Agent 必须：**
+
+1. **检查目标文件路径**：是否在 `crates/`、`src/`、`src-tauri/` 下
+2. **检查排除列表**：是否为测试、文档、配置、样式文件
+3. **检查 workflow 状态**：
+   - `.workflow/artifacts/` 目录是否存在
+   - 是否有包含 `dev-output.json` 的活跃任务
+   - 任务是否已完成（有 `final-report.json`）
+4. **如果缺少 workflow**：必须先创建，不能直接编辑代码
+
+**违反此检查点将导致 PreToolUse hook 阻止操作（exit 2）。** 通过 Bash 命令（sed -i、echo > 等）修改代码文件同样会被阻止。
+
 ## 执行步骤
 
 ### Step 1: 生成 dev-output.json
