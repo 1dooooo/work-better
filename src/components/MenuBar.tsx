@@ -548,8 +548,8 @@ export default function MenuBar() {
         </div>
       </header>
 
-      {/* ── 主内容区 ── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      {/* ── 主内容区（可滚动，不强制撑满） ── */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         {/* ── 最近事件 ── */}
         <SectionHeader
           icon={Clock}
@@ -565,7 +565,7 @@ export default function MenuBar() {
           }
         />
 
-        <div className="flex-1 overflow-y-auto px-2 min-h-0">
+        <div className="px-2">
           {loading ? (
             <LoadingSkeleton />
           ) : events.length === 0 ? (
@@ -727,7 +727,7 @@ export default function MenuBar() {
       </div>
 
       {/* ── 快捷操作栏 ── */}
-      <div className="flex items-center justify-between border-t border-white/[0.06] px-2 py-1.5">
+      <div className="flex items-center justify-between border-t border-white/[0.06] px-2 pt-1.5 pb-0.5">
         <div className="flex items-center gap-0.5">
           <ActionButton
             icon={Monitor}
