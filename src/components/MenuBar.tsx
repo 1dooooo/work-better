@@ -548,8 +548,8 @@ export default function MenuBar() {
         </div>
       </header>
 
-      {/* ── 主内容区 ── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      {/* ── 主内容区（整体可滚动） ── */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         {/* ── 最近事件 ── */}
         <SectionHeader
           icon={Clock}
@@ -565,7 +565,7 @@ export default function MenuBar() {
           }
         />
 
-        <div className="flex-1 overflow-y-auto px-2 min-h-0">
+        <div className="px-2">
           {loading ? (
             <LoadingSkeleton />
           ) : events.length === 0 ? (
