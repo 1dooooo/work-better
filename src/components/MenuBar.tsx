@@ -32,6 +32,8 @@ import {
   type NotifyKind,
 } from "../lib/tauri";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import {
   Zap,
   Monitor,
@@ -476,12 +478,38 @@ export default function MenuBar() {
     ["Confirm", "Reminder", "TaskDone"] as NotifyKind[]
   ).filter((kind) => groupedNotifications[kind].length > 0);
 
+  // ─── 动态窗口大小 ─────────────────────────────────────────
+
+  const rootRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+
+    // 仅在 Tauri 环境下调整窗口大小
+    if (!(window as any).__TAURI_INTERNALS__) return;
+    if (typeof ResizeObserver === "undefined") return;
+
+    const resizeWindow = () => {
+      const height = node.scrollHeight;
+      const win = getCurrentWindow();
+      win.setSize(new LogicalSize(360, height)).catch(() => {});
+    };
+
+    // 初始调整
+    resizeWindow();
+
+    // 监听内容变化
+    const observer = new ResizeObserver(resizeWindow);
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, []);
+
   // ─── 渲染 ─────────────────────────────────────────────────
 
   return (
     <div
+      ref={rootRef}
       className={cn(
-        "flex h-full flex-col select-none overflow-hidden",
+        "flex flex-col select-none overflow-hidden",
         // 深色毛玻璃 — 始终使用深色（与 Raycast/Fantastical 一致）
         "bg-[oklch(13%_0_0_/_0.92)] backdrop-blur-xl",
         "text-white font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]",

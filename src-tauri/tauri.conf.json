@@ -35,7 +35,7 @@
         "label": "tray",
         "title": "Work Better",
         "width": 360,
-        "height": 360,
+        "height": 200,
         "decorations": false,
         "alwaysOnTop": true,
         "visible": false,
