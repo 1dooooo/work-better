@@ -509,7 +509,7 @@ export default function MenuBar() {
     <div
       ref={rootRef}
       className={cn(
-        "flex flex-col select-none overflow-hidden",
+        "flex flex-col select-none",
         // 深色毛玻璃 — 始终使用深色（与 Raycast/Fantastical 一致）
         "bg-[oklch(13%_0_0_/_0.92)] backdrop-blur-xl",
         "text-white font-[-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif]",
