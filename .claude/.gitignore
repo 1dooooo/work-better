@@ -4,7 +4,7 @@ settings.local.json
 hooks/
 skills/
 commands/
-agents/
+# agents/  # 项目特定的 agent 定义，需要提交
 mcp-configs/
 
 # === scripts/：忽略 ECC 脚本，保留项目自有脚本 ===
