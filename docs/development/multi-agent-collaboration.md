@@ -3,7 +3,7 @@ title: 多 Agent 协作开发规范
 type: structural
 domain: development
 created: 2026-06-07
-updated: 2026-06-14
+updated: 2026-06-28
 ---
 
 # 多 Agent 协作开发规范
@@ -24,6 +24,7 @@ updated: 2026-06-14
 | Agent | 职责 | 写代码 | 写测试 | 审查代码 | 产品审查 | 规划建议 |
 |-------|------|--------|--------|---------|---------|---------|
 | **workflow-advisor** | 任务分析 + 执行计划 + 流程监督 | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **workflow-runner** | 工作流编排 + 自动重试 + 结果汇总 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **dev-agent** | 功能开发 + L1-L2 测试 | ✅ | ✅ (L1-L2) | ❌ | ❌ | ❌ |
 | **test-agent** | 测试执行 + L4-L5 测试生成 | ❌ | ✅ (L4-L5) | ❌ | ❌ | ❌ |
 | **review-agent** | 代码审查 + H3-H5 安全测试 | ❌ | ✅ (H3-H5) | ✅ | ❌ | ❌ |
@@ -138,8 +139,14 @@ run-workflow.sh（CLI 入口）
 |------|--------|--------|--------|
 | `dev-output.json` | dev-agent | workflow, test, review, product | [dev-output.schema.json](../../.workflow/templates/dev-output.schema.json) |
 | `test-report.json` | test-agent | workflow, dev | [test-report.schema.json](../../.workflow/templates/test-report.schema.json) |
+| `test-plan.json` | test-agent | workflow | [test-plan.schema.json](../../.workflow/templates/test-plan.schema.json) |
 | `review-report.json` | review-agent | workflow | [review-report.schema.json](../../.workflow/templates/review-report.schema.json) |
+| `review-criteria.json` | review-agent | workflow | [review-criteria.schema.json](../../.workflow/templates/review-criteria.schema.json) |
 | `product-review.json` | product-reviewer | workflow, dev | [product-review.schema.json](../../.workflow/templates/product-review.schema.json) |
+| `validation-report.json` | validator | workflow | [validation-report.schema.json](../../.workflow/templates/validation-report.schema.json) |
+| `system-inspector-report.json` | system-inspector | workflow | [system-inspector-report.schema.json](../../.workflow/templates/system-inspector-report.schema.json) |
+| `optimization-plan.json` | optimizer | workflow, 用户 | [optimization-plan.schema.json](../../.workflow/templates/optimization-plan.schema.json) |
+| `error-response.json` | workflow | dev | [error-response.schema.json](../../.workflow/templates/error-response.schema.json) |
 | `final-report.json` | workflow-runner | 用户 | [final-report.schema.json](../../.workflow/templates/final-report.schema.json) |
 
 ### 通信规则

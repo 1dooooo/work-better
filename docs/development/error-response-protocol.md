@@ -1,3 +1,12 @@
+---
+title: 错误响应协议
+type: guide
+domain: development
+created: 2026-06-07
+updated: 2026-06-28
+status: active
+---
+
 # 错误响应协议
 
 > 当用户明确指出错误时，AI 必须遵守此协议。

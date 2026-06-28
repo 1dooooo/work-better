@@ -1,0 +1,57 @@
+Codemap Diff Report — 2026-06-28
+================================
+
+Files scanned: 192 (111 Rust + 81 TypeScript)
+
+## Changes by Module
+
+### wb-core (0% change)
+No structural changes. All files match codemap.
+
+### wb-collector (~8% change)
++ crates/wb-collector/src/collector_task.rs — ScheduledTask 实现，供 Scheduler 调度
++ crates/wb-collector/src/feishu/wrappers.rs — 飞书 API 响应数据结构转换
+
+### wb-processor (~15% change)
+~ crates/wb-processor/src/task/discovery_email.rs → REMOVED (replaced by discovery_ai.rs)
+~ crates/wb-processor/src/task/discovery_meeting.rs → REMOVED (replaced by discovery_ai.rs)
+~ crates/wb-processor/src/task/discovery_message.rs → REMOVED (replaced by discovery_ai.rs)
++ crates/wb-processor/src/task/discovery_ai.rs — AI 驱动的任务发现（统一替代原有三种发现器）
++ crates/wb-processor/src/paths/mod.rs — 处理路径子模块
++ crates/wb-processor/src/paths/instant.rs — 即时处理路径
+
+### wb-storage (0% change)
+No structural changes. All files match codemap.
+
+### wb-ai (0% change)
+No structural changes. All files match codemap.
+
+### wb-scheduler (~15% change)
+~ tests/scheduler_tests.rs — 已从 codemap 的 src/ 引用中移除（实际在 tests/ 目录）
++ src/log.rs — 执行日志模块（codemap 中已有描述，确认存在）
+
+### frontend (~20% change)
++ src/components/command-palette/CommandPalette.tsx — 命令面板（cmdk）
++ src/components/menubar/index.ts — 模块导出
++ src/components/views/DashboardView.tsx — 仪表盘视图
++ src/components/ui/empty-state.tsx — 空状态组件
++ src/components/ui/glass-card.tsx — 玻璃卡片效果
++ src/components/ui/glass-panel.tsx — 玻璃面板效果
++ src/components/ui/input-group.tsx — 输入组组件
++ src/components/ui/motion.tsx — 动画组件
++ src/generated/serde_json/JsonValue.ts — serde_json 生成类型
++ src-tauri/src/commands/db.rs — 数据库命令
++ src-tauri/src/commands/window.rs — 窗口管理命令
++ src/hooks/useCommandData.ts — 命令面板数据 hook
++ src/hooks/useKeyboardShortcuts.ts — 键盘快捷键 hook
++ src/hooks/useListNavigation.ts — 列表导航 hook
++ src/hooks/useStatePersistence.ts — 状态持久化 hook
+
+### Staleness Check
+All 122 docs under docs/ are < 90 days old. No staleness warnings.
+
+### New Dependencies Detected
+- cmdk (already in package.json, now codemap reflects CommandPalette usage)
+
+### Index Cleanup
+- Removed broken reference to testing.codemap.md (file does not exist)

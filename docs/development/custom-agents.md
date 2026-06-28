@@ -8,7 +8,17 @@ status: active
 
 ## 概述
 
-本项目使用多 Agent 协作开发模式，需要注册 5 个自定义 agent（dev-agent、test-agent、review-agent、product-reviewer、workflow-runner）。
+本项目使用多 Agent 协作开发模式，需要注册 9 个自定义 agent：
+- **workflow-advisor** — 流程顾问（任务分析、执行计划、流程监督）
+- **workflow-runner** — 工作流执行器（编排多阶段 agent 调用）
+- **dev-agent** — 开发 agent（代码实现 + L1-L2 测试）
+- **test-agent** — 测试 agent（L4-L5 测试生成与执行）
+- **review-agent** — 代码审查 agent（代码质量 + H3-H5 安全测试）
+- **product-reviewer** — 产品审查 agent（产品定义符合性审查）
+- **validator** — 验证 agent（Schema + 数据完整性验证）
+- **system-inspector** — 系统巡检 agent（系统健康 + 执行效率监督）
+- **optimizer** — 优化 agent（Agent prompt + workflow 优化建议）
+
 角色定义见 [Agent Guide](/agent.md)。
 
 ## 注册方式

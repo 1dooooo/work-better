@@ -3,7 +3,7 @@ title: 产品文档
 type: structural
 domain: product
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 status: active
 ---
 

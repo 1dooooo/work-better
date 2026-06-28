@@ -132,10 +132,11 @@ work-better/
 │   ├── wb-collector/      #   采集层（飞书、系统、手动）
 │   ├── wb-processor/      #   处理层（分类、审核、报告）
 │   ├── wb-storage/        #   存储层（Obsidian、向量DB、SQLite）
+│   ├── wb-ai/             #   AI 模型路由与预算
 │   ├── wb-scheduler/      #   定时任务调度
-│   └── wb-ai/             #   AI 模型路由与预算
+│   └── wb-real-backend-tests/ # 真实后端测试
 ├── src/                   # React 19 前端（TypeScript）
-├── test/                  # 前端集成与 E2E 测试
+├── tests/                 # 测试（acceptance/integration/e2e）
 ├── CLAUDE.md              # Claude Code 入口
 ├── agent.md               # Agent 指南（核心思想、文档索引）
 ├── CONTRIBUTING.md         # 本文档
@@ -147,10 +148,10 @@ work-better/
     ├── contexts/          # 上下文模板（✅ 纳入 Git）
     ├── settings.template.json  # 配置模板（✅ 纳入 Git）
     ├── settings.json      # 个人配置（❌ gitignore）
-    ├── agents/            # ECC agent（❌ gitignore，自行安装 ECC）
-    ├── skills/            # ECC skills（❌ gitignore，自行安装 ECC）
-    ├── hooks/             # ECC hooks（❌ gitignore，自行安装 ECC）
-    └── scripts/           # ECC scripts（❌ gitignore，自行安装 ECC）
+    ├── agents/            # 项目自定义 agent（多 Agent 协作体系）
+    ├── skills/            # 可调用技能
+    ├── hooks/             # 质量守护 hooks
+    └── scripts/           # 工具脚本
 ```
 
 ## 编码规范
@@ -172,7 +173,7 @@ work-better/
 1. **研究复用** — 搜索现有实现，优先复用
 2. **先规划** — 使用 `/plan` 或 planner agent
 3. **TDD** — 先写测试，再实现，再重构
-4. **代码审查** — code-reviewer agent 自动审查
+4. **代码审查** — review-agent 自动审查
 5. **提交** — 遵循 conventional commits 格式
 
 ## 提交规范

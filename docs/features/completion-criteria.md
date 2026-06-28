@@ -3,6 +3,7 @@ title: 功能完成标准
 type: structural
 domain: features
 created: 2026-06-11
+updated: 2026-06-28
 status: active
 ---
 

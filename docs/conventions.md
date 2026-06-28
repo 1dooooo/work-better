@@ -3,7 +3,7 @@ title: 文档规范
 type: index
 domain: conventions
 created: 2026-06-06
-updated: 2026-06-14
+updated: 2026-06-28
 status: active
 ---
 

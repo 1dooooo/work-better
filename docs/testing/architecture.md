@@ -3,7 +3,7 @@ title: 测试体系总体架构
 type: structural
 domain: testing
 created: 2026-06-06
-updated: 2026-06-07
+updated: 2026-06-28
 status: active
 ---
 
@@ -31,10 +31,15 @@ status: active
 
 | Agent | 职责 | 负责的测试层 |
 |-------|------|------------|
+| workflow-advisor | 任务分析 + 执行计划 | 无（规划角色） |
+| workflow-runner | 流程编排 + 自动重试 | 无（只负责调度和报告） |
 | dev-agent | 功能开发 | L1-L2（单元/集成） |
 | test-agent | 测试执行与生成 | L4-L5（E2E/验收）+ H1-H2（安全扫描） |
 | review-agent | 代码审查 | H3-H5（安全测试生成） |
-| workflow-runner | 流程编排 | 无（只负责调度和报告） |
+| product-reviewer | 产品符合性审查 | 无（产品视角验证） |
+| validator | Schema + 数据完整性验证 | 无（验证角色） |
+| system-inspector | 系统健康 + 执行效率 | 无（巡检角色） |
+| optimizer | Agent prompt + workflow 优化 | 无（优化建议） |
 
 > 详见 [多 Agent 协作开发规范](../development/multi-agent-collaboration.md)
 
@@ -192,16 +197,23 @@ EventLog 是系统核心锚点，所有测试围绕数据链路展开：
 ### 协作流程
 
 ```
-dev-agent 写代码 → 写入 dev-output.json
+用户下达任务 → workflow-advisor 分析 + 制定计划
         │
         ▼
-workflow-runner 读取 dev-output → 推断 gate level
+Phase 1: dev-agent 写代码 + L1-L2 测试 → dev-output.json
         │
-        ├── Gate 1: test-agent 运行 L1 + H1-H2
-        ├── Gate 2: test-agent 运行 L2
-        └── L2 通过后并行:
-            ├── review-agent: 代码审查 + H3-H5
-            └── test-agent: L4 + L5
+        ▼
+Phase 2 (并行):
+        ├── test-agent: 测试 + 安全扫描
+        ├── review-agent: 代码审查 + H3-H5
+        ├── product-reviewer: 产品符合性审查
+        ├── validator: Schema 验证
+        └── system-inspector: 系统巡检
+        │
+        ▼
+Phase 3: workflow-runner 汇总 → final-report.json
+        │
+        └── 有失败 → dev-agent 修复 → 重跑 Phase 2
 ```
 
 ### A2A 通信
@@ -210,9 +222,16 @@ Agent 之间通过 `.workflow/artifacts/{task_id}/` 下的文件通信：
 
 | 文件 | 写入方 | 读取方 |
 |------|--------|--------|
-| dev-output.json | dev-agent | workflow, test, review |
+| dev-output.json | dev-agent | workflow, test, review, product |
 | test-report.json | test-agent | workflow, dev |
+| test-plan.json | test-agent | workflow |
 | review-report.json | review-agent | workflow |
+| review-criteria.json | review-agent | workflow |
+| product-review.json | product-reviewer | workflow, dev |
+| validation-report.json | validator | workflow |
+| system-inspector-report.json | system-inspector | workflow |
+| optimization-plan.json | optimizer | workflow, 用户 |
+| error-response.json | workflow | dev |
 | final-report.json | workflow-runner | 用户 |
 
 > 详见 [多 Agent 协作开发规范](../development/multi-agent-collaboration.md)
