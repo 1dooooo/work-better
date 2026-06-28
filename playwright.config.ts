@@ -2,22 +2,32 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/ts/e2e",
-  timeout: 60000, // Tauri 启动需要更多时间
+  timeout: 120000, // Tauri 启动需要更多时间
   projects: [
     {
-      name: "chromium",
+      name: "tauri",
       use: {
-        browserName: "chromium",
+        // macOS 使用 Safari WebDriver
+        browserName: "webkit",
+        // 连接到系统 WebDriver
+        connectOptions: {
+          wsEndpoint: "http://localhost:4444/session",
+        },
       },
     },
   ],
   use: {
-    baseURL: "http://localhost:1420", // Tauri dev server 默认端口
+    // Tauri WebView 的基础 URL
+    baseURL: "http://localhost:1420",
   },
-  webServer: {
-    command: "source ~/.cargo/env && cargo tauri dev", // 启动真实 Tauri app
-    port: 1420,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000, // Tauri 编译需要较长时间
-  },
+  // 启动 Tauri app
+  webServer: [
+    {
+      // 启动 Tauri 开发服务器
+      command: "source ~/.cargo/env && cargo tauri dev",
+      port: 1420,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
 });
