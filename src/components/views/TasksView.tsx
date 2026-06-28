@@ -255,7 +255,7 @@ export default function TasksView() {
   }));
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="tasks-container">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-5 py-3 min-h-[48px]">
         <div className="flex items-center gap-3">
@@ -281,7 +281,7 @@ export default function TasksView() {
           </div>
           <div className="flex flex-col gap-1">
             {pendingTasks.map((pt) => (
-              <div key={pt.id} className="group flex items-center justify-between rounded-md px-2.5 py-1.5 border border-info/20 hover:bg-info/5 transition-colors">
+              <div key={pt.id} className="group flex items-center justify-between rounded-md px-2.5 py-1.5 border border-info/20 hover:bg-info/5 transition-colors" data-testid={`pending-task-${pt.id}`}>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate">{pt.title}</div>
                   <div className="mt-0.5 flex items-center gap-2">
@@ -322,12 +322,14 @@ export default function TasksView() {
       <form
         onSubmit={handleCreate}
         className="flex items-center gap-2 border-b border-border px-5 py-2"
+        data-testid="task-create-form"
       >
         <Input
           placeholder="新任务标题..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="h-8 flex-1 text-sm"
+          data-testid="task-title-input"
         />
         <Select
           value={priority}
@@ -349,14 +351,14 @@ export default function TasksView() {
           onChange={(e) => setDueDate(e.target.value)}
           className="h-8 w-[130px] text-xs"
         />
-        <Button type="submit" size="sm" className="h-8 gap-1.5">
+        <Button type="submit" size="sm" className="h-8 gap-1.5" data-testid="task-create-button">
           <Plus className="h-3.5 w-3.5" />
           添加
         </Button>
       </form>
 
       {/* Kanban Board */}
-      <div className="flex flex-1 gap-3 overflow-auto p-5">
+      <div className="flex flex-1 gap-3 overflow-auto p-5" data-testid="tasks-kanban">
         {loadingTasks ? (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -384,6 +386,7 @@ export default function TasksView() {
                   <div
                     key={task.id}
                     className="group rounded-md border border-border px-3 py-2 transition-colors hover:bg-muted/50"
+                    data-testid={`task-item-${task.id}`}
                   >
                     <div className="text-xs font-medium">{task.title}</div>
                     <div className="mt-1 flex items-center gap-2">
@@ -448,6 +451,7 @@ export default function TasksView() {
             size="sm"
             onClick={handleToggleScheduler}
             className="h-6 gap-1 text-[11px]"
+            data-testid="scheduler-toggle"
           >
             {schedulerPaused ? (
               <>
@@ -473,6 +477,7 @@ export default function TasksView() {
               <div
                 key={task.id}
                 className="flex items-center justify-between px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors rounded"
+                data-testid={`scheduled-task-${task.id}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-foreground">{task.name}</span>

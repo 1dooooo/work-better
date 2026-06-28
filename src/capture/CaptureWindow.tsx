@@ -72,7 +72,7 @@ export default function CaptureWindow() {
   }, []);
 
   return (
-    <div className="flex h-full flex-col bg-background text-foreground select-none overflow-hidden">
+    <div className="flex h-full flex-col bg-background text-foreground select-none overflow-hidden" data-testid="capture-window">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <span className="text-sm font-medium">快速捕获</span>
@@ -96,6 +96,7 @@ export default function CaptureWindow() {
         onPaste={handlePaste}
         disabled={submitting}
         rows={5}
+        data-testid="capture-textarea"
       />
 
       {/* Image Preview */}
@@ -128,6 +129,7 @@ export default function CaptureWindow() {
           )}
           onClick={handleSubmit}
           disabled={!text.trim() || submitting}
+          data-testid="capture-submit"
         >
           {submitting ? "提交中..." : "提交"}
         </button>

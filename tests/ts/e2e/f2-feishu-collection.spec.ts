@@ -7,96 +7,18 @@
  * 使用 addInitScript 注入 mock IPC。
  */
 import { test, expect } from "@playwright/test";
+import { createMainWindowMockScript } from "./helpers";
 
 test.describe("F2: Feishu Collection Flow", () => {
   // 每个测试前设置 mock
   test.beforeEach(async ({ page }) => {
-    // 在页面加载前注入 mock
-    await page.addInitScript(() => {
-      // 初始化 Tauri internals
-      (window as any).__TAURI_INTERNALS__ = (window as any).__TAURI_INTERNALS__ || {};
-      (window as any).__TAURI_INTERNALS__.metadata = {
-        currentWindow: { label: "main" },
-        currentWebview: { windowLabel: "main", label: "main" },
-      };
-
-      // Mock invoke 函数
-      (window as any).__TAURI_INTERNALS__.invoke = async (cmd: string, args: any) => {
-        console.log(`[Mock] invoke: ${cmd}`, args);
-
-        switch (cmd) {
-          case "trigger_feishu_collect":
-            // 模拟飞书采集，添加新事件
-            const count = args?.limit ?? 5;
-            for (let i = 0; i < Math.min(count, 3); i++) {
-              (window as any).__mockEvents = (window as any).__mockEvents || [];
-              (window as any).__mockEvents.unshift({
-                id: `feishu-${Date.now()}-${i}`,
-                timestamp: new Date().toISOString(),
-                source: "feishu",
-                type: "message",
-                content: `飞书消息 ${i + 1}`,
-              });
-            }
-            return count;
-          case "get_events":
-            return ((window as any).__mockEvents || []).slice(0, args?.limit ?? 50);
-          case "get_unprocessed_count":
-            return ((window as any).__mockEvents || []).length;
-          case "get_feishu_chat_id":
-            return (window as any).__feishuChatId || "oc_default_chat";
-          case "save_feishu_chat_id":
-            (window as any).__feishuChatId = args?.chatId;
-            return null;
-          case "get_collector_statuses":
-            return [
-              { id: "feishu", name: "飞书采集器", enabled: true, healthy: true },
-            ];
-          case "enable_collector":
-          case "disable_collector":
-            return null;
-          case "set_test_mode":
-            return null;
-          case "cleanup_test_data":
-            return null;
-          default:
-            console.warn(`[Mock] Unhandled command: ${cmd}`);
-            return null;
-        }
-      };
-
-      // Mock transformCallback
-      (window as any).__TAURI_INTERNALS__.transformCallback = (cb: Function, once?: boolean) => {
-        const id = Math.random().toString(36).slice(2);
-        (window as any).__callbacks = (window as any).__callbacks || {};
-        (window as any).__callbacks[id] = cb;
-        return id;
-      };
-
-      // 初始化 mock 状态
-      (window as any).__mockEvents = [
-        {
-          id: "mock-001",
-          timestamp: new Date().toISOString(),
-          source: "manual",
-          type: "note",
-          content: "初始事件",
-        },
-      ];
-      (window as any).__feishuChatId = "oc_default_chat";
-    });
-
+    await page.addInitScript(createMainWindowMockScript());
     await page.goto("/");
   });
 
   test("F2-01: UI triggers collection and updates event count", async ({
     page,
   }) => {
-    // 调试：截图查看页面状态
-    await page.screenshot({ path: "/tmp/f2-debug-1.png" });
-    console.log("Page URL:", page.url());
-    console.log("Page title:", await page.title());
-
     // 等待侧边栏加载
     await page.getByTestId("sidebar").waitFor({ state: "visible", timeout: 30000 });
 
@@ -142,6 +64,9 @@ test.describe("F2: Feishu Collection Flow", () => {
     // 导航到设置页面
     await page.getByTestId("nav-item-settings").click();
 
+    // 切换到采集器 tab
+    await page.getByTestId("settings-tab-collector").click();
+
     // 找到飞书会话 ID 输入框并修改
     const chatIdInput = page.getByTestId("feishu-chat-id-input");
     await expect(chatIdInput).toBeVisible({ timeout: 10000 });
@@ -166,6 +91,12 @@ test.describe("F2: Feishu Collection Flow", () => {
 
     // 导航到设置页面
     await page.getByTestId("nav-item-settings").click();
+
+    // 切换到采集器 tab
+    await page.getByTestId("settings-tab-collector").click();
+
+    // 展开采集器组（点击组名）
+    await page.getByText("飞书采集器组").click();
 
     // 找到飞书采集器开关并禁用
     const feishuToggle = page.getByTestId("collector-toggle-feishu");

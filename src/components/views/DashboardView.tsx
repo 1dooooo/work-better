@@ -355,7 +355,7 @@ export default function DashboardView() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" data-testid="dashboard-container">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">仪表盘</h1>

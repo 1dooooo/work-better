@@ -109,7 +109,7 @@ export function MenuBarContent({
   onDismissNotification,
 }: MenuBarContentProps) {
   return (
-    <div className="flex-1 overflow-y-auto min-h-0">
+    <div className="flex-1 overflow-y-auto min-h-0" data-testid="menubar-content">
       {/* ── 最近事件 ── */}
       <SectionHeader
         icon={Clock}

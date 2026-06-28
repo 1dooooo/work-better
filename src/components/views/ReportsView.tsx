@@ -39,7 +39,7 @@ export default function ReportsView() {
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="reports-container">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">

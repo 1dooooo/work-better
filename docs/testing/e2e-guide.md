@@ -49,12 +49,12 @@ pnpm test:e2e:dev --grep "F1-01"
 tests/ts/e2e/
 ├── helpers.ts                    # 测试辅助函数
 ├── mock-feishu-server.ts         # 飞书 API Mock Server
-├── f1-manual-capture.spec.ts     # F1: 手动捕获流程
-├── f2-feishu-collection.spec.ts  # F2: 飞书采集流程
-├── f3-processing-pipeline.spec.ts # F3: 处理管线（跳过）
-├── f4-settings-propagation.spec.ts # F4: 设置传播（跳过）
-├── f5-scheduler-integration.spec.ts # F5: 调度器集成（跳过）
-└── f6-menubar-data-flow.spec.ts  # F6: 菜单栏数据流（跳过）
+├── f1-manual-capture.spec.ts     # F1: 手动捕获流程 (2 tests)
+├── f2-feishu-collection.spec.ts  # F2: 飞书采集流程 (3 tests)
+├── f3-processing-pipeline.spec.ts # F3: 处理管线 (4 tests)
+├── f4-settings-propagation.spec.ts # F4: 设置传播 (4 tests)
+├── f5-scheduler-integration.spec.ts # F5: 调度器集成 (5 tests)
+└── f6-menubar-data-flow.spec.ts  # F6: 仪表盘数据流 (6 tests)
 ```
 
 ### 核心辅助函数
@@ -73,9 +73,16 @@ await navigateToView(page, "设置");
 const events = await getEvents(page, 50);
 const count = await getUnprocessedCount(page);
 
-// 测试环境管理（TODO: 待实现）
+// 测试环境管理
 const testDir = await setupTestEnvironment(page);
 await cleanupTestEnvironment(page);
+
+// 验证事件/任务创建
+const eventCreated = await verifyEventCreated(page, "事件内容");
+const taskCreated = await verifyTaskCreated(page, "任务标题");
+
+// 获取视图容器选择器
+const containerId = getViewContainer("events"); // 返回 "events-container"
 ```
 
 ## 编写测试
@@ -111,14 +118,16 @@ import { test, expect } from "@playwright/test";
 test.describe("功能名称", () => {
   // 每个测试前的设置
   test.beforeEach(async ({ page }) => {
+    // 注入 mock IPC
+    await page.addInitScript(() => {
+      (window as any).__TAURI_INTERNALS__ = (window as any).__TAURI_INTERNALS__ || {};
+      (window as any).__TAURI_INTERNALS__.invoke = async (cmd: string, args: any) => {
+        // Mock 响应逻辑
+      };
+    });
+
     await page.goto("/");
     await waitForMainWindow(page);
-  });
-
-  // 每个测试后的清理
-  test.afterEach(async ({ page }) => {
-    // 清理测试数据
-    await cleanupTestEnvironment(page);
   });
 
   test("测试用例名称", async ({ page }) => {
@@ -133,6 +142,31 @@ test.describe("功能名称", () => {
   });
 });
 ```
+
+### data-testid 属性
+
+以下是已添加的 `data-testid` 属性：
+
+| 组件 | data-testid | 说明 |
+|------|-------------|------|
+| TasksView | `tasks-container` | 任务视图容器 |
+| TasksView | `task-create-form` | 创建任务表单 |
+| TasksView | `task-title-input` | 任务标题输入框 |
+| TasksView | `task-create-button` | 创建任务按钮 |
+| TasksView | `tasks-kanban` | 看板容器 |
+| TasksView | `task-item-{id}` | 任务卡片 |
+| TasksView | `pending-task-{id}` | 待确认任务卡片 |
+| TasksView | `scheduler-toggle` | 调度器暂停/恢复按钮 |
+| TasksView | `scheduled-task-{id}` | 定时任务卡片 |
+| ReportsView | `reports-container` | 报告视图容器 |
+| DashboardView | `dashboard-container` | 仪表盘容器 |
+| TimelineView | `timeline-container` | 时间线容器 |
+| CaptureWindow | `capture-window` | 速记窗口容器 |
+| CaptureWindow | `capture-textarea` | 速记输入框 |
+| CaptureWindow | `capture-submit` | 速记提交按钮 |
+| MenuBarHeader | `menubar-header` | 菜单栏头部 |
+| MenuBarContent | `menubar-content` | 菜单栏内容区 |
+| MenuBarActions | `menubar-actions` | 菜单栏操作区 |
 
 ### 异步操作
 
@@ -161,54 +195,41 @@ await expect.poll(async () => {
 
 **影响**：飞书 API 未真正隔离，测试可能调用真实 API。
 
-**解决方案**（TODO）：
+**解决方案**：
 
-1. 在 Rust 后端添加 `FEISHU_API_BASE` 环境变量支持
-2. E2E 测试启动时设置该变量指向本地 mock server
-3. 或使用 `lark-cli` 的 mock 模式
+1. 使用 `addInitScript` 注入 mock IPC（当前方案）
+2. 在 Rust 后端添加测试模式支持（已实现）
+3. 测试模式下返回模拟数据，不调用真实 API
 
-```rust
-// TODO: 在 src-tauri/src/commands/collect.rs 中添加
-let api_base = std::env::var("FEISHU_API_BASE")
-    .unwrap_or_else(|_| "https://open.feishu.cn".to_string());
+### ✅ 测试数据隔离已实现
+
+**状态**：`set_test_mode` 和 `cleanup_test_data` 命令已实现并注册。
+
+**使用方式**：
+
+```typescript
+// 在测试中启用测试模式
+const testDir = await setupTestEnvironment(page);
+
+// 测试完成后清理
+await cleanupTestEnvironment(page);
 ```
 
-### ⚠️ 测试数据隔离待实现
+**Rust 后端支持**：
+- `trigger_manual_capture` 在测试模式下跳过 AI 处理
+- `trigger_feishu_collect` 在测试模式下返回模拟数据
 
-**问题**：`setupTestEnvironment()` 和 `cleanupTestEnvironment()` 已定义但未接入 Rust 后端。
+### ⚠️ 当前测试使用 Mock IPC
 
-**影响**：测试之间可能共享状态，导致测试不稳定。
+**问题**：F1-F6 测试使用 `addInitScript` 注入 mock IPC，不调用真实 Tauri 后端。
 
-**解决方案**（TODO）：
+**影响**：测试验证的是 UI 逻辑，不是完整的端到端流程。
 
-1. 在 Rust 后端实现 `set_test_mode` 命令
-2. 在 Rust 后端实现 `cleanup_test_data` 命令
-3. 在测试中调用这些命令
+**解决方案**（未来）：
 
-```rust
-// TODO: 在 src-tauri/src/commands/ 中添加
-#[tauri::command]
-pub async fn set_test_mode(enabled: bool, data_dir: String) -> Result<(), String> {
-    // 实现测试模式切换
-}
-
-#[tauri::command]
-pub async fn cleanup_test_data() -> Result<(), String> {
-    // 实现测试数据清理
-}
-```
-
-### ⚠️ trigger_manual_capture 需要 AI 模型
-
-**问题**：手动捕获命令需要配置 AI 模型 API key。
-
-**影响**：F1 测试在未配置 API key 的环境中会失败。
-
-**解决方案**（TODO）：
-
-1. 实现 `set_test_mode` 命令，跳过 AI 处理
-2. 或在测试环境中配置测试 API key
-3. 或让 AI 步骤可选（测试模式下跳过）
+1. 启用 Tauri WebDriver 支持
+2. 让 Playwright 直接连接 Tauri WebView
+3. 使用真实 IPC 调用（带测试模式）
 
 ## 添加新测试
 

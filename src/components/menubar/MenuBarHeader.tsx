@@ -24,7 +24,7 @@ export function MenuBarHeader({
   unprocessedCount,
 }: MenuBarHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-3.5 py-2 border-b border-border">
+    <header className="flex items-center justify-between px-3.5 py-2 border-b border-border" data-testid="menubar-header">
       {/* 左侧：应用图标和名称 */}
       <div className="flex items-center gap-2">
         <div className="flex h-5 w-5 items-center justify-center rounded-md bg-macos-blue/20">

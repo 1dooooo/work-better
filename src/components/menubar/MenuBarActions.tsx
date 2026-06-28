@@ -77,7 +77,7 @@ export function MenuBarActions({
   onTriggerProcess,
 }: MenuBarActionsProps) {
   return (
-    <div className="flex items-center justify-between border-t border-border px-2 pt-1.5 pb-0.5">
+    <div className="flex items-center justify-between border-t border-border px-2 pt-1.5 pb-0.5" data-testid="menubar-actions">
       <div className="flex items-center gap-0.5">
         <ActionButton
           icon={Monitor}

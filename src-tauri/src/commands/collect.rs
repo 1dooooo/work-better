@@ -14,9 +14,12 @@ use super::AppState;
 const FEISHU_COLLECTOR_ID: &str = "feishu";
 
 /// 触发飞书消息采集
+///
+/// 测试模式下返回模拟数据，不调用真实飞书 API。
 #[tauri::command]
 pub async fn trigger_feishu_collect(
     state: State<'_, AppState>,
+    test_mode: State<'_, TestModeState>,
     app: tauri::AppHandle,
     chat_id: Option<String>,
     limit: Option<u32>,
@@ -29,6 +32,35 @@ pub async fn trigger_feishu_collect(
     }
 
     let limit = limit.unwrap_or(50);
+
+    // 测试模式：返回模拟数据
+    if test_mode.is_enabled() {
+        let mock_count = std::cmp::min(limit, 3);
+        let mut events = Vec::new();
+        for i in 0..mock_count {
+            let event = Event::new(
+                Source::FeishuMessage,
+                Confidence::High,
+                EventType::Message,
+                json!({"text": format!("飞书消息 {}", i + 1)}),
+                format!("飞书消息 {}", i + 1),
+            );
+            events.push(event);
+        }
+
+        let count = events.len();
+        let log = state.event_log.lock().await;
+        for event in &events {
+            log.append(event).await.map_err(|e| e.to_string())?;
+        }
+        drop(log);
+
+        eprintln!("[collect] Test mode: returned {} mock events", count);
+        app.emit("feishu:collect-complete", count)
+            .map_err(|e| format!("发射事件失败: {e}"))?;
+
+        return Ok(count);
+    }
 
     // 判断 chat_id 来源：优先使用参数，其次从配置读取
     let explicit_chat_id = match chat_id {
