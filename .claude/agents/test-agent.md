@@ -100,29 +100,45 @@ cargo test --test acceptance
 
 Write `.workflow/artifacts/{task_id}/test-report.json`:
 
+**必须符合以下 Schema：**
+
 ```json
 {
-  "task_id": "...",
-  "gate_level": "L4",
-  "result": "pass|fail|partial_pass",
+  "task_id": "string - 任务唯一标识",
+  "gate_level": "L1|L2|L4|L5 - 本次执行的门禁级别",
+  "result": "pass|partial_pass|fail - 测试结果",
   "summary": {
-    "total": 10,
-    "passed": 8,
-    "failed": 1,
-    "skipped": 1
+    "total": "integer - 总测试数",
+    "passed": "integer - 通过数",
+    "failed": "integer - 失败数",
+    "skipped": "integer - 跳过数"
   },
   "failures": [
     {
-      "test_name": "...",
-      "source_location": "file.rs:42",
-      "error": "...",
-      "failure_type": "code_bug|test_bug|env_issue"
+      "test_id": "string - 测试用例标识，如 A1-03",
+      "name": "string - 测试函数名",
+      "layer": "A|B|C|D|E|F|G|H",
+      "error": "string - 错误信息",
+      "source_location": "string - 源码位置",
+      "failure_type": "code_bug|test_bug|env_issue|unknown"
     }
   ],
-  "uncovered_paths": [],
-  "timestamp": "..."
+  "uncovered_paths": [
+    {
+      "path": "string - 未覆盖的代码路径",
+      "detection_method": "script|llm"
+    }
+  ],
+  "timestamp": "string - ISO 8601 格式时间戳"
 }
 ```
+
+**输出前自检清单：**
+- [ ] gate_level 是 L1/L2/L4/L5 之一
+- [ ] result 是 pass/partial_pass/fail 之一
+- [ ] summary 包含 total/passed/failed/skipped 四个字段
+- [ ] failures 中每个元素包含 test_id/name/layer/error/failure_type
+- [ ] timestamp 是有效的 ISO 8601 格式
 
 ## Failure Type Determination
 

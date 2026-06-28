@@ -34,23 +34,23 @@ const NOTIFY_GROUP_CONFIG: Record<NotifyKind, NotifyGroupConfig> = {
   Confirm: {
     label: "待确认",
     icon: AlertTriangle,
-    color: "text-[var(--color-macos-orange)]",
-    bg: "bg-[var(--color-macos-orange)]/8",
-    border: "border-l-[var(--color-macos-orange)]",
+    color: "text-macos-orange",
+    bg: "bg-macos-orange/8",
+    border: "border-l-macos-orange",
   },
   Reminder: {
     label: "提醒",
     icon: Info,
-    color: "text-[var(--color-accent-blue)]",
-    bg: "bg-[var(--color-accent-blue)]/8",
-    border: "border-l-[var(--color-accent-blue)]",
+    color: "text-macos-blue",
+    bg: "bg-macos-blue/8",
+    border: "border-l-macos-blue",
   },
   TaskDone: {
     label: "已完成",
     icon: CheckCircle2,
-    color: "text-[var(--color-macos-green)]",
-    bg: "bg-[var(--color-macos-green)]/8",
-    border: "border-l-[var(--color-macos-green)]",
+    color: "text-macos-green",
+    bg: "bg-macos-green/8",
+    border: "border-l-macos-green",
   },
 };
 
@@ -114,7 +114,7 @@ export function NotificationGroup({
               <span className={cn("text-[9px] font-medium", group.color)}>
                 {group.label}
               </span>
-              <span className="text-[9px] text-[var(--color-text-hint)] tabular-nums">
+              <span className="text-[9px] text-muted-foreground/50 tabular-nums">
                 {items.length}
               </span>
             </div>
@@ -128,26 +128,26 @@ export function NotificationGroup({
                     "group flex items-center gap-2 rounded-lg border-l-2 px-2 py-[4px] cursor-pointer transition-colors",
                     group.bg,
                     group.border,
-                    "hover:bg-[var(--color-glass-hover)]",
+                    "hover:bg-accent",
                   )}
                   onClick={() => onNotificationClick(notif)}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] text-foreground/80 truncate leading-tight">
+                    <p className="text-[11px] text-foreground truncate leading-tight">
                       {notif.title}
                     </p>
                     {notif.body && (
-                      <p className="text-[9px] text-[var(--color-text-hint)] truncate mt-0.5">
+                      <p className="text-[9px] text-muted-foreground truncate mt-0.5">
                         {notif.body}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     {notif.action_url && (
-                      <ExternalLink className="h-3 w-3 text-[var(--color-glass-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ExternalLink className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                     <button
-                      className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--color-glass-muted)] hover:text-foreground/70 hover:bg-[var(--color-glass-hover)] transition-colors"
+                      className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDismiss(notif.id);
@@ -160,7 +160,7 @@ export function NotificationGroup({
                 </div>
               ))}
               {items.length > MAX_NOTIFICATIONS_PER_GROUP && (
-                <p className="text-[9px] text-[var(--color-glass-muted)] pl-2 py-0.5">
+                <p className="text-[9px] text-muted-foreground/40 pl-2 py-0.5">
                   +{items.length - MAX_NOTIFICATIONS_PER_GROUP} 更多
                 </p>
               )}

@@ -17,31 +17,31 @@ interface EventTypeConfig {
 
 const EVENT_TYPE_CONFIG: Record<string, EventTypeConfig> = {
   // PascalCase（后端 Rust 枚举序列化格式）
-  Message: { color: "text-[var(--color-accent-blue)]", bg: "bg-[var(--color-accent-blue)]/10", label: "MSG" },
-  DocumentChange: { color: "text-[var(--color-muted-foreground)]", bg: "bg-[var(--color-muted)]/50", label: "DOC" },
-  TaskUpdate: { color: "text-[var(--color-macos-pink)]", bg: "bg-[var(--color-macos-pink)]/10", label: "TASK" },
-  Meeting: { color: "text-[var(--color-macos-orange)]", bg: "bg-[var(--color-macos-orange)]/10", label: "MTG" },
-  CalendarEvent: { color: "text-[var(--color-macos-orange)]", bg: "bg-[var(--color-macos-orange)]/10", label: "CAL" },
-  Email: { color: "text-[var(--color-accent-blue)]", bg: "bg-[var(--color-accent-blue)]/10", label: "MAIL" },
-  Approval: { color: "text-[var(--color-macos-green)]", bg: "bg-[var(--color-macos-green)]/10", label: "APPR" },
-  OkrUpdate: { color: "text-[var(--color-macos-purple)]", bg: "bg-[var(--color-macos-purple)]/10", label: "OKR" },
-  Browsing: { color: "text-[var(--color-muted-foreground)]", bg: "bg-[var(--color-muted)]/50", label: "WEB" },
-  AppActivity: { color: "text-[var(--color-accent-blue)]", bg: "bg-[var(--color-accent-blue)]/10", label: "APP" },
-  ManualNote: { color: "text-[var(--color-macos-purple)]", bg: "bg-[var(--color-macos-purple)]/10", label: "NOTE" },
+  Message: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MSG" },
+  DocumentChange: { color: "text-macos-gray", bg: "bg-macos-gray/10", label: "DOC" },
+  TaskUpdate: { color: "text-macos-pink", bg: "bg-macos-pink/10", label: "TASK" },
+  Meeting: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "MTG" },
+  CalendarEvent: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "CAL" },
+  Email: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MAIL" },
+  Approval: { color: "text-macos-green", bg: "bg-macos-green/10", label: "APPR" },
+  OkrUpdate: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "OKR" },
+  Browsing: { color: "text-macos-gray", bg: "bg-macos-gray/10", label: "WEB" },
+  AppActivity: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "APP" },
+  ManualNote: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "NOTE" },
   // snake_case 兼容
-  message: { color: "text-[var(--color-accent-blue)]", bg: "bg-[var(--color-accent-blue)]/10", label: "MSG" },
-  issue: { color: "text-[var(--color-macos-orange)]", bg: "bg-[var(--color-macos-orange)]/10", label: "ISS" },
-  pr: { color: "text-[var(--color-macos-green)]", bg: "bg-[var(--color-macos-green)]/10", label: "PR" },
-  document: { color: "text-[var(--color-muted-foreground)]", bg: "bg-[var(--color-muted)]/50", label: "DOC" },
-  note: { color: "text-[var(--color-macos-purple)]", bg: "bg-[var(--color-macos-purple)]/10", label: "NOTE" },
-  task: { color: "text-[var(--color-macos-pink)]", bg: "bg-[var(--color-macos-pink)]/10", label: "TASK" },
+  message: { color: "text-macos-blue", bg: "bg-macos-blue/10", label: "MSG" },
+  issue: { color: "text-macos-orange", bg: "bg-macos-orange/10", label: "ISS" },
+  pr: { color: "text-macos-green", bg: "bg-macos-green/10", label: "PR" },
+  document: { color: "text-macos-gray", bg: "bg-macos-gray/10", label: "DOC" },
+  note: { color: "text-macos-purple", bg: "bg-macos-purple/10", label: "NOTE" },
+  task: { color: "text-macos-pink", bg: "bg-macos-pink/10", label: "TASK" },
 };
 
 function getEventTypeConfig(type: string): EventTypeConfig {
   return (
     EVENT_TYPE_CONFIG[type] ?? {
-      color: "text-[var(--color-muted-foreground)]",
-      bg: "bg-[var(--color-muted)]/50",
+      color: "text-macos-gray",
+      bg: "bg-macos-gray/10",
       label: type.slice(0, 4).toUpperCase(),
     }
   );
@@ -143,7 +143,7 @@ export function EventListItem({ event }: EventListItemProps) {
   const typeConfig = getEventTypeConfig(event.type);
 
   return (
-    <div className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-[var(--color-glass-hover)] transition-colors cursor-default">
+    <div className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-accent transition-colors cursor-default">
       {/* 类型标签 */}
       <span
         className={cn(
@@ -155,11 +155,11 @@ export function EventListItem({ event }: EventListItemProps) {
         {typeConfig.label}
       </span>
       {/* 内容摘要 */}
-      <span className="flex-1 text-[11px] text-foreground/70 truncate min-w-0">
+      <span className="flex-1 text-[11px] text-muted-foreground truncate min-w-0">
         {getEventSummary(event.content)}
       </span>
       {/* 时间 */}
-      <span className="text-[9px] text-[var(--color-text-hint)] flex-shrink-0 tabular-nums">
+      <span className="text-[9px] text-muted-foreground/50 flex-shrink-0 tabular-nums">
         {formatRelativeTime(event.timestamp)}
       </span>
     </div>

@@ -25,28 +25,28 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
           className={cn(
             "h-1.5 w-1.5 rounded-full",
             status.collectors_healthy > 0
-              ? "bg-[var(--color-success)]"
-              : "bg-[var(--color-muted-foreground)]",
+              ? "bg-macos-green"
+              : "bg-muted-foreground",
           )}
         />
-        <span className="text-[9px] text-[var(--color-text-hint)] tabular-nums">
+        <span className="text-[9px] text-muted-foreground tabular-nums">
           {status.collectors_healthy}/{status.collectors_total}
         </span>
       </div>
 
       {/* 分隔符 */}
-      <span className="text-[9px] text-[var(--color-glass-muted)]">·</span>
+      <span className="text-[9px] text-muted-foreground/40">·</span>
 
       {/* 调度状态 */}
-      <span className="text-[9px] text-[var(--color-text-hint)]">
+      <span className="text-[9px] text-muted-foreground">
         {status.scheduler_running ? "运行中" : "已暂停"}
       </span>
 
       {/* 今日处理数 */}
       {status.today_processed_count > 0 && (
         <>
-          <span className="text-[9px] text-[var(--color-glass-muted)]">·</span>
-          <span className="text-[9px] text-[var(--color-text-hint)] tabular-nums">
+          <span className="text-[9px] text-muted-foreground/40">·</span>
+          <span className="text-[9px] text-muted-foreground tabular-nums">
             今日 {status.today_processed_count}
           </span>
         </>

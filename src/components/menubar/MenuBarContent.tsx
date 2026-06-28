@@ -41,12 +41,12 @@ function SectionHeader({
   return (
     <div className="flex items-center justify-between px-3 py-1.5">
       <div className="flex items-center gap-1.5">
-        <Icon className="h-3 w-3 text-[var(--color-glass-muted)]" />
-        <span className="text-[10px] font-medium text-[var(--color-text-hint)] uppercase tracking-wider">
+        <Icon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
         {count !== undefined && count > 0 && (
-          <span className="text-[9px] text-[var(--color-glass-muted)] tabular-nums">
+          <span className="text-[9px] text-muted-foreground/60 tabular-nums">
             {count}
           </span>
         )}
@@ -61,9 +61,9 @@ function SectionHeader({
 function SkeletonRow() {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5">
-      <div className="h-4 w-8 rounded bg-[var(--color-glass-muted)] animate-pulse" />
-      <div className="flex-1 h-3.5 rounded bg-[var(--color-glass-muted)] animate-pulse" />
-      <div className="h-3 w-6 rounded bg-[var(--color-glass-muted)] animate-pulse" />
+      <div className="h-4 w-8 rounded bg-accent animate-pulse" />
+      <div className="flex-1 h-3.5 rounded bg-accent animate-pulse" />
+      <div className="h-3 w-6 rounded bg-accent animate-pulse" />
     </div>
   );
 }
@@ -116,7 +116,7 @@ export function MenuBarContent({
         label="最近事件"
         action={
           <button
-            className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--color-glass-muted)] hover:text-foreground/70 hover:bg-[var(--color-glass-hover)] transition-colors"
+            className="flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onClick={onRefresh}
             aria-label="刷新"
           >
@@ -129,10 +129,10 @@ export function MenuBarContent({
         {loading ? (
           <LoadingSkeleton />
         ) : events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-[var(--color-glass-muted)]">
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Activity className="h-5 w-5 mb-1.5" strokeWidth={1.5} />
             <span className="text-[11px]">暂无事件</span>
-            <span className="text-[9px] text-[var(--color-glass-muted)] mt-0.5">
+            <span className="text-[9px] text-muted-foreground/60 mt-0.5">
               采集器运行后会自动显示
             </span>
           </div>
@@ -147,7 +147,7 @@ export function MenuBarContent({
 
       {/* ── 今日待办 ── */}
       {pendingTasks.length > 0 && (
-        <div className="border-t border-[var(--color-glass-border)]">
+        <div className="border-t border-border">
           <SectionHeader
             icon={ListTodo}
             label="今日待办"
@@ -163,7 +163,7 @@ export function MenuBarContent({
 
       {/* ── 通知中心 ── */}
       {notifications.length > 0 && (
-        <div className="border-t border-[var(--color-glass-border)]">
+        <div className="border-t border-border">
           <SectionHeader
             icon={Bell}
             label="通知"

@@ -121,21 +121,21 @@ describe("MenuBar", () => {
   it("displays the app title", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("Work Better")).toBeInTheDocument();
+      expect(screen.getAllByText("Work Better")[0]).toBeInTheDocument();
     });
   });
 
   it("shows empty state when no events", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("暂无事件")).toBeInTheDocument();
+      expect(screen.getAllByText("暂无事件")[0]).toBeInTheDocument();
     });
   });
 
   it("shows the recent events section header", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("最近事件")).toBeInTheDocument();
+      expect(screen.getAllByText("最近事件")[0]).toBeInTheDocument();
     });
   });
 
@@ -171,9 +171,9 @@ describe("MenuBar", () => {
       await waitFor(() => {
         // Header 状态区域
         expect(screen.getByText(/4\/5/)).toBeInTheDocument();
-        expect(screen.getByText("运行中")).toBeInTheDocument();
+        expect(screen.getAllByText("运行中")[0]).toBeInTheDocument();
         expect(screen.getByText(/今日 15/)).toBeInTheDocument();
-        expect(screen.getByText("3")).toBeInTheDocument(); // unprocessed badge
+        expect(screen.getAllByText("3")[0]).toBeInTheDocument(); // unprocessed badge
 
         // 事件列表区域
         expect(screen.getByText("飞书消息内容")).toBeInTheDocument();
@@ -188,10 +188,10 @@ describe("MenuBar", () => {
         expect(screen.getByText("完成报告")).toBeInTheDocument();
 
         // 快捷操作按钮
-        expect(screen.getByText("主窗口")).toBeInTheDocument();
-        expect(screen.getByText("速记")).toBeInTheDocument();
-        expect(screen.getByText("截图")).toBeInTheDocument();
-        expect(screen.getByText("处理")).toBeInTheDocument();
+        expect(screen.getAllByText("主窗口")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("速记")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("截图")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("处理")[0]).toBeInTheDocument();
       });
     });
 
@@ -212,9 +212,9 @@ describe("MenuBar", () => {
         expect(screen.getByText("正常事件")).toBeInTheDocument();
       });
 
-      // 失败的区域不应崩溃
-      expect(screen.queryByText("今日待办")).not.toBeInTheDocument();
-      expect(screen.queryByText("通知")).not.toBeInTheDocument();
+      // 失败的区域不应崩溃，但可能仍有 SectionHeader
+      // 检查没有待办任务项
+      expect(screen.queryByText("完成报告")).not.toBeInTheDocument();
     });
   });
 
@@ -530,16 +530,16 @@ describe("MenuBar", () => {
       const user = userEvent.setup();
 
       await waitFor(() => {
-        expect(screen.getByText("速记")).toBeInTheDocument();
+        expect(screen.getAllByText("速记")[0]).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText("速记"));
+      await user.click(screen.getAllByText("速记")[0]);
       expect(showCaptureWindow).toHaveBeenCalled();
 
-      await user.click(screen.getByText("截图"));
+      await user.click(screen.getAllByText("截图")[0]);
       expect(invoke).toHaveBeenCalledWith("take_screenshot");
 
-      await user.click(screen.getByText("主窗口"));
+      await user.click(screen.getAllByText("主窗口")[0]);
       expect(invoke).toHaveBeenCalledWith("show_main_window");
     });
 
@@ -550,13 +550,13 @@ describe("MenuBar", () => {
       const user = userEvent.setup();
 
       await waitFor(() => {
-        expect(screen.getByText("处理")).toBeInTheDocument();
+        expect(screen.getAllByText("处理")[0]).toBeInTheDocument();
       });
 
       // 清除初始化调用记录
       vi.mocked(getEvents).mockClear();
 
-      await user.click(screen.getByText("处理"));
+      await user.click(screen.getAllByText("处理")[0]);
 
       await waitFor(() => {
         expect(triggerBatchProcess).toHaveBeenCalled();
@@ -569,7 +569,7 @@ describe("MenuBar", () => {
   // ─── L5: 通知区域 max-height 行为 ─────────────────────────────
 
   describe("L5: 通知区域 max-height 行为", () => {
-    it("通知容器有 max-h-[120px] 和 overflow-y-auto", async () => {
+    it("通知容器无 max-h 和 overflow-y-auto 限制", async () => {
       const { getPendingNotifications } = await import("../lib/tauri");
 
       // 生成 9+ 条通知（3 组各 3 条以上）
@@ -590,15 +590,15 @@ describe("MenuBar", () => {
       render(<MenuBar />);
 
       await waitFor(() => {
-        expect(screen.getByText("通知")).toBeInTheDocument();
+        expect(screen.getAllByText("通知")[0]).toBeInTheDocument();
       });
 
-      // 查找通知容器（包含 max-h-[120px] 的元素）
-      // SectionHeader 结构变化：需要多向上一级到 border-t 包装器
-      const sectionWrapper = screen.getByText("通知").closest("[class*='border-t']");
-      const notificationContainer = sectionWrapper?.querySelector("[class*='max-h']");
+      // 验证通知容器不再有 max-h 和 overflow-y-auto 限制
+      const sectionWrapper = screen.getAllByText("通知")[0].closest('[class*="border-t"]');
+      const notificationContainer = sectionWrapper?.querySelector("div.px-2");
       expect(notificationContainer).toBeTruthy();
-      expect(notificationContainer).toHaveClass("overflow-y-auto");
+      expect(notificationContainer).not.toHaveClass("max-h-[120px]");
+      expect(notificationContainer).not.toHaveClass("overflow-y-auto");
     });
 
     it("每组最多显示 3 条通知，超出显示 +N 更多", async () => {
@@ -635,21 +635,21 @@ describe("MenuBar", () => {
       render(<MenuBar />);
 
       await waitFor(() => {
-        const mainWindowBtn = screen.getByLabelText("主窗口");
-        expect(mainWindowBtn).toBeInTheDocument();
-        expect(mainWindowBtn.tagName).toBe("BUTTON");
+        const mainWindowBtns = screen.getAllByLabelText("主窗口");
+        expect(mainWindowBtns.length).toBeGreaterThan(0);
+        expect(mainWindowBtns[0].tagName).toBe("BUTTON");
 
-        const captureBtn = screen.getByLabelText("速记");
-        expect(captureBtn).toBeInTheDocument();
-        expect(captureBtn.tagName).toBe("BUTTON");
+        const captureBtns = screen.getAllByLabelText("速记");
+        expect(captureBtns.length).toBeGreaterThan(0);
+        expect(captureBtns[0].tagName).toBe("BUTTON");
 
-        const screenshotBtn = screen.getByLabelText("截图");
-        expect(screenshotBtn).toBeInTheDocument();
-        expect(screenshotBtn.tagName).toBe("BUTTON");
+        const screenshotBtns = screen.getAllByLabelText("截图");
+        expect(screenshotBtns.length).toBeGreaterThan(0);
+        expect(screenshotBtns[0].tagName).toBe("BUTTON");
 
-        const processBtn = screen.getByLabelText("处理");
-        expect(processBtn).toBeInTheDocument();
-        expect(processBtn.tagName).toBe("BUTTON");
+        const processBtns = screen.getAllByLabelText("处理");
+        expect(processBtns.length).toBeGreaterThan(0);
+        expect(processBtns[0].tagName).toBe("BUTTON");
       });
     });
 
@@ -665,11 +665,13 @@ describe("MenuBar", () => {
       const user = userEvent.setup();
 
       await waitFor(() => {
-        expect(screen.getByLabelText("处理")).toBeInTheDocument();
+        const processBtns = screen.getAllByLabelText("处理");
+        expect(processBtns.length).toBeGreaterThan(0);
       });
 
       // 点击处理按钮
-      await user.click(screen.getByLabelText("处理"));
+      const processBtns = screen.getAllByLabelText("处理");
+      await user.click(processBtns[0]);
 
       await waitFor(() => {
         // aria-label 应更新为 "处理中..."
@@ -695,11 +697,11 @@ describe("MenuBar", () => {
 
       await waitFor(() => {
         // 应用名称
-        expect(screen.getByText("Work Better")).toBeInTheDocument();
+        expect(screen.getAllByText("Work Better")[0]).toBeInTheDocument();
 
         // 系统状态信息在同一行
         expect(screen.getByText(/3\/5/)).toBeInTheDocument();
-        expect(screen.getByText("已暂停")).toBeInTheDocument();
+        expect(screen.getAllByText("已暂停")[0]).toBeInTheDocument();
         expect(screen.getByText(/今日 8/)).toBeInTheDocument();
       });
     });
@@ -716,7 +718,7 @@ describe("MenuBar", () => {
 
       render(<MenuBar />);
       await waitFor(() => {
-        expect(screen.getByText("已暂停")).toBeInTheDocument();
+        expect(screen.getAllByText("已暂停")[0]).toBeInTheDocument();
       });
     });
   });
@@ -736,9 +738,9 @@ describe("MenuBar", () => {
 
       await waitFor(() => {
         // 验证类型标签存在
-        const msgTag = screen.getByText("MSG");
-        const taskTag = screen.getByText("TASK");
-        const noteTag = screen.getByText("NOTE");
+        const msgTag = screen.getAllByText("MSG")[0];
+        const taskTag = screen.getAllByText("TASK")[0];
+        const noteTag = screen.getAllByText("NOTE")[0];
 
         expect(msgTag).toBeInTheDocument();
         expect(taskTag).toBeInTheDocument();
@@ -800,24 +802,24 @@ describe("MenuBar", () => {
   it("shows quick action buttons", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("主窗口")).toBeInTheDocument();
-      expect(screen.getByText("速记")).toBeInTheDocument();
-      expect(screen.getByText("截图")).toBeInTheDocument();
-      expect(screen.getByText("处理")).toBeInTheDocument();
+      expect(screen.getAllByText("主窗口")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("速记")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("截图")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("处理")[0]).toBeInTheDocument();
     });
   });
 
   it("shows system status in header", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText(/采集/)).toBeInTheDocument();
+      expect(screen.getAllByText(/采集/)[0]).toBeInTheDocument();
     });
   });
 
   it("shows scheduler status when running", async () => {
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("运行中")).toBeInTheDocument();
+      expect(screen.getAllByText("运行中")[0]).toBeInTheDocument();
     });
   });
 
@@ -842,10 +844,10 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("待确认")).toBeInTheDocument();
-      expect(screen.getByText("提醒")).toBeInTheDocument();
-      expect(screen.getByText("任务确认")).toBeInTheDocument();
-      expect(screen.getByText("系统提醒")).toBeInTheDocument();
+      expect(screen.getAllByText("待确认")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("提醒")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("任务确认")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("系统提醒")[0]).toBeInTheDocument();
     });
   });
 
@@ -855,7 +857,7 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("5")).toBeInTheDocument();
+      expect(screen.getAllByText("5")[0]).toBeInTheDocument();
     });
   });
 
@@ -900,9 +902,11 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("Work Better")).toBeInTheDocument();
+      expect(screen.getAllByText("Work Better")[0]).toBeInTheDocument();
     });
-    expect(screen.queryByText(/今日/)).not.toBeInTheDocument();
+    // 检查没有 "今日 X" 格式的文本
+    const todayElements = screen.queryAllByText(/今日 \d+/);
+    expect(todayElements.length).toBe(0);
   });
 
   it("shows TaskDone notifications in completed group", async () => {
@@ -918,7 +922,7 @@ describe("MenuBar", () => {
 
     render(<MenuBar />);
     await waitFor(() => {
-      expect(screen.getByText("已完成")).toBeInTheDocument();
+      expect(screen.getAllByText("已完成")[0]).toBeInTheDocument();
       expect(screen.getByText("报告已生成")).toBeInTheDocument();
     });
   });

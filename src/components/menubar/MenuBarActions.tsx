@@ -35,8 +35,8 @@ function ActionButton({
         "flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all duration-150",
         "active:scale-[0.97] active:opacity-80",
         accent
-          ? "bg-[var(--color-glass-accent)]/20 text-[var(--color-glass-accent)] hover:bg-[var(--color-glass-accent)]/30"
-          : "text-[var(--color-text-hint)] hover:text-foreground/80 hover:bg-[var(--color-glass-hover)]",
+          ? "bg-macos-blue/20 text-macos-blue hover:bg-macos-blue/30"
+          : "text-muted-foreground hover:text-foreground hover:bg-accent",
         disabled && "opacity-40 cursor-not-allowed",
       )}
       onClick={onClick}
@@ -77,7 +77,7 @@ export function MenuBarActions({
   onTriggerProcess,
 }: MenuBarActionsProps) {
   return (
-    <div className="flex items-center justify-between border-t border-[var(--color-glass-border)] px-2 pt-1.5 pb-0.5">
+    <div className="flex items-center justify-between border-t border-border px-2 pt-1.5 pb-0.5">
       <div className="flex items-center gap-0.5">
         <ActionButton
           icon={Monitor}

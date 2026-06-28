@@ -24,13 +24,13 @@ export function MenuBarHeader({
   unprocessedCount,
 }: MenuBarHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-3.5 py-2 border-b border-[var(--color-glass-border)]">
+    <header className="flex items-center justify-between px-3.5 py-2 border-b border-border">
       {/* 左侧：应用图标和名称 */}
       <div className="flex items-center gap-2">
-        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[var(--color-glass-accent)]/20">
-          <Zap className="h-3 w-3 text-[var(--color-glass-accent)]" strokeWidth={2.2} />
+        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-macos-blue/20">
+          <Zap className="h-3 w-3 text-macos-blue" strokeWidth={2.2} />
         </div>
-        <span className="text-[12px] font-semibold text-foreground/90 tracking-tight">
+        <span className="text-[12px] font-semibold text-foreground tracking-tight">
           Work Better
         </span>
       </div>
@@ -41,7 +41,7 @@ export function MenuBarHeader({
 
         {/* 未处理数 */}
         {unprocessedCount > 0 && (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-glass-accent)] px-1 text-[9px] font-semibold text-white tabular-nums">
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-macos-blue px-1 text-[9px] font-semibold text-primary-foreground tabular-nums">
             {unprocessedCount}
           </span>
         )}

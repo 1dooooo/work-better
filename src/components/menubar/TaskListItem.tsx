@@ -18,14 +18,14 @@ interface TaskListItemProps {
 
 export function TaskListItem({ task }: TaskListItemProps) {
   return (
-    <div className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-[var(--color-glass-hover)] transition-colors cursor-pointer">
-      <div className="flex h-3.5 w-3.5 items-center justify-center rounded border border-[var(--color-glass-border)]">
-        <ListTodo className="h-2 w-2 text-[var(--color-text-hint)]" />
+    <div className="group flex items-center gap-2 rounded-lg px-2 py-[5px] hover:bg-accent transition-colors cursor-pointer">
+      <div className="flex h-3.5 w-3.5 items-center justify-center rounded border border-border">
+        <ListTodo className="h-2 w-2 text-muted-foreground" />
       </div>
-      <span className="flex-1 text-[11px] text-foreground/70 truncate min-w-0">
+      <span className="flex-1 text-[11px] text-muted-foreground truncate min-w-0">
         {task.title}
       </span>
-      <ChevronRight className="h-3 w-3 text-[var(--color-glass-muted)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      <ChevronRight className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </div>
   );
 }

@@ -1,12 +1,21 @@
 /**
  * useWindowResize — 窗口尺寸调整 Hook
  *
- * 恢复原始实现：使用 node.scrollHeight + ResizeObserver
+ * 使用 ResizeObserver + 延迟测量确保内容完全渲染后再调整窗口大小
+ * 包含最小高度保护
  */
 
 import { useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
+
+// ─── 常量 ─────────────────────────────────────────────────────
+
+/** 最小窗口高度 */
+const MIN_HEIGHT = 100;
+
+/** 初始调整延迟（毫秒） */
+const INITIAL_DELAY = 100;
 
 // ─── 类型定义 ─────────────────────────────────────────────────
 
@@ -34,19 +43,27 @@ export function useWindowResize({
       if (typeof ResizeObserver === "undefined") return;
 
       const resizeWindow = () => {
-        const height = node.scrollHeight;
+        // 使用 offsetHeight 获取实际渲染高度（包含 border）
+        const height = Math.max(node.offsetHeight, MIN_HEIGHT);
         const win = getCurrentWindow();
         win.setSize(new LogicalSize(width, height)).catch(() => {});
       };
 
-      // 初始调整
-      resizeWindow();
+      // 延迟初始调整，确保内容完全渲染
+      const initialTimer = setTimeout(() => {
+        resizeWindow();
+      }, INITIAL_DELAY);
 
       // 监听内容变化
-      const observer = new ResizeObserver(resizeWindow);
+      const observer = new ResizeObserver(() => {
+        resizeWindow();
+      });
       observer.observe(node);
 
-      return () => observer.disconnect();
+      return () => {
+        clearTimeout(initialTimer);
+        observer.disconnect();
+      };
     },
     [width],
   );

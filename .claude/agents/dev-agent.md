@@ -25,7 +25,31 @@ model: sonnet
 
 ## 输出
 
-- `.workflow/artifacts/{task_id}/dev-output.json`
+`.workflow/artifacts/{task_id}/dev-output.json`
+
+**必须符合以下 Schema：**
+
+```json
+{
+  "task_id": "string - 任务唯一标识，如 feat-001、fix-042",
+  "task_type": "feature|fix|refactor|security|docs - 任务类型",
+  "changed_files": [
+    {
+      "path": "string - 相对于项目根目录的文件路径",
+      "change_type": "added|modified|deleted",
+      "diff_summary": "string - 变更内容的人类可读摘要"
+    }
+  ],
+  "affected_modules": ["string - 受影响的 crate/module 名称"],
+  "timestamp": "string - ISO 8601 格式时间戳"
+}
+```
+
+**输出前自检清单：**
+- [ ] task_type 是 feature/fix/refactor/security/docs 之一
+- [ ] changed_files 是对象数组（不是字符串数组）
+- [ ] affected_modules 至少包含一个模块
+- [ ] timestamp 是有效的 ISO 8601 格式
 
 ## 约束
 

@@ -143,36 +143,37 @@ Generate and execute H3-H5 security tests:
 
 Write `.workflow/artifacts/{task_id}/review-report.json`:
 
+**必须符合以下 Schema：**
+
 ```json
 {
-  "task_id": "...",
-  "verdict": "approve|warn|block",
-  "summary": {
-    "files_reviewed": 5,
-    "critical_issues": 0,
-    "high_issues": 1,
-    "medium_issues": 3,
-    "low_issues": 2
-  },
-  "issues": [
+  "task_id": "string - 任务唯一标识",
+  "verdict": "approve|approve_with_comments|request_changes|block - 审查结论",
+  "findings": [
     {
       "severity": "critical|high|medium|low",
-      "category": "security|quality|performance",
-      "file": "path/to/file.rs",
-      "line": 42,
-      "description": "...",
-      "suggestion": "..."
+      "title": "string - 问题标题（必填）",
+      "file": "string - 文件路径",
+      "line": "integer - 行号（可选）",
+      "description": "string - 问题描述"
     }
   ],
-  "security_tests": {
-    "h3_passed": true,
-    "h4_passed": true,
-    "h5_passed": true,
-    "tests_generated": 5
+  "suggested_action": {
+    "action": "fix_code|fix_test|request_changes|approve|escalate|none",
+    "target_files": ["string - 需要修复的目标文件路径"],
+    "critical_findings": ["string - 关键发现摘要"],
+    "reason": "string - 建议原因"
   },
-  "timestamp": "..."
+  "security_tests_generated": ["string - H3-H5 安全测试文件路径"],
+  "timestamp": "string - ISO 8601 格式时间戳"
 }
 ```
+
+**输出前自检清单：**
+- [ ] verdict 是 approve/approve_with_comments/request_changes/block 之一
+- [ ] findings 是数组（不是 issues）
+- [ ] findings 中每个元素包含 severity/title/file（title 是必填字段）
+- [ ] timestamp 是有效的 ISO 8601 格式
 
 ## Verdict Determination
 
