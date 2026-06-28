@@ -413,6 +413,26 @@ export function createMainWindowMockScript(): string {
         case "save_shortcut_config":
           return null;
 
+        // ─── 通知相关 ─────────────────────────────────
+        case "send_notification":
+          return null;
+        case "get_pending_notifications":
+          return [];
+        case "mark_notification_read":
+          return null;
+        case "clear_read_notifications":
+          return null;
+
+        // ─── 任务发现 ─────────────────────────────────
+        case "discover_tasks_from_text":
+          return [];
+
+        // ─── 存储配置 ─────────────────────────────────
+        case "get_storage_config":
+          return { vault_path: "/default/vault" };
+        case "save_storage_config":
+          return null;
+
         // ─── 测试模式 ─────────────────────────────────
         case "set_test_mode":
           return null;
