@@ -6,6 +6,7 @@ pub mod collect;
 pub mod collectors;
 pub mod db;
 pub mod events;
+pub mod log;
 pub mod notify;
 pub mod scheduler;
 pub mod settings;

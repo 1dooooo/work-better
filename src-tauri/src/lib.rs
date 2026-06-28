@@ -368,6 +368,7 @@ pub fn run() {
             commands::tasks::update_task_status,
             commands::window::show_main_window,
             commands::window::get_main_window,
+            commands::log::log_message,
             commands::test_mode::set_test_mode,
             commands::test_mode::cleanup_test_data,
         ])

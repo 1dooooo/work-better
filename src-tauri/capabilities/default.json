@@ -4,6 +4,7 @@
   "windows": ["main", "capture", "tray"],
   "permissions": [
     "core:default",
+    "core:window:allow-set-size",
     "shell:default",
     "global-shortcut:default",
     "notification:default"

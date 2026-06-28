@@ -2,14 +2,15 @@
  * useWindowResize — 窗口尺寸调整 Hook
  *
  * 使用 ResizeObserver + 延迟测量确保内容完全渲染后再调整窗口大小
- * 包含最小高度保护
+ * 包含最小/最大高度保护
  *
- * 调试：添加了详细日志来诊断窗口大小调整问题
+ * 日志：通过invoke输出到Tauri终端，实现日志统一观测
  */
 
 import { useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
+import { createLogger } from "@/lib/logger";
 
 // ─── 常量 ─────────────────────────────────────────────────────
 
@@ -21,6 +22,9 @@ const MAX_HEIGHT = 500;
 
 /** 初始调整延迟（毫秒） */
 const INITIAL_DELAY = 300;
+
+/** 日志器 */
+const logger = createLogger("WindowResize");
 
 // ─── 类型定义 ─────────────────────────────────────────────────
 
@@ -52,54 +56,22 @@ export function useWindowResize({
         const rawHeight = node.offsetHeight;
         const height = Math.min(Math.max(rawHeight, MIN_HEIGHT), MAX_HEIGHT);
 
-        console.log("[useWindowResize] resizeWindow called:", {
-          rawHeight,
-          minHeight: MIN_HEIGHT,
-          maxHeight: MAX_HEIGHT,
-          finalHeight: height,
-          width,
-          nodeScrollHeight: node.scrollHeight,
-          nodeClientHeight: node.clientHeight,
-        });
+        logger.info(`height: ${rawHeight} → ${height}`);
 
         const win = getCurrentWindow();
-        win.setSize(new LogicalSize(width, height))
-          .then(() => {
-            console.log("[useWindowResize] setSize success:", { width, height });
-          })
-          .catch((err) => {
-            console.error("[useWindowResize] setSize failed:", err);
-          });
+        win.setSize(new LogicalSize(width, height)).catch(() => {});
       };
 
       // 延迟初始调整，确保内容完全渲染
       const initialTimer = setTimeout(() => {
-        console.log("[useWindowResize] initial timer fired");
         resizeWindow();
       }, INITIAL_DELAY);
 
       // 监听内容变化
-      const observer = new ResizeObserver((entries) => {
-        console.log("[useWindowResize] ResizeObserver triggered:", {
-          entriesCount: entries.length,
-          entry: entries[0]
-            ? {
-                target: entries[0].target.tagName,
-                contentRect: entries[0].contentRect,
-              }
-            : null,
-        });
+      const observer = new ResizeObserver(() => {
         resizeWindow();
       });
       observer.observe(node);
-
-      console.log("[useWindowResize] hook initialized:", {
-        width,
-        minHeight: MIN_HEIGHT,
-        maxHeight: MAX_HEIGHT,
-        initialDelay: INITIAL_DELAY,
-        isTauri: !!(window as any).__TAURI_INTERNALS__,
-      });
 
       return () => {
         clearTimeout(initialTimer);

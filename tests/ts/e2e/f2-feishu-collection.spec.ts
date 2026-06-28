@@ -92,6 +92,11 @@ test.describe("F2: Feishu Collection Flow", () => {
   test("F2-01: UI triggers collection and updates event count", async ({
     page,
   }) => {
+    // 调试：截图查看页面状态
+    await page.screenshot({ path: "/tmp/f2-debug-1.png" });
+    console.log("Page URL:", page.url());
+    console.log("Page title:", await page.title());
+
     // 等待侧边栏加载
     await page.getByTestId("sidebar").waitFor({ state: "visible", timeout: 30000 });
 
