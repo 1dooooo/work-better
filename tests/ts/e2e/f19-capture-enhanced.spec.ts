@@ -25,7 +25,7 @@ test.describe("F19: Enhanced Capture Window", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("mark_event_processed", { eventId: "mock-001" });
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 
   test("F19-03: Show capture window command works", async ({ page }) => {
@@ -33,6 +33,6 @@ test.describe("F19: Enhanced Capture Window", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("show_capture_window", {});
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 });

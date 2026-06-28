@@ -9,7 +9,6 @@
  * 2. 真实 IPC 模式：调用真实 Tauri 后端，使用 test mode 隔离数据
  */
 import { type Page, expect } from "@playwright/test";
-import { mockIPC, clearMocks, mockWindows } from "@tauri-apps/api/mocks";
 
 // ─── Mock 状态 ─────────────────────────────────────────────────
 
@@ -110,40 +109,6 @@ async function invokeTauriCommand(
   }
 }
 
-/**
- * 直接 mock invoke（在 page.evaluate 内部使用）
- */
-function mockInvokeDirect(command: string, args?: any): any {
-  switch (command) {
-    case "set_test_mode":
-      return null;
-    case "cleanup_test_data":
-      return null;
-    case "get_events":
-      return [
-        {
-          id: "mock-001",
-          timestamp: new Date().toISOString(),
-          source: "manual",
-          type: "note",
-          content: "Mock 事件 1",
-        },
-      ];
-    case "get_unprocessed_count":
-      return 2;
-    case "trigger_manual_capture":
-      return {
-        id: `mock-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        source: "manual",
-        type: "note",
-        content: args?.text ?? "",
-      };
-    default:
-      return null;
-  }
-}
-
 // ─── 测试环境配置 ─────────────────────────────────────────────
 
 /**
@@ -240,10 +205,6 @@ export async function getEnvironmentType(page: Page): Promise<string> {
   const isTauri = await isTauriEnvironment(page);
   return isTauri ? "tauri" : "browser";
 }
-
-// ─── 导出 Tauri Mock 工具 ─────────────────────────────────────
-
-export { mockIPC, clearMocks, mockWindows };
 
 // ─── 主窗口 Mock 脚本生成器 ────────────────────────────────────
 
@@ -426,6 +387,20 @@ export function createMainWindowMockScript(): string {
         // ─── 任务发现 ─────────────────────────────────
         case "discover_tasks_from_text":
           return [];
+        case "confirm_pending_task":
+          return { id: args?.pendingId || "unknown", title: "确认的任务", status: "Open", priority: "medium" };
+        case "reject_pending_task":
+          return null;
+
+        // ─── 采集器分组 ───────────────────────────────
+        case "enable_collector_group":
+        case "disable_collector_group":
+          return null;
+
+        // ─── 窗口管理 ─────────────────────────────────
+        case "show_capture_window":
+        case "hide_capture_window":
+          return null;
 
         // ─── 存储配置 ─────────────────────────────────
         case "get_storage_config":
@@ -546,7 +521,7 @@ export async function verifyTaskCreated(
   const taskItems = page.locator('[data-testid^="task-item-"]');
   const count = await taskItems.count();
 
-  for (let i = 0; count; i++) {
+  for (let i = 0; i < count; i++) {
     const item = taskItems.nth(i);
     const text = await item.textContent();
     if (text?.includes(expectedTitle)) {

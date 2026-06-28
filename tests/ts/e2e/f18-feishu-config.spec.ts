@@ -21,13 +21,10 @@ test.describe("F18: Feishu Configuration", () => {
 
   test("F18-02: Save feishu mode works", async ({ page }) => {
     await waitForMainWindow(page);
-    await page.evaluate(async () => {
-      await (window as any).__TAURI_INTERNALS__.invoke("save_feishu_mode", { mode: "api" });
+    const result = await page.evaluate(async () => {
+      return await (window as any).__TAURI_INTERNALS__.invoke("save_feishu_mode", { mode: "api" });
     });
-    const mode = await page.evaluate(async () => {
-      return await (window as any).__TAURI_INTERNALS__.invoke("get_feishu_mode", {});
-    });
-    expect(mode).toBe("cli"); // mock 不会真正保存，返回默认值
+    expect(result).toBeNull();
   });
 
   test("F18-03: Get feishu chat id returns string", async ({ page }) => {
@@ -40,9 +37,9 @@ test.describe("F18: Feishu Configuration", () => {
 
   test("F18-04: Save feishu chat id works", async ({ page }) => {
     await waitForMainWindow(page);
-    await page.evaluate(async () => {
-      await (window as any).__TAURI_INTERNALS__.invoke("save_feishu_chat_id", { chatId: "oc_test_123" });
+    const result = await page.evaluate(async () => {
+      return await (window as any).__TAURI_INTERNALS__.invoke("save_feishu_chat_id", { chatId: "oc_test_123" });
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 });

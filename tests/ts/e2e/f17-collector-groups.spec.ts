@@ -45,12 +45,13 @@ test.describe("F17: Collector Groups & Health", () => {
 
   test("F17-05: Enable/disable collector group works", async ({ page }) => {
     await waitForMainWindow(page);
-    await page.evaluate(async () => {
-      await (window as any).__TAURI_INTERNALS__.invoke("enable_collector_group", { groupId: "feishu-group" });
+    const enableResult = await page.evaluate(async () => {
+      return await (window as any).__TAURI_INTERNALS__.invoke("enable_collector_group", { groupId: "feishu-group" });
     });
-    await page.evaluate(async () => {
-      await (window as any).__TAURI_INTERNALS__.invoke("disable_collector_group", { groupId: "feishu-group" });
+    expect(enableResult).toBeNull();
+    const disableResult = await page.evaluate(async () => {
+      return await (window as any).__TAURI_INTERNALS__.invoke("disable_collector_group", { groupId: "feishu-group" });
     });
-    expect(true).toBe(true);
+    expect(disableResult).toBeNull();
   });
 });

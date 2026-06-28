@@ -27,8 +27,8 @@ test.describe("F15: Pending Task Confirmation", () => {
     const task = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("confirm_pending_task", { pendingId: "test-pending-1" });
     });
-    // 命令应该执行（mock 返回 null 或 task）
-    expect(true).toBe(true);
+    expect(task).toHaveProperty("id");
+    expect(task).toHaveProperty("title");
   });
 
   test("F15-03: Reject pending task works", async ({ page }) => {
@@ -37,6 +37,6 @@ test.describe("F15: Pending Task Confirmation", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("reject_pending_task", { pendingId: "test-pending-1" });
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 });

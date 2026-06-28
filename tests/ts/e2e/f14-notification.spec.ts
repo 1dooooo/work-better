@@ -26,7 +26,7 @@ test.describe("F14: Notification System", () => {
       });
     });
     // 命令应该成功执行（返回 null 或结果）
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 
   test("F14-02: Get pending notifications returns array", async ({ page }) => {
@@ -44,7 +44,7 @@ test.describe("F14: Notification System", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("mark_notification_read", { id: "test-notif-1" });
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 
   test("F14-04: Clear read notifications works", async ({ page }) => {
@@ -53,6 +53,6 @@ test.describe("F14: Notification System", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("clear_read_notifications", {});
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 });

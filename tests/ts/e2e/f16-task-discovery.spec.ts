@@ -40,6 +40,6 @@ test.describe("F16: AI Task Discovery", () => {
     const result = await page.evaluate(async () => {
       return await (window as any).__TAURI_INTERNALS__.invoke("update_task_status", { taskId: "task-1", status: "InProgress" });
     });
-    expect(true).toBe(true);
+    expect(result).toBeNull();
   });
 });
