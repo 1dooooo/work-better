@@ -10,6 +10,7 @@ pub mod notify;
 pub mod scheduler;
 pub mod settings;
 pub mod tasks;
+pub mod test_mode;
 pub mod window;
 
 use std::sync::Arc;

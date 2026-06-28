@@ -5,6 +5,13 @@ use std::process::Command;
 use serde::de::DeserializeOwned;
 use wb_core::error::{Result, WbError};
 
+/// 飞书 API Base URL 环境变量名
+///
+/// 如果设置了 `FEISHU_API_BASE`，会作为 `LARK_BASE_URL` 转发给 lark-cli 子进程，
+/// 用于覆盖飞书 API 的默认地址（例如指向私有化部署实例）。
+const FEISHU_API_BASE_ENV: &str = "FEISHU_API_BASE";
+const LARK_BASE_URL_ENV: &str = "LARK_BASE_URL";
+
 /// 检查外部工具是否可用（通过执行 `<tool> --version`）
 ///
 /// 返回 `true` 表示工具存在且可执行。
@@ -17,9 +24,20 @@ pub fn check_tool_available(tool: &str) -> bool {
 }
 
 /// 执行外部命令，返回 stdout
+///
+/// 如果设置了 `FEISHU_API_BASE` 环境变量，会将其作为 `LARK_BASE_URL` 转发给子进程，
+/// 用于覆盖飞书 API 的默认地址。
 pub fn execute(program: &str, args: &[&str]) -> Result<String> {
-    let output = Command::new(program)
-        .args(args)
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+
+    // 转发 FEISHU_API_BASE → LARK_BASE_URL
+    if let Ok(base_url) = std::env::var(FEISHU_API_BASE_ENV) {
+        cmd.env(LARK_BASE_URL_ENV, &base_url);
+        eprintln!("[runner] Forwarding {}={} to {}", FEISHU_API_BASE_ENV, base_url, program);
+    }
+
+    let output = cmd
         .output()
         .map_err(|e| WbError::Collector(format!("Failed to execute {}: {}", program, e)))?;
 

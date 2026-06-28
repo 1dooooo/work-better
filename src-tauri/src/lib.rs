@@ -195,6 +195,9 @@ pub fn run() {
             let state = commands::AppState::new(event_log, Some(audit_log));
             app.manage(state);
 
+            // 注入 TestModeState
+            app.manage(commands::test_mode::TestModeState::new());
+
             // 初始化 Obsidian vault 目录结构
             let vault_config = commands::settings::load_config_for_collect()
                 .unwrap_or_default();
@@ -365,6 +368,8 @@ pub fn run() {
             commands::tasks::update_task_status,
             commands::window::show_main_window,
             commands::window::get_main_window,
+            commands::test_mode::set_test_mode,
+            commands::test_mode::cleanup_test_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

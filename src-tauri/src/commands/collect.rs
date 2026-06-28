@@ -7,6 +7,7 @@ use wb_collector::feishu::messages::FeishuMessageCollector;
 
 use super::events::build_task_runner_from_config;
 use super::settings::load_config_for_collect;
+use super::test_mode::TestModeState;
 use super::AppState;
 
 /// 飞书采集器 ID
@@ -75,12 +76,33 @@ pub async fn trigger_feishu_collect(
 }
 
 /// 手动捕获事件（AI 驱动任务发现）
+///
+/// 测试模式下跳过 AI 处理，直接创建事件。
 #[tauri::command]
 pub async fn trigger_manual_capture(
     state: State<'_, AppState>,
+    test_mode: State<'_, TestModeState>,
     app: tauri::AppHandle,
     text: String,
 ) -> Result<Event, String> {
+    // 测试模式：跳过 AI 处理，直接创建事件
+    if test_mode.is_enabled() {
+        let event = Event::new(
+            Source::UserCapture,
+            Confidence::High,
+            EventType::ManualNote,
+            json!({"text": text}),
+            json!({"text": text}).to_string(),
+        );
+
+        let log = state.event_log.lock().await;
+        log.append(&event).await.map_err(|e| e.to_string())?;
+
+        eprintln!("[capture] Test mode: saved event directly (no AI)");
+        return Ok(event);
+    }
+
+    // 正常模式：需要 AI 处理
     let event = Event::new(
         Source::UserCapture,
         Confidence::High,
