@@ -15,7 +15,7 @@ export default defineConfig({
     baseURL: "http://localhost:1420", // Tauri dev server 默认端口
   },
   webServer: {
-    command: "cargo tauri dev", // 启动真实 Tauri app
+    command: "source ~/.cargo/env && cargo tauri dev", // 启动真实 Tauri app
     port: 1420,
     reuseExistingServer: !process.env.CI,
     timeout: 120000, // Tauri 编译需要较长时间
