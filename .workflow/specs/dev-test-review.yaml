@@ -374,6 +374,11 @@ retry:
 artifacts:
   base_dir: .workflow/artifacts/{task_id}/
   files:
+    execution_plan:
+      path: execution-plan.json
+      writer: workflow-advisor
+      readers: [主 Agent]
+      schema: .workflow/templates/execution-plan.schema.json
     error_response:
       path: error-response.json
       writer: workflow-advisor

@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Execution Plan",
+  "description": "workflow-advisor 生成的执行计划",
+  "type": "object",
+  "required": ["task_id", "timestamp", "analysis", "execution_plan"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "user_request": { "type": "string" },
+    "analysis": {
+      "type": "object",
+      "required": ["target_modules", "gate_level", "task_type"],
+      "properties": {
+        "target_modules": { "type": "array", "items": { "type": "string" } },
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "gate_level": { "type": "string", "enum": ["L1", "L2"] },
+        "task_type": { "type": "string", "enum": ["feature", "fix", "refactor", "security", "docs"] }
+      }
+    },
+    "execution_plan": {
+      "type": "object",
+      "required": ["phases"],
+      "properties": {
+        "phases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["phase", "name", "agents"],
+            "properties": {
+              "phase": { "type": "integer" },
+              "name": { "type": "string" },
+              "agents": { "type": "array", "items": { "type": "string" } },
+              "dependencies": { "type": "array", "items": { "type": "string" } },
+              "parallel": { "type": "boolean" },
+              "optional": { "type": "boolean" },
+              "requires_approval": { "type": "boolean" },
+              "outputs": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "retry_strategy": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "max_retries": { "type": "integer" },
+          "trend_stop": { "type": "integer" }
+        }
+      }
+    }
+  }
+}
