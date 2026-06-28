@@ -2,25 +2,25 @@
  * E2E 测试辅助函数
  *
  * 提供真实 Tauri 环境下的测试辅助功能。
- * 移除了所有 mock 相关代码，使用真实的 Tauri IPC。
+ * 使用 data-testid 选择器和真实 Tauri IPC。
  */
-import { test as base, expect, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
 
 // ─── 测试环境配置 ─────────────────────────────────────────────
 
 /**
  * 设置测试环境
  *
- * 通过 Tauri IPC 设置测试模式，使用临时数据目录。
+ * 调用 Tauri IPC 启用测试模式，使用临时数据目录。
  * 必须在 page.goto() 之后调用。
  */
 export async function setupTestEnvironment(page: Page): Promise<string> {
-  const testDir = `/tmp/work-better-test-${Date.now()}`;
+  const testDir = `/tmp/work-better-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  await page.evaluate((dataDir) => {
-    return (window as any).__TAURI__.core.invoke("set_test_mode", {
+  await page.evaluate(async (dataDir: string) => {
+    await (window as any).__TAURI__.core.invoke("set_test_mode", {
       enabled: true,
-      data_dir: dataDir,
+      dataDir: dataDir,
     });
   }, testDir);
 
@@ -30,11 +30,11 @@ export async function setupTestEnvironment(page: Page): Promise<string> {
 /**
  * 清理测试环境
  *
- * 清理测试数据，必须在每个测试结束后调用。
+ * 调用 Tauri IPC 清理测试数据并禁用测试模式。
  */
 export async function cleanupTestEnvironment(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    return (window as any).__TAURI__.core.invoke("cleanup_test_data");
+  await page.evaluate(async () => {
+    await (window as any).__TAURI__.core.invoke("cleanup_test_data");
   });
 }
 
@@ -43,29 +43,39 @@ export async function cleanupTestEnvironment(page: Page): Promise<void> {
 /**
  * 等待主窗口加载完成
  *
- * 使用 aside 元素（Sidebar 组件的根元素）作为就绪标志。
- * Sidebar 组件渲染为 <aside>，包含 "Work Better" 品牌文字。
+ * 使用 data-testid="sidebar" 作为就绪标志。
  */
 export async function waitForMainWindow(page: Page): Promise<void> {
-  await page.locator("aside").waitFor({ state: "visible", timeout: 30000 });
+  await page.getByTestId("sidebar").waitFor({ state: "visible", timeout: 30000 });
 }
 
 /**
- * 导航到指定视图
+ * 导航到指定视图（使用 data-testid）
  *
- * Sidebar 中每个导航项渲染为 <TooltipTrigger> 按钮，
- * 包含图标和标签文本（如 "事件"、"设置"）。
- * 使用 getByRole + 精确匹配来定位。
+ * Sidebar 中每个导航项渲染为 <TooltipTrigger>，
+ * 带有 data-testid={`nav-item-${id}`} 属性。
  *
  * @param page - Playwright page 对象
- * @param viewLabel - 视图标签文本（如 "事件"、"设置"）
+ * @param viewLabel - 视图标签文本（如 "事件"、"设置"）或视图 ID
  */
 export async function navigateToView(
   page: Page,
   viewLabel: string,
 ): Promise<void> {
   await waitForMainWindow(page);
-  await page.getByRole("button", { name: viewLabel, exact: true }).click();
+
+  // 映射视图名称到 nav-item data-testid
+  const viewMap: Record<string, string> = {
+    "事件": "events",
+    "设置": "settings",
+    "任务": "tasks",
+    "报告": "reports",
+    "时间线": "timeline",
+    "工作台": "dashboard",
+  };
+
+  const viewId = viewMap[viewLabel] || viewLabel.toLowerCase();
+  await page.getByTestId(`nav-item-${viewId}`).click();
 }
 
 // ─── 事件查询 ─────────────────────────────────────────────────
@@ -80,7 +90,7 @@ export async function getEvents(
   limit: number = 50,
 ): Promise<any[]> {
   return page.evaluate(
-    (limit) => {
+    (limit: number) => {
       return (window as any).__TAURI__.core.invoke("get_events", {
         limit,
       });
@@ -97,69 +107,3 @@ export async function getUnprocessedCount(page: Page): Promise<number> {
     return (window as any).__TAURI__.core.invoke("get_unprocessed_count");
   });
 }
-
-// ─── Mock 辅助函数（遗留 stub，待迁移至真实 Tauri IPC） ──────────
-
-export interface MockState {
-  events: any[];
-  invokeLog: string[];
-}
-
-export function createDefaultMockState(): MockState {
-  return { events: [], invokeLog: [] };
-}
-
-export async function injectTauriMock(
-  _page: Page,
-  _state: MockState,
-): Promise<void> {
-  // TODO: 替换为真实 Tauri IPC 调用
-}
-
-export async function getMockState(_page: Page): Promise<MockState> {
-  // TODO: 替换为真实 Tauri IPC 调用
-  return createDefaultMockState();
-}
-
-export async function getInvokeLog(_page: Page): Promise<string[]> {
-  // TODO: 替换为真实 Tauri IPC 调用
-  return [];
-}
-
-export async function overrideInvoke(
-  _page: Page,
-  _command: string,
-  _handler: (...args: any[]) => any,
-): Promise<void> {
-  // TODO: 替换为真实 Tauri IPC 调用
-}
-
-export function createMockEvent(overrides: Record<string, any> = {}): any {
-  return {
-    id: `mock-${Date.now()}`,
-    source: "manual",
-    content: "test event",
-    created_at: new Date().toISOString(),
-    processed: false,
-    ...overrides,
-  };
-}
-
-// ─── 自定义 Test Fixtures ──────────────────────────────────────
-// 仅 F3-F6 使用（当前已 skip），F1/F2 直接从 @playwright/test 导入 test
-
-type TestFixtures = {
-  mockState: MockState;
-};
-
-const testWithFixtures = base.extend<TestFixtures>({
-  mockState: async ({}, use) => {
-    await use(createDefaultMockState());
-  },
-});
-
-// ─── 导出测试框架 ─────────────────────────────────────────────
-
-export { expect };
-export { base };
-export { testWithFixtures as test };
