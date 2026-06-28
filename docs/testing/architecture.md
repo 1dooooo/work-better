@@ -142,6 +142,16 @@ status: active
 | E2E 测试 | Playwright | 跨浏览器、Tauri app 支持、trace 录制 |
 | API Mock | MSW 2.x | Service Worker 级拦截、类型安全 handlers |
 
+### E2E 测试环境
+
+| 方面 | 配置 | 说明 |
+|------|------|------|
+| Tauri 环境 | `cargo tauri dev` | 启动真实的 Tauri app |
+| Playwright 配置 | `playwright.config.ts` | baseURL: http://localhost:1420 |
+| 飞书 API 隔离 | MSW mock server | 模拟飞书 API 响应 |
+| 测试数据 | 临时目录 | `/tmp/work-better-test-{timestamp}` |
+| 测试命令 | `pnpm test:e2e:dev` | 运行 E2E 测试 |
+
 ## Agent 可解析性设计
 
 ### nextest NDJSON
