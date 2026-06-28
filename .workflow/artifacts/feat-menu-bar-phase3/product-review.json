@@ -1,0 +1,101 @@
+{
+  "task_id": "feat-menu-bar-phase3",
+  "timestamp": "2026-06-19T12:00:00Z",
+  "reviewer": "workflow-runner",
+  "feature_id": "F6.1.4",
+  "feature_name": "菜单栏常驻",
+  "product_definition": "即时信息展示、快捷操作入口",
+  "verdict": "pass",
+  "summary": "Phase 3 菜单栏重设计完全符合 F6.1.4 产品定义，实现了从"手动输入表单"到"信息展示中心"的转变。",
+  "requirements_check": [
+    {
+      "requirement": "即时信息展示",
+      "status": "pass",
+      "evidence": "1. 最近事件列表：展示事件类型、来源、内容摘要、时间\n2. 待确认通知：展示待处理通知，支持标记已读\n3. 系统状态 Footer：展示采集器健康状态、调度器运行状态\n4. 未处理计数 Badge：Header 展示待处理事件数量"
+    },
+    {
+      "requirement": "快捷操作入口",
+      "status": "pass",
+      "evidence": "1. 主窗口按钮：打开主窗口\n2. 速记按钮：打开速记窗口\n3. 截图按钮：触发截图功能\n4. 刷新按钮：手动刷新事件列表"
+    },
+    {
+      "requirement": "信息密度优先",
+      "status": "pass",
+      "evidence": "1. 紧凑型列表：状态指示器 + 类型标签 + 来源 + 内容 + 时间\n2. 小字号：text-[10px]、text-[11px]、text-xs\n3. 紧凑间距：px-4、py-1.5、min-h-[36px]"
+    },
+    {
+      "requirement": "暗黑模式支持",
+      "status": "pass",
+      "evidence": "1. App.tsx 为 tray 窗口添加 ThemeProvider\n2. MenuBar 使用 dark: 前缀适配暗黑模式\n3. 事件类型配色包含 dark: 变体"
+    },
+    {
+      "requirement": "通知 UI",
+      "status": "pass",
+      "evidence": "1. 待确认通知区域：展示通知标题和内容\n2. 标记已读按钮：Check 图标按钮\n3. 限制显示数量：slice(0, 3) 最多显示 3 条\n4. 警告样式：bg-warning/10 背景色"
+    }
+  ],
+  "scenarios_validated": [
+    {
+      "scenario": "G6-06: 用户查看状态，点击菜单栏，显示待确认/任务/摘要等",
+      "status": "pass",
+      "detail": "MenuBar 展示最近事件列表、待确认通知、系统状态"
+    },
+    {
+      "scenario": "G6-07: 用户要快速操作，交互菜单栏，两次点击内完成",
+      "status": "pass",
+      "detail": "快捷操作按钮（主窗口/速记/截图）在菜单栏底部，一次点击即可触发"
+    },
+    {
+      "scenario": "G6-08: 打开菜单栏，查看通知中心，一屏可见所有可操作项",
+      "status": "pass",
+      "detail": "MenuBar 布局紧凑，Header + 事件列表 + 通知 + 快捷操作 + Footer 在一屏内可见"
+    }
+  ],
+  "ui_ux_assessment": {
+    "strengths": [
+      "Linear/Raycast 风格的紧凑型列表设计，信息密度高",
+      "事件类型配色清晰，视觉层次分明",
+      "时间格式化符合中文习惯（刚刚/N分钟前/N小时前）",
+      "通知区域使用警告色突出显示",
+      "系统状态 Footer 提供系统健康概览"
+    ],
+    "concerns": [
+      "菜单栏宽度限制可能导致内容截断，建议添加 Tooltip",
+      "通知最多显示 3 条，超过时需要在主窗口查看"
+    ]
+  },
+  "test_coverage": {
+    "unit_tests": 10,
+    "scenarios_covered": [
+      "基础渲染",
+      "标题显示",
+      "空状态",
+      "事件列表",
+      "通知",
+      "快捷操作",
+      "系统状态",
+      "调度状态",
+      "未处理计数"
+    ]
+  },
+  "recommendations": [
+    {
+      "priority": "medium",
+      "category": "enhancement",
+      "message": "考虑添加事件点击交互",
+      "detail": "当前事件列表仅展示信息，建议添加点击事件打开详情或跳转到主窗口对应视图。"
+    },
+    {
+      "priority": "low",
+      "category": "enhancement",
+      "message": "考虑添加通知点击跳转",
+      "detail": "NotificationRecord 包含 action_url 字段，建议支持点击通知跳转到对应页面。"
+    },
+    {
+      "priority": "low",
+      "category": "design",
+      "message": "确认菜单栏与 design-system.md 的间距差异",
+      "detail": "MenuBar 的间距（px-4、min-h-[36px]）与规范（px-5、min-h-[40px]）有差异，建议确认是否为有意适配。"
+    }
+  ]
+}

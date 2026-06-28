@@ -1,0 +1,96 @@
+{
+  "task_id": "feat-appstate-refactor",
+  "timestamp": "2026-06-21T14:45:00Z",
+  "reviewer": "product-reviewer",
+  "verdict": "not_done",
+  "summary": "任务的所有验收标准均未达成。代码仍使用 5 个 OnceLock 全局静态管理依赖，AppState 结构体不存在，命令函数未接收 State<AppState>，ProcessingPipeline 仍持有 PersistStep，events.rs 中存在完整的重复处理管道逻辑，settings.rs 中 ModelConfig DTO 仍然存在。dev-output.json 声称已变更的文件与变更前状态一致——此任务实质上未执行。",
+  "acceptance_criteria_results": [
+    {
+      "criterion": "所有 OnceLock 静态变量已删除",
+      "status": "fail",
+      "evidence": "6 个 OnceLock 静态变量仍然存在：EVENT_LOG (events.rs:52)、COLLECTOR_MANAGER (collectors.rs:7)、TASK_MANAGER (tasks.rs:13)、TASK_DISCOVERY (tasks.rs:16)、SCHEDULER (scheduler.rs:7)、AUDIT_LOG (audit.rs:10)"
+    },
+    {
+      "criterion": "所有命令函数通过 State<AppState> 接收依赖",
+      "status": "fail",
+      "evidence": "AppState 结构体在代码库中不存在（grep 无结果）。所有命令函数仍通过全局 getter 函数获取依赖：get_event_log()、get_collector_manager()、get_task_manager()、get_task_discovery()、get_scheduler()、get_audit_log()"
+    },
+    {
+      "criterion": "ProcessingPipeline::process() 不再持有 PersistStep",
+      "status": "fail",
+      "evidence": "pipeline.rs 第 53 行：persistor: PersistStep 仍为 ProcessingPipeline 的字段，process() 方法第 224 行调用 self.persistor.persist(&record)"
+    },
+    {
+      "criterion": "events.rs 中无重复的处理管道逻辑",
+      "status": "fail",
+      "evidence": "events.rs 包含完整的 process_single_event() 函数（约 135 行），内含 TaskRunner 构建、分类、提取、任务发现、审计日志写入——与 pipeline.rs 的 ProcessingPipeline::process() 功能高度重复"
+    },
+    {
+      "criterion": "settings.rs 中无 ModelConfig DTO",
+      "status": "fail",
+      "evidence": "settings.rs 第 14-25 行仍定义 ModelConfig 结构体（含 api_endpoint、api_key、token_budget、small_model、large_model 字段），与 wb-storage::config::ModelConfig 重复"
+    },
+    {
+      "criterion": "现有测试全部通过",
+      "status": "unknown",
+      "evidence": "无法从代码审查验证，需运行测试套件确认"
+    }
+  ],
+  "issues": [
+    {
+      "id": "P1",
+      "type": "not_done",
+      "severity": "critical",
+      "title": "任务未执行——零验收标准达成",
+      "description": "dev-output.json 声称变更了 10 个文件，但所有文件的当前状态与变更前一致。不存在 AppState 结构体、不存在 State<AppState> 注入、OnceLock 未删除、PersistStep 未分离、ModelConfig DTO 未删除、重复管道逻辑未消除。此任务实质上未被执行。"
+    },
+    {
+      "id": "P2",
+      "type": "gap",
+      "severity": "high",
+      "title": "build_task_runner_from_config() 未迁移到 wb-ai",
+      "description": "D3 决策要求将 build_task_runner_from_config() 移到 wb-ai 作为 TaskRunner::from_config()。当前该函数仍在 events.rs 第 202-243 行，未移动。"
+    },
+    {
+      "id": "P3",
+      "type": "gap",
+      "severity": "high",
+      "title": "EventLog/AuditLog 未使用 trait object",
+      "description": "D4 决策要求 EventLog 和 AuditLog 用 trait object 以便测试隔离。当前 events.rs 直接使用 SqliteEventLog 具体类型，audit.rs 直接使用 AuditLogStore 具体类型，均未定义 trait 抽象。"
+    },
+    {
+      "id": "P4",
+      "type": "gap",
+      "severity": "medium",
+      "title": "init_* 函数分散在各模块而非统一到 setup",
+      "description": "D2 决策要求在 Tauri setup 阶段一次性构建 AppState。当前 setup 阶段仍调用分散的 init_event_log()、init_audit_log()、init_task_manager() 等函数，依赖通过 OnceLock 全局静态传递。"
+    }
+  ],
+  "decisions_compliance": {
+    "D1_AppState_shape": {
+      "status": "not_implemented",
+      "note": "AppState 结构体不存在"
+    },
+    "D2_initialization_lifecycle": {
+      "status": "not_implemented",
+      "note": "OnceLock 仍存在，初始化仍分散在各模块"
+    },
+    "D3_TaskRunner_build_location": {
+      "status": "not_implemented",
+      "note": "build_task_runner_from_config() 仍在 events.rs"
+    },
+    "D4_test_strategy": {
+      "status": "not_implemented",
+      "note": "EventLog/AuditLog 未使用 trait object"
+    },
+    "D5_Pipeline_decouple": {
+      "status": "not_implemented",
+      "note": "PersistStep 仍在 ProcessingPipeline 内部"
+    },
+    "D6_config_type_unify": {
+      "status": "not_implemented",
+      "note": "settings.rs 的 ModelConfig DTO 仍然存在"
+    }
+  },
+  "product_impact": "当前架构不阻塞现有用户功能——应用可正常运行。但 ADR-001 确认的测试有效性差距问题未解决：命令函数无法隔离测试，全局静态依赖使 mock 注入不可能。这是一个结构性技术债，不影响当前产品行为但严重影响开发效率和质量保障能力。"
+}

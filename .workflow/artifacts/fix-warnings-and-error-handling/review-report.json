@@ -1,0 +1,109 @@
+{
+  "task_id": "fix-warnings-and-error-handling",
+  "verdict": "warn",
+  "summary": {
+    "files_reviewed": 11,
+    "critical_issues": 0,
+    "high_issues": 2,
+    "medium_issues": 6,
+    "low_issues": 3
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "category": "quality",
+      "file": "src/components/views/EventsView.tsx",
+      "line": 135,
+      "description": "formatTime, truncateContent, getEventType 三个工具函数定义在组件内部，每次渲染都会重新创建。且 formatTime / truncateContent 与 MenuBar.tsx 中的 getEventTypeConfig 存在重复实现模式（事件类型标签映射）。应提取为共享工具函数或组件外常量。",
+      "suggestion": "将 formatTime、truncateContent 提取到 src/lib/format.ts 共享模块。将 EVENT_TYPE_CONFIG 和 getEventType 合并，MenuBar.tsx 中的 getEventTypeConfig 也应复用同一配置。"
+    },
+    {
+      "severity": "high",
+      "category": "quality",
+      "file": "src/components/command-palette/CommandPalette.tsx",
+      "line": 129,
+      "description": "CommandPalette 主函数约 228 行（71-299），远超 50 行限制。渲染部分包含大量重复的 CommandItem 模板代码（6 个导航项 + 3 个操作项结构完全相同），违反 DRY 原则。",
+      "suggestion": "将导航项和操作项定义为数据数组（含 icon、label、description、shortcut、command），用 map 渲染。搜索结果部分也可提取子组件。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/hooks/useKeyboardShortcuts.ts",
+      "line": 30,
+      "description": "navigator.platform 已被标记为 deprecated（Web API）。matchesShortcut（第30行）和 formatShortcutHint（第122行）各调用一次，存在重复检测。在 SSR 或 jsdom 测试环境中 navigator.platform 可能返回空字符串。",
+      "suggestion": "提取 isMac 为模块级常量或自定义函数，使用 navigator.userAgentData?.platform || navigator.platform 作为 fallback。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/layout/MainWindow.tsx",
+      "line": 116,
+      "description": "使用 window.prompt() 获取任务标题。在 Tauri 桌面应用中，原生 prompt 行为不可控（可能被禁用或样式不一致），且无法做输入验证。",
+      "suggestion": "使用 shadcn Dialog/Input 组件实现自定义的任务创建对话框，支持输入验证和更好的 UX。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/layout/MainWindow.tsx",
+      "line": 113,
+      "description": "handleCommandAction 的 useCallback 依赖数组缺少 refreshCount。虽然当前 refreshCount 引用稳定（空依赖），但 ESLint exhaustive-deps 规则会报警告。",
+      "suggestion": "将 refreshCount 加入依赖数组：}, [handleViewChange, refreshCount])。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/layout/MainWindow.tsx",
+      "line": 109,
+      "description": "handleViewChange 中 getDeveloperMode 的 catch 回调为空函数 catch(() => {})，静默吞掉错误。与第 75-77 行的 console.error 处理不一致。",
+      "suggestion": "统一错误处理策略：要么都 console.error，要么都静默。建议至少在开发模式下 console.warn。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/ui/empty-state.tsx",
+      "line": 63,
+      "description": "第二个 import 块（第 63-72 行）出现在组件定义之后。ESLint import/first 规则要求所有 import 集中在文件顶部。",
+      "suggestion": "将 lucide-react 的 import 合并到文件顶部的 import 区域。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/views/EventsView.tsx",
+      "line": 229,
+      "description": "event.content 的类型检查模式（typeof event.content === 'string' ? event.content : JSON.stringify(event.content)）在 CommandPalette.tsx:248、EventsView.tsx:229、TimelineView.tsx:161、ProcessingView.tsx:172、useCommandData.ts:74 共 5 处重复。违反 DRY 原则。",
+      "suggestion": "提取为工具函数如 getContentString(content: unknown): string，放在 src/lib/format.ts 或 @/lib/utils 中。"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src/components/views/EventsView.tsx",
+      "line": 72,
+      "description": "refresh 函数失败时仅 console.error，未向用户展示错误提示（toast）。与 handleCollect 和 handleMarkProcessed 的错误处理不一致。",
+      "suggestion": "在 catch 中添加 toast.error('加载事件失败') 以保持一致的用户反馈。"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src/components/views/EventsView.tsx",
+      "line": 233,
+      "description": "事件行使用模板字符串拼接 className（第233行），而非 cn() 工具函数。与项目其他组件的样式管理模式不一致。",
+      "suggestion": "使用 cn() 替代模板字符串拼接：className={cn('border-b border-border/50', index === focusedIndex && 'border-l-2 border-l-primary bg-muted/30')}"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src/components/views/EventsView.tsx",
+      "line": 177,
+      "description": "Select onValueChange 中的 null 检查（v !== null）是冗余的，Radix Select 的 onValueChange 始终传递 string。",
+      "suggestion": "简化为 onValueChange={setFilter}。"
+    }
+  ],
+  "security_tests": {
+    "h3_passed": true,
+    "h4_passed": true,
+    "h5_passed": true,
+    "tests_generated": 0,
+    "notes": "H3: 无用户输入直接注入 HTML/SQL 的场景；React 自动转义 JSX 输出。H4: localStorage 操作已用 try-catch 包裹，错误不泄露敏感信息。H5: Tauri IPC 层提供访问控制，前端无直接系统调用。"
+  },
+  "timestamp": "2026-06-21T13:05:00Z"
+}

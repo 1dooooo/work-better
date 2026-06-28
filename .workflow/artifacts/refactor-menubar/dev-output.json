@@ -1,0 +1,17 @@
+{
+  "task_id": "refactor-menubar",
+  "task_description": "菜单栏 UI/UX 重构：修复图标消失 bug，优化信息层次，基于网络搜索的设计最佳实践",
+  "changed_files": [
+    "src/components/MenuBar.tsx",
+    "src/App.tsx"
+  ],
+  "gate_level": "L1",
+  "changes_summary": [
+    "修复根因：App.tsx 中 ThemeProvider 使用 enableSystem 导致浅色主题下白字白底不可见",
+    "MenuBar 强制使用深色毛玻璃主题（与 Raycast/Fantastical 一致）",
+    "优化信息层次：主状态 → 次要信息 → 详情",
+    "统一使用设计系统 Token",
+    "改善加载状态和空状态"
+  ],
+  "timestamp": "2026-06-23T12:00:00+08:00"
+}

@@ -1,0 +1,76 @@
+{
+  "task_id": "refactor-db-path",
+  "timestamp": "2026-06-13T16:10:00Z",
+  "changed_files": [
+    ".gitignore",
+    "src-tauri/src/commands/audit.rs",
+    "src-tauri/src/commands/db.rs",
+    "src-tauri/src/commands/events.rs",
+    "src-tauri/src/commands/mod.rs",
+    "src-tauri/src/lib.rs"
+  ],
+  "code_changed_files": [
+    "src-tauri/src/commands/audit.rs",
+    "src-tauri/src/commands/db.rs",
+    "src-tauri/src/commands/events.rs",
+    "src-tauri/src/commands/mod.rs",
+    "src-tauri/src/lib.rs"
+  ],
+  "test_level": 1,
+  "summary": "修复 review_feedback 中的 3 个 HIGH 问题和 MEDIUM 改进",
+  "fixes_applied": [
+    {
+      "severity": "high",
+      "title": "HOME 为空时产生根路径 /data.db",
+      "status": "fixed",
+      "detail": "resolve_custom_path 现在检查 HOME 是否为空或未设置，返回 Err 而非生成无效路径"
+    },
+    {
+      "severity": "high",
+      "title": "resolve_db_path 在两个文件中重复实现",
+      "status": "fixed",
+      "detail": "提取到新建的 src-tauri/src/commands/db.rs 共享模块，events.rs 和 audit.rs 均调用 super::db::resolve_db_path"
+    },
+    {
+      "severity": "high",
+      "title": "错误处理不一致：events.rs panic 而 audit.rs 返回错误",
+      "status": "fixed",
+      "detail": "init_event_log 签名改为返回 Result<(), Box<dyn Error>>，所有 expect/panic 替换为 map_err + ? 传播。lib.rs 调用点已同步更新。"
+    },
+    {
+      "severity": "medium",
+      "title": "create_dir_all 失败被 let _ = 静默忽略",
+      "status": "fixed",
+      "detail": "db.rs 中 create_dir_all 使用 map_err + ? 传播错误"
+    },
+    {
+      "severity": "medium",
+      "title": "路径遍历防护",
+      "status": "fixed",
+      "detail": "resolve_custom_path 拒绝包含 .. 的路径段"
+    },
+    {
+      "severity": "medium",
+      "title": "硬编码默认值字符串比较",
+      "status": "fixed",
+      "detail": "替换为常量 PLACEHOLDER_DB_PATH，避免魔法字符串"
+    }
+  ],
+  "test_result": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "new_tests": [
+      "commands::db::tests::reject_path_traversal",
+      "commands::db::tests::reject_tilde_with_empty_home",
+      "commands::db::tests::expand_relative_path"
+    ]
+  },
+  "files_summary": {
+    "src-tauri/src/commands/db.rs": "新建 — 共享的 resolve_db_path 函数及 3 个单元测试",
+    "src-tauri/src/commands/mod.rs": "新增 pub mod db;",
+    "src-tauri/src/commands/events.rs": "删除本地 resolve_db_path，init_event_log 改为返回 Result",
+    "src-tauri/src/commands/audit.rs": "删除本地 resolve_db_path，改用 super::db::resolve_db_path",
+    "src-tauri/src/lib.rs": "init_event_log 调用点增加 .map_err + ? 错误传播"
+  }
+}

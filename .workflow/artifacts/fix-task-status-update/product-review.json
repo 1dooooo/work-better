@@ -1,0 +1,29 @@
+{
+  "task_id": "fix-task-status-update",
+  "verdict": "fail",
+  "category": "bug",
+  "summary": "修复方向正确，但实现存在关键缺陷：events.rs 的 process_single_event 调用 run_extract 时未传递已有任务上下文，AI 无法可靠判断状态更新；且检测到状态更新后仅跳过创建，未实际更新原任务状态。原始问题（两条消息创建两个独立任务）在 AI 无上下文场景下仍可能复现。",
+  "requirements_coverage": [
+    {
+      "requirement": "识别'给Lily的邮件已经发送了'为已有任务的状态更新，不创建新任务",
+      "status": "partial",
+      "notes": "代码添加了 is_status_update 检查逻辑，方向正确。但 events.rs 路径调用 run_extract(event) 时未传入已有任务上下文（existing_tasks），AI 缺少判断依据，可靠性存疑。discovery_ai.rs 路径有上下文传递，但 events.rs 的 process_single_event 未使用该路径。"
+    },
+    {
+      "requirement": "状态更新应关联到原任务并更新其状态",
+      "status": "missing",
+      "notes": "related_task_id 被读取后仅用于日志输出，未调用任何任务更新接口。检测到 is_status_update=true 时只设置 ai_found_task=true 阻止重复创建，原任务状态未变化。用户期望'邮件已发送'应将原任务标记为完成或进行中。"
+    },
+    {
+      "requirement": "降级场景下（AI 失败/无 API Key）不产生重复任务",
+      "status": "missing",
+      "notes": "当 AI 路径失败降级到关键词匹配，或 API Key 未配置走纯正则路径时，正则无法识别状态更新，仍会创建重复任务。修复仅覆盖了 AI 成功路径。"
+    }
+  ],
+  "suggestions": [
+    "events.rs 的 process_single_event 应在调用 run_extract 前，先查询当前 pending/open 任务列表，将其作为 task_context 嵌入 event.content，与 discovery_ai.rs 的 create_synthetic_event 保持一致",
+    "检测到 is_status_update=true 后，应调用任务管理接口更新 related_task_id 对应任务的状态（如标记为 Completed），而非仅跳过创建",
+    "考虑在正则兜底层增加简单的状态更新检测（如匹配'已完成''已发送''做完了'等模式），作为 AI 路径的补充",
+    "需要端到端测试覆盖：先发送任务创建消息，再发送状态更新消息，验证不会产生重复任务且原任务状态被更新"
+  ]
+}

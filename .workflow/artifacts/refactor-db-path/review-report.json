@@ -1,0 +1,43 @@
+{
+  "task_id": "refactor-db-path",
+  "verdict": "approve_with_comments",
+  "timestamp": "2026-06-13T16:30:00Z",
+  "findings": [
+    {
+      "severity": "medium",
+      "title": "审计日志写入错误仍被静默忽略",
+      "file": "src-tauri/src/commands/events.rs",
+      "line": 405,
+      "description": "insert_processing_audit 的返回值仍通过 `let _ =` 丢弃。本轮修复已将 db.rs 的 create_dir_all 改为错误传播，但此处审计写入失败仍然静默。建议至少用 eprintln 记录错误，或将其收集到 ProcessResult 中告知前端。"
+    },
+    {
+      "severity": "medium",
+      "title": "测试中 set_var 存在多线程数据竞争风险",
+      "file": "src-tauri/src/commands/db.rs",
+      "line": 81,
+      "description": "reject_tilde_with_empty_home 测试使用 std::env::set_var(\"HOME\", \"\")，Rust 1.66+ 已将 set_var 标记为 unsafe（多线程环境下存在 data race）。建议使用 `unsafe {}` 块明确标注，或引入 `serial_test` crate 的 #[serial] 属性确保测试串行执行。"
+    },
+    {
+      "severity": "low",
+      "title": "路径遍历检查未覆盖反斜杠分隔符",
+      "file": "src-tauri/src/commands/db.rs",
+      "line": 39,
+      "description": "split('/') 只处理正斜杠。虽然 macOS/Linux 路径不使用反斜杠，但如果用户手动输入含 `\\..\\` 的路径，检查会失效。建议同时 split 两种分隔符，或使用 Path::components() 进行标准化检查。"
+    },
+    {
+      "severity": "low",
+      "title": "get_event_log() 仍使用 expect 导致 panic",
+      "file": "src-tauri/src/commands/events.rs",
+      "line": 75,
+      "description": "init_event_log 已改为返回 Result，但 get_event_log() 仍通过 .expect() panic。文档注释说明了这一点，但与本轮「消除 panic」的修复目标不完全一致。可考虑返回 Option 或 Result，让调用方决定如何处理未初始化的情况。"
+    },
+    {
+      "severity": "low",
+      "title": "lib.rs vault 路径展开仍使用 unwrap_or_default",
+      "file": "src-tauri/src/lib.rs",
+      "line": 126,
+      "description": "vault_path 的 ~ 展开中 HOME 为空时使用 unwrap_or_default()，会生成如 \"/vault\" 的无效路径。db.rs 已对此场景返回 Err，但 lib.rs 的 vault 初始化逻辑未同步修复。建议复用 db.rs 的 resolve_custom_path 或至少对空 HOME 返回错误。"
+    }
+  ],
+  "security_tests_generated": []
+}

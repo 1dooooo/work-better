@@ -1,0 +1,44 @@
+{
+  "task_id": "feat-menu-bar-phase1-2",
+  "result": "fail",
+  "verdict": "bug",
+  "issues": [
+    {
+      "type": "bug",
+      "severity": "high",
+      "description": "快捷键自定义不生效：用户在设置页修改并保存快捷键后，实际注册的全局快捷键不会改变。lib.rs 第 248 行硬编码了 Cmd+Shift+Space，setup 阶段不读取 config.json 中用户保存的快捷键配置。save_shortcut_config 只持久化到文件，但没有任何代码在启动时或保存后重新注册全局快捷键。用户以为自定义了快捷键，实际按新快捷键无反应。",
+      "suggestion": "在 lib.rs setup 阶段读取 AppConfig.shortcuts，按用户配置注册全局快捷键；或在 save_shortcut_config 后通过事件通知前端/后端重新注册快捷键。"
+    },
+    {
+      "type": "bug",
+      "severity": "high",
+      "description": "通知 API 完整但无 UI：Phase 2 实现了完整的后端通知系统（send_notification、get_pending_notifications、mark_notification_read、clear_read_notifications）和前端 API 封装（tauri.ts），但没有任何通知 UI 组件。前端没有任何组件调用这些 API，用户无法在应用内查看、管理通知。功能实现了一半——能发通知但看不到。",
+      "suggestion": "至少实现一个通知中心组件（如 NotificationPanel），展示未读通知列表，支持标记已读和清除已读操作。"
+    },
+    {
+      "type": "ux",
+      "severity": "medium",
+      "description": "action_url 无处理：通知模型包含 action_url 字段，前端 DTO 也保留了该字段，但没有实现点击通知后跳转到对应 URL 的逻辑。用户看到通知后无法通过点击进行下一步操作。",
+      "suggestion": "实现通知点击跳转逻辑：系统通知点击时打开 action_url，或在通知中心 UI 中提供可点击的链接。"
+    },
+    {
+      "type": "ux",
+      "severity": "medium",
+      "description": "通知数据重启丢失：PENDING_NOTIFICATIONS 使用 lazy_static + Mutex<Vec> 内存存储，应用重启后所有通知历史丢失。代码中有 TODO 标注后续迁移到 SQLite，但当前版本对用户而言数据不可靠。",
+      "suggestion": "在 Phase 2 范围内至少实现 SQLite 持久化，或将此限制明确告知用户。"
+    },
+    {
+      "type": "ux",
+      "severity": "low",
+      "description": "快捷键录制不支持 Escape 退出：用户进入快捷键录制模式后（点击 kbd 元素），只能通过按下新的快捷键组合退出。按 Escape 键会被录制为快捷键的一部分（key='Escape'），而非取消录制。",
+      "suggestion": "在 handleKeyDown 中检测 Escape 键，按下时退出录制模式而不修改快捷键。"
+    },
+    {
+      "type": "ux",
+      "severity": "low",
+      "description": "默认快捷键与需求不完全一致：需求指定默认快捷键为 Cmd+Shift+Space（快速打开应用），但 default_shortcuts 定义了 3 个快捷键（capture、search、task），其中只有 capture 匹配需求。search 和 task 是额外添加的，但对应的全局快捷键注册逻辑不存在（只注册了 capture）。",
+      "suggestion": "明确 Phase 1 范围：如果只做 capture 快捷键，移除 search 和 task 的默认配置；如果要做多快捷键，在 lib.rs 中注册所有配置的快捷键。"
+    }
+  ],
+  "summary": "Phase 1（全局快捷键）框架已搭建但核心功能断裂：快捷键设置 UI 和后端 API 完整，但实际注册的快捷键硬编码在 lib.rs 中，用户自定义不生效。Phase 2（系统通知）后端 API 完整但完全没有 UI 入口，用户无法在应用内查看和管理通知。两个 Phase 都存在「能配置/能发送，但不能实际使用」的问题，属于功能半成品状态。"
+}

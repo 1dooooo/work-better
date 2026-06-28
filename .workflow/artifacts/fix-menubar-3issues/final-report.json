@@ -1,0 +1,32 @@
+{
+  "task_id": "fix-menubar-3issues",
+  "status": "done",
+  "test_summary": {
+    "total_tests_run": 14,
+    "all_passed": true,
+    "retry_count": 0,
+    "gate_levels_executed": ["L1"]
+  },
+  "review_summary": {
+    "verdict": "approve",
+    "findings_count": 0
+  },
+  "security_summary": {
+    "h_layer_passed": true,
+    "vulnerabilities_found": 0,
+    "security_tests_generated": 0
+  },
+  "changes": [
+    {
+      "file": "src/components/MenuBar.tsx",
+      "fixes": [
+        "问题1: 重写 getEventSummary 函数，增加三优先级字段提取策略，避免 content 只有 type 字段时显示 'note'",
+        "问题2: ActionButton 默认状态 text-macos-gray 改为 text-white/60，在深色背景上可见",
+        "问题3: 事件类型标签 w-6 改为 w-7，增加 px-1 py-0.5；通知 title/body 拆分为独立 p 标签"
+      ]
+    }
+  ],
+  "uncovered_paths": [],
+  "escalation_reason": null,
+  "timestamp": "2026-06-23T08:56:30+08:00"
+}

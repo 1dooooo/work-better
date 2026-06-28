@@ -1,0 +1,27 @@
+{
+  "task_id": "menu-bar-ui-polish",
+  "agent": "workflow-runner",
+  "timestamp": "2026-06-23T09:10:00+08:00",
+  "changed_files": [
+    "src/components/MenuBar.tsx",
+    "src/components/MenuBar.test.tsx"
+  ],
+  "change_summary": "修复产品审查发现的 4 个问题：P0-1 快速按钮可发现性、P1-1 缺少 aria-label、P1-2 按钮尺寸偏大、P1-3 通知区域无 max-height",
+  "changes": [
+    {
+      "file": "src/components/MenuBar.tsx",
+      "description": "ActionButton 组件重构：从纯图标改为图标+文字标签紧凑布局，添加 aria-label，调整尺寸",
+      "lines_changed": "450-503"
+    },
+    {
+      "file": "src/components/MenuBar.tsx",
+      "description": "通知区域添加 max-h-[120px] overflow-y-auto 限制",
+      "lines_changed": "400"
+    },
+    {
+      "file": "src/components/MenuBar.test.tsx",
+      "description": "测试更新：getByTitle 改为 getByText，测试名称更新",
+      "lines_changed": "61-69"
+    }
+  ]
+}

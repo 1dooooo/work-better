@@ -1,0 +1,18 @@
+============================================================
+ Workflow Log
+ Task ID: test-task
+ Started: 2026-06-22 09:43:24 CST
+ Host:    idodeMacBook-Pro.local
+ PID:     23644
+============================================================
+
+[2026-06-22 09:43:24.3N] [INFO] [PHASE] ======== 阶段开始: VALIDATE_INPUT ========
+[2026-06-22 09:43:24.3N] [WARN] [ARTIFACT] ?? 缺失 .workflow/artifacts/test-task/dev-output.json dev-agent 未生成
+[2026-06-22 09:43:24.3N] [ERROR] [VALIDATE_INPUT] dev-output.json 不存在: .workflow/artifacts/test-task/dev-output.json
+[2026-06-22 09:43:24.3N] [ERROR] [VALIDATE_INPUT] 请先运行: ./scripts/create-dev-output.sh test-task
+[2026-06-22 09:43:24.3N] [INFO] [DONE] ============================================================
+[2026-06-22 09:43:24.3N] [INFO] [DONE]  Workflow 结束
+[2026-06-22 09:43:24.3N] [INFO] [DONE]  Status:   fail
+[2026-06-22 09:43:24.3N] [INFO] [DONE]  Duration: 0s
+[2026-06-22 09:43:24.3N] [INFO] [DONE]  Finished: 2026-06-22 09:43:24 CST
+[2026-06-22 09:43:24.3N] [INFO] [DONE] ============================================================

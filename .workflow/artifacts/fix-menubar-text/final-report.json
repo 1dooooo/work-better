@@ -1,0 +1,35 @@
+{
+  "task_id": "fix-menubar-text",
+  "status": "done",
+  "description": "将 MenuBar.tsx header 中的 'Work Better' 改为 'WorkBetter'",
+  "changes": {
+    "files_modified": [
+      "src/components/MenuBar.tsx",
+      "src/components/MenuBar.test.tsx"
+    ],
+    "changes_summary": [
+      {
+        "file": "src/components/MenuBar.tsx",
+        "line": 291,
+        "old_value": "Work Better",
+        "new_value": "WorkBetter"
+      },
+      {
+        "file": "src/components/MenuBar.test.tsx",
+        "lines": [113, 684, 889],
+        "old_value": "Work Better",
+        "new_value": "WorkBetter",
+        "description": "更新 3 处测试断言以匹配新的显示文本"
+      }
+    ]
+  },
+  "test_summary": {
+    "total_tests_run": 57,
+    "all_passed": true,
+    "test_file": "src/components/MenuBar.test.tsx",
+    "duration_ms": 505
+  },
+  "workflow_type": "simple",
+  "executed_by": "workflow-runner",
+  "timestamp": "2026-06-23T10:00:08+08:00"
+}

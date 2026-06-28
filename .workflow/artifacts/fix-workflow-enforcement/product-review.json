@@ -1,0 +1,89 @@
+{
+  "task_id": "fix-workflow-enforcement",
+  "verdict": "fail",
+  "category": "bug",
+  "summary": "workflow-check hook 从警告升级为阻止（exit 2），方向正确且核心阻断逻辑有效。但存在两个产品级问题：(1) Bash 工具未被拦截，主 Agent 可通过 sed/echo/cat 等命令修改代码文件完全绕过 hook；(2) CLAUDE.md 与 workflow.md 在「主 Agent 是否能直接写代码」上存在矛盾定义，会导致 Agent 行为不确定。",
+  "requirements_coverage": [
+    {
+      "requirement": "约束机制能有效防止主 Agent 直接写代码",
+      "status": "partial",
+      "notes": "Edit/Write/MultiEdit 工具已被 exit 2 阻止，但 Bash 工具未被拦截。主 Agent 可通过 `sed -i`, `echo > file`, `cat > file` 等 shell 命令修改 crates/、src/、src-tauri/ 下的代码文件，完全绕过 workflow-check hook。这是约束机制的关键缺口。"
+    },
+    {
+      "requirement": "阻止时的提示信息友好且可操作",
+      "status": "met",
+      "notes": "三条 BLOCKED 消息均包含：目标文件路径、原因说明、两步操作指引（create-dev-output + run-workflow）。信息清晰、可操作。"
+    },
+    {
+      "requirement": "符合 CLAUDE.md 中定义的多 Agent 协作规范",
+      "status": "partial",
+      "notes": "workflow.md 声明「禁止主 Agent 直接派发子 Agent」，但 CLAUDE.md 的编排方式一节写明「简单任务：主 Agent 内联编排，直接调用 dev-agent」。两处定义矛盾，Agent 无法确定哪种行为是正确的。hook 实现只阻止了主 Agent 自己写代码，但未阻止主 Agent 直接调用 dev-agent（即 workflow.md 所说的「直接派发」），与 CLAUDE.md 的「简单任务可内联编排」一致。需明确：约束的目标是「主 Agent 不能自己写代码」还是「主 Agent 不能直接派发子 Agent」。"
+    },
+    {
+      "requirement": "hook 覆盖所有代码修改路径",
+      "status": "partial",
+      "notes": "hook 只拦截 Edit/Write/MultiEdit 工具，未拦截 Bash 工具。Bash 工具可执行 sed、tee、cp、mv 等文件修改命令。"
+    },
+    {
+      "requirement": "排除列表合理且完整",
+      "status": "met",
+      "notes": "测试文件、文档、配置、样式、codemap 文件均已排除，符合「不触发 workflow」的定义。"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "type": "gap",
+      "title": "Bash 工具未被拦截，可完全绕过 workflow 约束",
+      "description": "workflow-check.cjs 只检查 Edit/Write/MultiEdit 工具名（第 40 行），但主 Agent 可通过 Bash 工具执行 `sed -i 's/old/new/' crates/wb-core/src/lib.rs` 等命令修改代码文件，hook 不会触发。这使得整个约束机制可被轻易绕过。",
+      "evidence": "workflow-check.cjs 第 40 行: if (toolName !== 'Edit' && toolName !== 'Write' && toolName !== 'MultiEdit') { process.exit(0); }",
+      "suggestion": "在 workflow-check.cjs 中增加对 Bash 工具的检查：解析 toolInput.command，使用正则匹配是否包含对 crates/、src/、src-tauri/ 下文件的写入操作（sed -i、tee、cp、mv、echo >、cat > 等）。或者在 PreToolUse hook 的 matcher 中增加 Bash，然后在脚本内判断命令内容。"
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "type": "design_debt",
+      "title": "CLAUDE.md 与 workflow.md 在主 Agent 编排方式上存在矛盾",
+      "description": "CLAUDE.md 的「编排方式」写明「简单任务：主 Agent 内联编排，直接调用 dev-agent」，但 workflow.md 的「强制约束」声明「禁止主 Agent 直接派发子 Agent（dev-agent、test-agent、review-agent、product-reviewer）。所有代码变更的子 Agent 调度必须通过 workflow-runner 进行」。两处定义直接矛盾。",
+      "evidence": "CLAUDE.md 第 61-62 行 vs workflow.md 第 8-9 行",
+      "suggestion": "统一定义。建议：(1) 明确约束目标是「主 Agent 不能自己写 Edit/Write 代码」而非「不能直接派发子 Agent」，因为 CLAUDE.md 的内联编排模式是合理的简化路径；或者 (2) 如果确实要强制所有子 Agent 调度通过 workflow-runner，则需要更新 CLAUDE.md 并删除「直接调用 dev-agent」的描述。"
+    },
+    {
+      "id": "F3",
+      "severity": "low",
+      "type": "gap",
+      "title": "findProjectRoot 失败时静默放行",
+      "description": "当 findProjectRoot() 返回 null（例如 cwd 不在 git 仓库内）时，hook 直接 exit(0) 放行。虽然这可能是合理的降级策略，但缺乏日志记录，用户无法知道约束被跳过了。",
+      "evidence": "workflow-check.cjs 第 60-62 行: if (!projectRoot) { process.exit(0); }",
+      "suggestion": "在 exit(0) 前添加 console.error 警告：'[workflow-check] WARNING: Could not find project root, skipping workflow check'"
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "type": "gap",
+      "title": "任务排序逻辑可能不准确",
+      "description": "使用 tasks.sort().reverse() 取最新任务，依赖目录名的字典序。如果 task_id 格式不一致（如 feat-abc vs fix-123），字典序可能不等于时间序。",
+      "evidence": "workflow-check.cjs 第 95 行: const latestTask = tasks.sort().reverse()[0];",
+      "suggestion": "使用 fs.statSync 的 mtime 排序，或要求 task_id 包含时间戳前缀。当前 feat-/fix-/refactor- 前缀下字典序基本可用，优先级较低。"
+    },
+    {
+      "id": "F5",
+      "severity": "low",
+      "type": "gap",
+      "title": "dev-output.json 为空对象时也被视为有效任务",
+      "description": "测试用例 createTempProject 写入 '{}' 作为 dev-output.json。hook 只检查文件是否存在，不验证内容。一个空的或损坏的 dev-output.json 会被视为有效活跃任务。",
+      "evidence": "workflow-check.cjs 第 78-81 行仅检查 fs.existsSync(devOutput)",
+      "suggestion": "可选择性地验证 dev-output.json 至少包含 task_id 字段。优先级低，因为 create-dev-output.sh 脚本会生成有效内容。"
+    }
+  ],
+  "suggestions": [
+    "优先修复 F1（Bash 绕过），这是约束机制的关键缺口，不修复则整个 workflow 强制执行形同虚设",
+    "统一 CLAUDE.md 和 workflow.md 的编排定义（F2），消除 Agent 行为不确定性",
+    "F3-F5 为低优先级改进，可在后续迭代中处理"
+  ],
+  "suggested_action": {
+    "action": "fix_code",
+    "reason": "F1（Bash 绕过）是关键缺口，需在 workflow-check.cjs 中增加对 Bash 工具命令内容的检查，防止通过 shell 命令修改受保护目录下的代码文件"
+  }
+}

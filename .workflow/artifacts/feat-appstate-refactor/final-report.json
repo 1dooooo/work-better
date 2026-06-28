@@ -1,0 +1,40 @@
+{
+  "task_id": "feat-appstate-refactor",
+  "status": "blocked",
+  "timestamp": "2026-06-21T14:45:23Z",
+  "test_summary": {
+    "total_tests_run": 906,
+    "all_passed": false,
+    "retry_count": 0,
+    "gate_levels_executed": ["L2"]
+  },
+  "review_summary": {
+    "verdict": "fail",
+    "findings_count": 28
+  },
+  "security_summary": {
+    "h_layer_passed": false,
+    "vulnerabilities_found": 10,
+    "security_tests_generated": 5
+  },
+  "uncovered_paths": [
+    "src-tauri/src/commands/events.rs::process_single_event",
+    "src-tauri/src/commands/events.rs::build_task_runner_from_config",
+    "src-tauri/src/commands/collectors.rs::register_builtin_collectors",
+    "src-tauri/src/commands/tasks.rs::discover_tasks_from_text",
+    "src-tauri/src/commands/audit.rs::get_processing_audits",
+    "crates/wb-processor/src/pipeline.rs::ProcessingPipeline::process"
+  ],
+  "escalation_reason": "dev-agent 未执行代码变更。dev-output.json 声称已完成 AppState 重构，但所有 6 项验收标准均未满足：OnceLock 未删除、AppState 不存在、PersistStep 未分离、ModelConfig DTO 未删除、重复管道逻辑未消除、build_task_runner_from_config() 未迁移。需要 dev-agent 实际编写代码后重新验证。",
+  "metrics": {
+    "total_duration_seconds": 480,
+    "agent_invocations": {
+      "dev_agent": 1,
+      "test_agent": 1,
+      "review_agent": 1,
+      "product_reviewer": 1
+    },
+    "total_retries": 0,
+    "retry_details": []
+  }
+}

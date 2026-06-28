@@ -1,0 +1,44 @@
+{
+  "task_id": "fix-workflow-enforcement",
+  "timestamp": "2026-06-22T10:15:00Z",
+  "result": "pass",
+  "summary": {
+    "description": "修复 workflow 约束机制，确保主 Agent 无法绕过流程直接写代码",
+    "changes": [
+      "workflow-check.cjs: 将警告改为强制阻止 (exit 2)",
+      "workflow-check.cjs: 添加 Bash 工具拦截（sed -i, >, >>）",
+      "workflow-check.cjs: 修复 MultiEdit 的 file_paths 处理",
+      "workflow.md: 添加主 Agent 检查点",
+      "vitest.hooks.config.ts: 添加 .cjs 扩展名支持",
+      "新增 workflow-check.test.cjs: 41 个测试用例"
+    ]
+  },
+  "gate_results": {
+    "gate_level": 1,
+    "tests": {
+      "total": 41,
+      "passed": 41,
+      "failed": 0,
+      "result": "pass"
+    },
+    "security": {
+      "h1": "pass",
+      "h2": "pass",
+      "h3": "pass",
+      "h4": "pass",
+      "h5": "pass"
+    },
+    "review": {
+      "verdict": "APPROVE",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 1
+    }
+  },
+  "artifacts": {
+    "dev_output": ".workflow/artifacts/fix-workflow-enforcement/dev-output.json",
+    "test_report": ".workflow/artifacts/fix-workflow-enforcement/test-report.json",
+    "review_report": ".workflow/artifacts/fix-workflow-enforcement/review-report.json"
+  }
+}

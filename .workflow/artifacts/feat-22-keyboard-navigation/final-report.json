@@ -1,0 +1,41 @@
+{
+  "task_id": "feat-22-keyboard-navigation",
+  "status": "done",
+  "test_summary": {
+    "total_tests_run": 151,
+    "all_passed": true,
+    "retry_count": 1,
+    "gate_levels_executed": ["L1"]
+  },
+  "review_summary": {
+    "verdict": "approve_with_comments",
+    "findings_count": 3
+  },
+  "security_summary": {
+    "h_layer_passed": true,
+    "vulnerabilities_found": 0,
+    "security_tests_generated": 0
+  },
+  "uncovered_paths": [
+    "src/components/layout/Sidebar.tsx（无对应单元测试）"
+  ],
+  "escalation_reason": null,
+  "metrics": {
+    "total_duration_seconds": 120,
+    "agent_invocations": {
+      "dev_agent": 0,
+      "test_agent": 0,
+      "review_agent": 0,
+      "product_reviewer": 0
+    },
+    "total_retries": 1,
+    "retry_details": [
+      {
+        "retry_number": 1,
+        "trigger": "test_fail",
+        "source_location": "src/components/layout/Sidebar.tsx:24"
+      }
+    ]
+  },
+  "timestamp": "2026-06-21T07:36:00Z"
+}

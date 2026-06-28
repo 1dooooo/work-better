@@ -1,0 +1,372 @@
+{
+  "task_id": "feat-appstate-refactor",
+  "timestamp": "2026-06-21T14:40:00Z",
+  "reviewer": "review-agent",
+  "overall_verdict": "fail",
+  "summary": "dev-output.json 声称已变更 10 个文件以实现 AppState 重构，但代码中 NONE of the 6 项 acceptance criteria 被满足。所有 OnceLock 全局静态变量仍存在，AppState 结构体未定义，ProcessingPipeline 仍持有 PersistStep，settings.rs 的 ModelConfig DTO 未删除，build_task_runner_from_config() 未迁移到 wb-ai。此 PR 的核心重构目标未达成。",
+  "acceptance_criteria_audit": [
+    {
+      "criterion": "所有 OnceLock 静态变量已删除",
+      "status": "NOT_MET",
+      "evidence": "events.rs:52 EVENT_LOG, collectors.rs:7 COLLECTOR_MANAGER, tasks.rs:13+16 TASK_MANAGER/TASK_DISCOVERY, scheduler.rs:7 SCHEDULER, audit.rs:10 AUDIT_LOG — 共 6 个 OnceLock 仍存在"
+    },
+    {
+      "criterion": "所有命令函数通过 State<AppState> 接收依赖",
+      "status": "NOT_MET",
+      "evidence": "全局搜索 AppState 和 State< 无结果。所有命令函数仍通过 get_xxx() 全局函数获取依赖"
+    },
+    {
+      "criterion": "ProcessingPipeline::process() 不再持有 PersistStep",
+      "status": "NOT_MET",
+      "evidence": "pipeline.rs:53 仍有 persistor: PersistStep 字段，process() 在 line 223 调用 self.persistor.persist(&record)"
+    },
+    {
+      "criterion": "events.rs 中无重复的处理管道逻辑",
+      "status": "UNCLEAR",
+      "evidence": "events.rs 的 process_single_event() 与 pipeline.rs 有重叠的分类+提取逻辑，但两者服务不同场景（Tauri 命令 vs 管道流水线），是否算'重复'需产品判定"
+    },
+    {
+      "criterion": "settings.rs 中无 ModelConfig DTO",
+      "status": "NOT_MET",
+      "evidence": "settings.rs:14-25 仍有 pub struct ModelConfig DTO 定义"
+    },
+    {
+      "criterion": "现有测试全部通过",
+      "status": "NOT_REVIEWED",
+      "evidence": "测试执行属于 test-agent 职责，review-agent 不运行测试"
+    }
+  ],
+  "file_reviews": [
+    {
+      "file": "src-tauri/src/commands/events.rs",
+      "issues": [
+        {
+          "id": "H1",
+          "severity": "HIGH",
+          "category": "concurrency",
+          "location": "lines 248-383 process_single_event()",
+          "description": "Mutex<SqliteEventLog> 在整个函数作用域内被持有（line 250 获取锁，line 341 才使用 mark_processed），期间包含多次 AI 模型调用（run_classify + run_extract），可能持续数秒。其他所有事件操作（get_events, mark_event_processed, get_unprocessed_count）都被阻塞。",
+          "suggested_fix": "在获取 event 后尽早释放锁（drop(log)），或使用 RwLock 允许并发读取，仅在 mark_processed 时获取写锁"
+        },
+        {
+          "id": "H2",
+          "severity": "HIGH",
+          "category": "security",
+          "location": "lines 99-103 mark_event_processed()",
+          "description": "event_id 参数未做任何验证，直接传给 SQL 层。虽然 rusqlite 使用参数化查询防止 SQL 注入，但缺少长度检查和格式验证可能导致意外行为。",
+          "suggested_fix": "添加 event_id 验证（非空、长度限制、UUID 格式检查）"
+        },
+        {
+          "id": "H3",
+          "severity": "HIGH",
+          "category": "correctness",
+          "location": "lines 335-339 persistence_status",
+          "description": "PersistenceStatus 硬编码为 {obsidian: true, vector_db: true, sqlite: true}，但实际持久化已由 pipeline.rs 处理。此处的值不代表真实状态，误导前端显示。",
+          "suggested_fix": "从实际持久化结果中获取状态，或移除此字段"
+        },
+        {
+          "id": "M1",
+          "severity": "MEDIUM",
+          "category": "performance",
+          "location": "lines 144-197 trigger_batch_process()",
+          "description": "批量处理逐个串行调用 process_single_event()，无并发控制，无取消机制。大量未处理事件时耗时很长（每个事件需 AI 调用），且 UI 无法中断。",
+          "suggested_fix": "添加并发限制（如 Semaphore(3)），支持取消（CancellationToken），报告进度"
+        },
+        {
+          "id": "M2",
+          "severity": "MEDIUM",
+          "category": "maintainability",
+          "location": "lines 388-397 estimate_cost()",
+          "description": "模型价格硬编码，无法动态更新。新增模型需要改代码。",
+          "suggested_fix": "将价格表移到配置文件或常量模块"
+        },
+        {
+          "id": "L1",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "line 59",
+          "description": "eprintln! 用于日志输出，生产环境应使用 tracing",
+          "suggested_fix": "替换为 tracing::info! 或 tracing::debug!"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/collectors.rs",
+      "issues": [
+        {
+          "id": "H4",
+          "severity": "HIGH",
+          "category": "security",
+          "location": "lines 156-168 enable_collector()",
+          "description": "虽然有 validate_collector_id() 验证，但 enable/disable 操作直接写入配置文件。如果配置文件被并发修改（两个 Tauri 命令同时 save_config），可能导致配置丢失（last-write-wins）。无文件锁保护。",
+          "suggested_fix": "使用文件锁（flock）或原子写入（write-to-temp + rename）"
+        },
+        {
+          "id": "M3",
+          "severity": "MEDIUM",
+          "category": "performance",
+          "location": "lines 240-304 get_collector_statuses()",
+          "description": "对每个采集器逐一调用 health_check()（line 249），这是 N+1 模式。14 个采集器 = 14 次独立检查。",
+          "suggested_fix": "添加 batch_health_check() 方法，一次返回所有状态"
+        },
+        {
+          "id": "L2",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "lines 284-289, 392-408",
+          "description": "采集器名称映射硬编码在两个不同的函数中（get_collector_statuses 和 get_collector_groups），且不完全一致（如 '飞书消息' vs '消息'）。违反 DRY 原则。",
+          "suggested_fix": "提取为统一的 collector_display_name() 函数"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/tasks.rs",
+      "issues": [
+        {
+          "id": "H5",
+          "severity": "HIGH",
+          "category": "correctness",
+          "location": "lines 101-106 discover_tasks_from_text()",
+          "description": "source 字符串到枚举的映射不准确：'meeting' 映射到 FeishuDoc 而非 FeishuMeeting，'email' 映射到 FeishuMessage 而非 FeishuEmail。这会导致任务发现的来源标签错误。",
+          "suggested_fix": "修正映射关系，或引入专用的 Source 枚举"
+        },
+        {
+          "id": "H6",
+          "severity": "HIGH",
+          "category": "error-handling",
+          "location": "lines 126-145 confirm_pending_task()",
+          "description": "先在 discovery 中确认（line 129-131），再在 manager 中创建（line 134-137）。如果 manager.create() 失败，pending task 已从 discovery 中移除但正式任务未创建，导致数据丢失。无事务保护。",
+          "suggested_fix": "先创建正式任务，确认成功后再从 discovery 中移除；或添加回滚逻辑"
+        },
+        {
+          "id": "M4",
+          "severity": "MEDIUM",
+          "category": "input-validation",
+          "location": "lines 187-206 create_task()",
+          "description": "title 参数未做长度限制或空值检查。可创建标题为空或超长的任务。",
+          "suggested_fix": "添加 title.trim().is_empty() 检查和最大长度限制"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/scheduler.rs",
+      "issues": [
+        {
+          "id": "M5",
+          "severity": "MEDIUM",
+          "category": "error-handling",
+          "location": "lines 50-52, 58-60",
+          "description": "pause_scheduler 和 resume_scheduler 不检查当前状态。重复暂停或恢复不报错，用户无法确认操作是否生效。",
+          "suggested_fix": "检查当前状态，如果已经是目标状态则返回提示信息"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/audit.rs",
+      "issues": [
+        {
+          "id": "M6",
+          "severity": "MEDIUM",
+          "category": "security",
+          "location": "lines 56-58, 82-84, 108-110",
+          "description": "开发者模式权限检查在每个查询命令中重复实现。如果新增审计命令，容易遗漏权限检查。",
+          "suggested_fix": "提取为 Tauri middleware 或 guard 函数，统一拦截"
+        },
+        {
+          "id": "L3",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "lines 16-33",
+          "description": "init_audit_log 使用 rusqlite::Connection::open 打开数据库，与 events.rs 的 SqliteEventLog::new 使用不同的连接路径和 schema 初始化。两个模块各自维护独立的数据库连接。",
+          "suggested_fix": "统一数据库连接管理（共享连接池或单一连接 + 事务）"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/settings.rs",
+      "issues": [
+        {
+          "id": "H7",
+          "severity": "HIGH",
+          "category": "security",
+          "location": "lines 376-436 list_models()",
+          "description": "用户提供的 api_endpoint 直接用于 HTTP 请求（line 393-399），无 URL 格式验证。恶意输入如 'http://169.254.169.254/latest/meta-data/' 可导致 SSRF 攻击，访问云实例元数据服务。",
+          "suggested_fix": "验证 URL scheme（仅允许 https），禁止私有 IP 段（10.x, 172.16-31.x, 192.168.x, 169.254.x, localhost），添加超时限制"
+        },
+        {
+          "id": "H8",
+          "severity": "HIGH",
+          "category": "security",
+          "location": "lines 464-499 test_model()",
+          "description": "与 list_models() 相同的 SSRF 风险。此外，api_key 作为函数参数传递，可能出现在日志或错误信息中。",
+          "suggested_fix": "URL 验证同 H7；确保错误信息不泄露 api_key"
+        },
+        {
+          "id": "H9",
+          "severity": "HIGH",
+          "category": "security",
+          "location": "lines 210-216 save_storage_config()",
+          "description": "vault_path 和 db_path 由用户输入，未做路径遍历检查。恶意输入如 '../../../etc/cron.d/evil' 可导致写入任意位置。",
+          "suggested_fix": "验证路径在预期目录内（canonicalize + starts_with），拒绝包含 '..' 的路径"
+        },
+        {
+          "id": "M7",
+          "severity": "MEDIUM",
+          "category": "data-protection",
+          "location": "lines 115-128 save_model_config()",
+          "description": "API Key 明文存储在 config.json 中（line 122-126）。虽然注释说 'user-only 权限'，但代码中未实际设置文件权限。在多用户系统或备份场景下可能泄露。",
+          "suggested_fix": "设置 config.json 权限为 0600（仅 owner 可读写），或使用系统 keychain 存储敏感信息"
+        },
+        {
+          "id": "L4",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "lines 10-11",
+          "description": "LARK_CLI 路径硬编码为 '/opt/homebrew/bin/lark-cli'，不支持 Intel Mac 或其他安装位置。",
+          "suggested_fix": "使用 which/Command::new('lark-cli') 动态查找，或从配置读取"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/commands/mod.rs",
+      "issues": [
+        {
+          "id": "L5",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "lines 37-48",
+          "description": "WbError::Serialization 使用 .to_string() 丢失了原始错误链信息，不利于调试。",
+          "suggested_fix": "保留原始错误或使用 thiserror 的 #[from] 属性"
+        }
+      ]
+    },
+    {
+      "file": "src-tauri/src/lib.rs",
+      "issues": [
+        {
+          "id": "M8",
+          "severity": "MEDIUM",
+          "category": "concurrency",
+          "location": "lines 238-246",
+          "description": "在 scheduler 的 on_complete 回调中 tokio::spawn 异步写入审计日志。如果写入失败（如数据库锁），错误仅打印到 stderr，无重试机制，审计记录可能丢失。",
+          "suggested_fix": "添加重试逻辑或使用 channel 将失败写入发送到死信队列"
+        },
+        {
+          "id": "L6",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "line 288",
+          "description": "let _ = handle; 这行无实际作用（handle 在闭包末尾被 drop 是自然的），属于 dead code。",
+          "suggested_fix": "删除此行"
+        }
+      ]
+    },
+    {
+      "file": "crates/wb-processor/src/pipeline.rs",
+      "issues": [
+        {
+          "id": "H10",
+          "severity": "HIGH",
+          "category": "performance",
+          "location": "lines 351-377 find_existing_path_by_id()",
+          "description": "使用 std::fs::read_dir + std::fs::read_to_string 进行同步文件 I/O。在大型 Obsidian vault 中（数千个 .md 文件），这会阻塞 tokio 运行时线程。",
+          "suggested_fix": "使用 tokio::fs 进行异步 I/O，或限制扫描目录深度和文件数量"
+        },
+        {
+          "id": "M9",
+          "severity": "MEDIUM",
+          "category": "correctness",
+          "location": "line 368",
+          "description": "frontmatter id 匹配使用 l.trim() == format!(\"id: {}\", record_id)，但 YAML frontmatter 中 id 值可能被引号包裹（如 id: \"abc\"），导致匹配失败。",
+          "suggested_fix": "使用正则或 YAML 解析器匹配 id 字段"
+        },
+        {
+          "id": "M10",
+          "severity": "MEDIUM",
+          "category": "code-quality",
+          "location": "lines 384-386 sanitize_text_input()",
+          "description": "此函数仅在 line 194 被调用一次，且仅用于 due_date。命名过于通用（sanitize_text_input），但功能单一（字符截断）。与 security 无关的'sanitize'命名可能误导。",
+          "suggested_fix": "重命名为 truncate_to_chars 或类似名称"
+        }
+      ]
+    },
+    {
+      "file": "crates/wb-ai/src/task_runner.rs",
+      "issues": [
+        {
+          "id": "M11",
+          "severity": "MEDIUM",
+          "category": "correctness",
+          "location": "lines 270-274 estimate_tokens()",
+          "description": "token 估算使用 2 字符 = 1 token 的粗略比例，与实际 tokenizer 差异较大（英文约 4 chars/token，中文约 1.5 chars/token）。估算不准确会影响预算控制。",
+          "suggested_fix": "使用 tiktoken-rs 或类似库进行精确计数，或至少区分中英文使用不同比例"
+        },
+        {
+          "id": "L7",
+          "severity": "LOW",
+          "category": "code-quality",
+          "location": "line 42",
+          "description": "timeout_ms 字段有默认值 120_000，但 TaskRunner::new() 中硬编码。应提取为常量。",
+          "suggested_fix": "const DEFAULT_TIMEOUT_MS: u64 = 120_000;"
+        }
+      ]
+    }
+  ],
+  "security_test_suggestions": {
+    "H3_Input_Validation": {
+      "description": "针对所有接受用户输入的 Tauri 命令进行输入验证测试",
+      "test_cases": [
+        "mark_event_processed: 传入空字符串、超长字符串（10000 chars）、特殊字符、null 字节",
+        "create_task: 传入空标题、仅空白标题、超长标题（10000 chars）",
+        "update_task_status: 传入未定义的状态字符串",
+        "discover_tasks_from_text: 传入超大文本（1MB）",
+        "save_feishu_chat_id: 传入包含特殊字符的 chat_id"
+      ]
+    },
+    "H4_Path_Traversal": {
+      "description": "测试路径遍历攻击",
+      "test_cases": [
+        "save_storage_config: vault_path = '../../../etc/cron.d/evil'",
+        "save_storage_config: db_path = '/tmp/../../etc/passwd'",
+        "save_storage_config: vault_path 包含 null 字节",
+        "save_storage_config: vault_path 使用符号链接指向敏感目录"
+      ]
+    },
+    "H5_SSRF": {
+      "description": "测试服务端请求伪造",
+      "test_cases": [
+        "list_models: api_endpoint = 'http://169.254.169.254/latest/meta-data/'",
+        "list_models: api_endpoint = 'http://127.0.0.1:6379/' (Redis)",
+        "list_models: api_endpoint = 'file:///etc/passwd'",
+        "test_model: api_endpoint 使用非标准端口扫描内部服务",
+        "test_model: api_endpoint 为超长 URL 导致缓冲区问题"
+      ]
+    },
+    "H6_Concurrent_Access": {
+      "description": "测试并发访问下的数据一致性",
+      "test_cases": [
+        "同时调用 enable_collector 和 disable_collector 同一 ID",
+        "并发调用 trigger_batch_process 和 mark_event_processed",
+        "同时保存不同配置项（model_config + storage_config）",
+        "快速重复调用 pause/resume scheduler"
+      ]
+    },
+    "H7_API_Key_Exposure": {
+      "description": "测试 API Key 是否泄露",
+      "test_cases": [
+        "test_model 故意传入错误 key，检查错误响应是否包含 key",
+        "检查 config.json 文件权限是否为 0600",
+        "检查日志输出（stderr）是否包含 API Key",
+        "list_models 失败时错误信息是否泄露 Authorization header"
+      ]
+    }
+  },
+  "suggested_action": "BLOCK",
+  "suggested_action_reason": "1) 核心重构目标（OnceLock → AppState）完全未实现，6 项 acceptance criteria 均未满足；2) 存在 3 个 HIGH 级安全问题（SSRF、路径遍历、API Key 明文存储）；3) 存在 2 个 HIGH 级并发问题（Mutex 长时间持有、配置文件无锁写入）。建议 dev-agent 重新实现后再提交审查。",
+  "issue_summary": {
+    "critical": 0,
+    "high": 10,
+    "medium": 11,
+    "low": 7
+  }
+}

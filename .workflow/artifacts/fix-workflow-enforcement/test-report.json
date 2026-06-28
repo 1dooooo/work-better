@@ -1,0 +1,138 @@
+{
+  "task_id": "fix-workflow-enforcement",
+  "gate_level": "L4",
+  "result": "pass",
+  "summary": {
+    "total": 41,
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0
+  },
+  "test_details": {
+    "framework": "vitest",
+    "config": "vitest.hooks.config.ts",
+    "test_file": "scripts/hooks/__tests__/workflow-check.test.cjs",
+    "execution_method": "npx vitest run --config vitest.hooks.config.ts"
+  },
+  "test_categories": {
+    "tool_type_checks": {
+      "count": 2,
+      "passed": 2,
+      "description": "Non-Edit/Write/Bash tools (Read, Glob) should exit 0"
+    },
+    "bash_interception": {
+      "count": 11,
+      "passed": 11,
+      "description": "Bash tool: sed -i, redirect >, append >>, read-only, excluded files, empty/missing command, with/without workflow"
+    },
+    "multiedit_handling": {
+      "count": 7,
+      "passed": 7,
+      "description": "MultiEdit: file_path (singular), file_paths (plural array), excluded files, empty array, with/without workflow"
+    },
+    "excluded_file_patterns": {
+      "count": 8,
+      "passed": 8,
+      "description": "Excluded: .test.ts, .spec.tsx, .md, .json, .yaml, .yml, .css, .codemap.md"
+    },
+    "directory_checks": {
+      "count": 2,
+      "passed": 2,
+      "description": "Files outside protected dirs, scripts/ directory"
+    },
+    "workflow_state_checks": {
+      "count": 5,
+      "passed": 5,
+      "description": "No artifacts dir, no active task, active workflow, src/ with workflow, src-tauri/ without workflow"
+    },
+    "completed_task_checks": {
+      "count": 1,
+      "passed": 1,
+      "description": "Latest task completed (final-report.json exists)"
+    },
+    "error_handling_fail_closed": {
+      "count": 2,
+      "passed": 2,
+      "description": "Malformed JSON stdin, empty stdin - both exit 2 (fail-closed)"
+    },
+    "project_root_fail_closed": {
+      "count": 1,
+      "passed": 1,
+      "description": "No .git directory found - exit 2 (fail-closed)"
+    },
+    "multi_task_boundary": {
+      "count": 2,
+      "passed": 2,
+      "description": "Multiple tasks: latest active allows, all completed blocks"
+    },
+    "missing_input_boundary": {
+      "count": 2,
+      "passed": 2,
+      "description": "Missing file_path in tool_input, undefined tool_input - both exit 0"
+    }
+  },
+  "manual_verification": {
+    "bash_sed_interception": {
+      "status": "pass",
+      "detail": "sed -i on protected file without workflow correctly blocked (exit 2)"
+    },
+    "bash_redirect_interception": {
+      "status": "pass",
+      "detail": "redirect > to protected file without workflow correctly blocked (exit 2)"
+    },
+    "bash_append_interception": {
+      "status": "pass",
+      "detail": "append >> to protected file without workflow correctly blocked (exit 2)"
+    },
+    "excluded_files_allowed": {
+      "status": "pass",
+      "detail": "sed -i on excluded file (README.md) correctly allowed (exit 0)"
+    },
+    "multiedit_file_paths": {
+      "status": "pass",
+      "detail": "MultiEdit file_paths array with protected file correctly blocked (exit 2)"
+    },
+    "multiedit_excluded_only": {
+      "status": "pass",
+      "detail": "MultiEdit file_paths with only excluded files correctly allowed (exit 0)"
+    },
+    "active_workflow_allows_bash": {
+      "status": "pass",
+      "detail": "sed -i on protected file WITH active workflow correctly allowed (exit 0)"
+    },
+    "readonly_bash_allowed": {
+      "status": "pass",
+      "detail": "cat (read-only) on protected file correctly allowed (exit 0)"
+    }
+  },
+  "security_scan": {
+    "eval_usage": "clean - no eval() found",
+    "exec_usage": "clean - no child_process.exec found",
+    "shell_injection": "clean - uses spawnSync with array args, no shell:true",
+    "hardcoded_secrets": "clean - no passwords, tokens, or API keys",
+    "fail_closed_strategy": "verified - JSON.parse in try/catch, catch block exits with code 2",
+    "path_traversal": "low risk - path.join used with fixed component names (.workflow, artifacts), no user-controlled path segments in join",
+    "stdin_validation": "verified - JSON.parse wrapped in try/catch with exit(2) on failure"
+  },
+  "fixes_verified": {
+    "bash_tool_interception_bug": {
+      "description": "Added WORKFLOW_REQUIRED_PATTERNS_IN_COMMAND without ^ anchors for matching protected directories within command strings",
+      "status": "verified - sed -i, redirect >, append >> all correctly blocked"
+    },
+    "multiedit_file_paths": {
+      "description": "MultiEdit correctly checks file_paths array (plural) with fallback to file_path (singular)",
+      "status": "verified"
+    },
+    "vitest_config_fix": {
+      "description": "Added .cjs extension to vitest include pattern",
+      "status": "verified - all 41 tests discovered and executed by vitest"
+    },
+    "excluded_files_logic": {
+      "description": "Returns blocked:false when all extracted targets are excluded files",
+      "status": "verified - README.md and other excluded types correctly allowed"
+    }
+  },
+  "failures": [],
+  "uncovered_paths": [],
+  "timestamp": "2026-06-22T10:09:00Z"
+}

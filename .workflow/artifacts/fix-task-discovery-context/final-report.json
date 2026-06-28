@@ -1,0 +1,43 @@
+{
+  "task_id": "fix-task-discovery-context",
+  "status": "done",
+  "test_summary": {
+    "total_tests_run": 588,
+    "all_passed": true,
+    "retry_count": 0,
+    "gate_levels_executed": ["L1", "L2"],
+    "details": {
+      "wb_ai": "127 passed, 0 failed",
+      "wb_processor": "461 passed, 0 failed"
+    }
+  },
+  "review_summary": {
+    "verdict": "approve",
+    "findings_count": 0,
+    "notes": [
+      "Backward compatible: new Extraction fields use serde(default), existing deserialization unaffected",
+      "TaskContext is opt-in: when no existing tasks, behavior is identical to before",
+      "Status update detection is AI-driven: relies on model to judge, with logging for observability"
+    ]
+  },
+  "security_summary": {
+    "h_layer_passed": true,
+    "vulnerabilities_found": 0,
+    "security_tests_generated": 0
+  },
+  "uncovered_paths": [],
+  "escalation_reason": null,
+  "timestamp": "2026-06-14T10:35:00+08:00",
+  "implementation_summary": {
+    "approach": "Pass existing Pending tasks as context to AI model during task discovery",
+    "key_changes": [
+      "Added TaskContext struct (wb-ai/adapter.rs) for passing task summaries to AI",
+      "Added is_status_update and related_task_id to Extraction struct with serde(default)",
+      "Modified anthropic/openai extract prompts to include task context and request new fields",
+      "Modified discover_with_ai() to accept existing_tasks parameter",
+      "TaskDiscovery now auto-builds context from pending tasks before calling AI",
+      "When AI returns is_status_update=true, no new task is created"
+    ],
+    "data_flow": "Pipeline -> TaskDiscovery.discover_with_ai() -> builds TaskContext from pending -> discovery_ai.discover_with_ai() -> creates synthetic event with task_context in content -> adapter.extract() -> AI sees existing tasks -> returns is_status_update if applicable"
+  }
+}

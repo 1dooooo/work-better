@@ -1,0 +1,70 @@
+{
+  "task_id": "feat-menu-bar-phase1-2",
+  "result": "warn",
+  "issues": [
+    {
+      "level": "HIGH",
+      "file": "src-tauri/src/lib.rs",
+      "line": 248,
+      "description": "全局快捷键 Cmd+Shift+Space 被重复注册：一次在 plugin builder 的 with_handler（line 116-131），一次在 setup 中的 app.global_shortcut().on_shortcut（line 248-260）。两者处理逻辑完全相同（切换 capture 窗口显隐），按下快捷键时两个 handler 都会触发，导致窗口状态被切换两次（show→hide 或 hide→show→hide），快捷键实际上不起作用。",
+      "suggestion": "删除 setup 中的重复注册（lines 248-260），只保留 plugin builder 中的 with_handler。plugin builder 的 handler 是 Tauri v2 推荐的方式，已经覆盖了所有注册的快捷键。"
+    },
+    {
+      "level": "MEDIUM",
+      "file": "src-tauri/src/commands/notify.rs",
+      "line": 88,
+      "description": "Mutex::lock().unwrap() 在 lines 88, 96, 103, 115 均使用了 unwrap()。如果任何线程在持有锁时 panic，Mutex 会被 poisoned，后续所有 unwrap() 调用都会 panic，导致整个通知系统不可用。",
+      "suggestion": "使用 lock().unwrap_or_else(|e| e.into_inner()) 或 match lock() { Ok(guard) => ..., Err(poisoned) => poisoned.into_inner() } 来处理 poisoned mutex，避免级联 panic。"
+    },
+    {
+      "level": "MEDIUM",
+      "file": "src-tauri/src/commands/notify.rs",
+      "line": 47,
+      "description": "使用 std::sync::Mutex 在 async 上下文中存储数据。虽然当前操作（Vec push/filter/retain）都很短，但如果未来操作变重或锁竞争增加，会阻塞 tokio 运行时线程。TODO 注释表明后续会迁移到 SQLite，但当前阶段仍需注意。",
+      "suggestion": "短期可接受（操作足够轻量）。中期应按 TODO 迁移到 SQLite notifications 表，彻底消除全局 Mutex。"
+    },
+    {
+      "level": "MEDIUM",
+      "file": "src-tauri/src/commands/settings.rs",
+      "line": 303,
+      "description": "save_shortcut_config 接受前端传入的任意快捷键配置，没有验证 key 和 modifiers 的合法性。用户可以传入空 key、无效修饰键、或冲突的快捷键组合。",
+      "suggestion": "添加验证逻辑：(1) key 不能为空；(2) modifiers 必须是 cmd/shift/alt/ctrl 之一；(3) 检查是否存在重复的快捷键组合。"
+    },
+    {
+      "level": "LOW",
+      "file": "src/components/settings/ShortcutSettings.tsx",
+      "line": 30,
+      "description": "getShortcutConfig() 的 catch 块为空，加载失败时用户没有任何反馈，静默使用默认配置。",
+      "suggestion": "至少添加 console.error 或一个轻量的 toast 提示，让用户知道配置加载失败。"
+    },
+    {
+      "level": "LOW",
+      "file": "src-tauri/src/commands/settings.rs",
+      "line": 248,
+      "description": "ShortcutConfig（settings.rs:248）和 ShortcutEntry（config.rs:115）结构完全一致，存在重复定义。虽然注释说明了 DTO vs 存储实体的区分意图，但两者字段完全相同，增加了维护成本。",
+      "suggestion": "考虑让 ShortcutConfig 直接使用 ShortcutEntry 的类型别名，或提取为共享类型，减少字段同步的维护负担。当前阶段可接受，但如果有第三个使用点应重构。"
+    },
+    {
+      "level": "LOW",
+      "file": "src-tauri/Cargo.toml",
+      "line": 32,
+      "description": "引入了 lazy_static 依赖，仅在 notify.rs 中用于一个全局 Mutex。Rust 1.80+ 已有 std::sync::LazyLock 稳定可用，可以避免额外依赖。",
+      "suggestion": "如果 MSRV >= 1.80，可替换为 std::sync::LazyLock。考虑到项目已使用 edition 2021，这是一个可选优化。"
+    },
+    {
+      "level": "LOW",
+      "file": "src/components/settings/ShortcutSettings.tsx",
+      "line": 43,
+      "description": "handleKeyDown 中 e.key.length === 1 时调用 toUpperCase()，但对非字母字符（如数字、符号）调用 toUpperCase() 是无害的（返回原值）。逻辑正确但可读性可以更好。",
+      "suggestion": "无需修改，仅作记录。"
+    }
+  ],
+  "security_scan": {
+    "h1_hardcoded_secrets": "pass",
+    "h2_input_validation": "warn",
+    "h3_injection": "pass",
+    "h4_auth_bypass": "pass",
+    "h5_data_leak": "pass"
+  },
+  "summary": "Phase 1（全局快捷键）+ Phase 2（系统通知）代码整体质量良好，架构清晰。发现 1 个 HIGH 级别 bug：lib.rs 中 Cmd+Shift+Space 快捷键被重复注册（plugin handler + setup on_shortcut），两个 handler 同时触发会导致窗口状态被切换两次，快捷键实际失效。3 个 MEDIUM 问题：Mutex unwrap 可能级联 panic、async 上下文中的 std::sync::Mutex、快捷键配置缺少输入验证。4 个 LOW 问题：错误静默吞掉、类型重复定义、lazy_static 可替换为标准库、代码可读性。安全扫描全部通过（H2 为 warn 因快捷键配置缺少验证）。建议修复 HIGH 问题后再合并。"
+}

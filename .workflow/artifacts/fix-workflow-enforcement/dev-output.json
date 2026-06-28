@@ -1,0 +1,34 @@
+{
+  "task_id": "fix-workflow-enforcement",
+  "status": "completed",
+  "changes": [
+    {
+      "file": "scripts/hooks/workflow-check.cjs",
+      "description": "Fixed Bash tool interception bug: added WORKFLOW_REQUIRED_PATTERNS_IN_COMMAND without ^ anchors for matching protected directories within command strings. Also fixed logic to return blocked:false when all extracted targets are excluded files.",
+      "type": "bugfix"
+    },
+    {
+      "file": "vitest.hooks.config.ts",
+      "description": "Added .cjs extension to vitest include pattern so test files with .cjs extension are properly discovered.",
+      "type": "bugfix"
+    }
+  ],
+  "tests": {
+    "framework": "vitest",
+    "config": "vitest.hooks.config.ts",
+    "test_file": "scripts/hooks/__tests__/workflow-check.test.cjs",
+    "total": 41,
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "result": "pass"
+  },
+  "verification": {
+    "bash_sed_interception": "PASS - sed -i on protected files without workflow now correctly blocked",
+    "bash_redirect_interception": "PASS - redirect > to protected files without workflow now correctly blocked",
+    "bash_append_interception": "PASS - append >> to protected files without workflow now correctly blocked",
+    "excluded_files_handling": "PASS - sed -i on excluded files (README.md) correctly allowed",
+    "vitest_config_fix": "PASS - .cjs test files now properly discovered by vitest"
+  },
+  "timestamp": "2026-06-22T10:08:00Z"
+}

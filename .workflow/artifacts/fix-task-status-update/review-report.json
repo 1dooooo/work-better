@@ -1,0 +1,33 @@
+{
+  "task_id": "fix-task-status-update",
+  "verdict": "approve_with_comments",
+  "findings": [
+    {
+      "severity": "medium",
+      "title": "process_single_event 函数过长（约 200 行）",
+      "file": "src-tauri/src/commands/events.rs",
+      "line": 248,
+      "description": "process_single_event 函数约 200 行，远超 50 行建议上限。本次变更在已有深层嵌套中增加了 is_status_update 分支（嵌套深度达 5-6 层），进一步加剧了可读性问题。虽然这是既有问题而非本次引入，但新增代码使问题更突出。"
+    },
+    {
+      "severity": "low",
+      "title": "日志输出使用 eprintln! 而非 tracing",
+      "file": "src-tauri/src/commands/events.rs",
+      "line": 362,
+      "description": "新增的 is_status_update 检测日志使用 eprintln! 宏，而 discovery_ai.rs 中相同逻辑使用 tracing::info!。建议统一使用 tracing 以保持日志格式一致并支持结构化日志。"
+    }
+  ],
+  "security_tests_generated": [],
+  "code_reuse_issues": [
+    {
+      "severity": "high",
+      "title": "内联 JSON 手动解析替代已有 discover_with_ai 核心函数",
+      "file": "src-tauri/src/commands/events.rs",
+      "line": 344,
+      "description": "process_single_event 中的任务发现逻辑（第 323-392 行）手动从 AI extraction 的原始 JSON 中解析 is_status_update、related_task_id、title、due_date、people 等字段，然后自行决定是否创建 PendingTask。然而 crates/wb-processor/src/task/discovery_ai.rs 已有 discover_with_ai() 函数，该函数使用类型化的 Extraction 结构体处理完全相同的逻辑（is_status_update 检测、状态更新跳过、新任务创建、关键词降级），且已有 8 个测试用例覆盖。当前实现导致：1) 同一功能存在两套实现，维护时需同步修改；2) events.rs 中的 JSON 手动解析缺少 Extraction 结构体的类型安全保障；3) events.rs 中的实现未使用已有 TaskContext 传入机制，AI 无法获取已有任务列表来做上下文判断。",
+      "existing_function": "wb_processor::task::discovery_ai::discover_with_ai"
+    }
+  ],
+  "execution_path_mismatches": [],
+  "timestamp": "2026-06-14T10:30:00Z"
+}

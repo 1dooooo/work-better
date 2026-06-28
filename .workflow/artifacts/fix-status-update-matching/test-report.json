@@ -1,0 +1,118 @@
+{
+  "task_id": "fix-status-update-matching",
+  "timestamp": "2026-06-19T14:00:00Z",
+  "result": "partial_pass",
+  "summary": {
+    "dev_agent": {
+      "status": "PARTIAL",
+      "findings": [
+        "核心重构（API 签名迁移 + lifecycle 收紧 + UI 一致性）实现完整",
+        "CRITICAL: L2 集成测试 task_discovery_l2.rs 未更新，编译失败（11 处类型错误）",
+        "MEDIUM: process_single_event 不处理状态更新，通过 Pipeline 处理的事件中的状态更新会被静默忽略"
+      ]
+    },
+    "test_agent": {
+      "status": "PARTIAL_PASS",
+      "results": {
+        "rust_unit_tests": {"passed": 412, "failed": 0, "status": "PASS"},
+        "rust_l2_tests": {"passed": 17, "failed": 0, "status": "PASS"},
+        "rust_l2_task_discovery": {"passed": 0, "failed": 0, "status": "FAIL", "error": "编译失败，11 个 E0308 类型错误"},
+        "frontend_unit_tests": {"passed": 151, "failed": 0, "status": "PASS"},
+        "security_scan": {"status": "PASS", "details": "无硬编码密钥、无 SQL 注入风险、无 unsafe 代码"}
+      },
+      "failure_type": "test_bug"
+    },
+    "review_agent": {
+      "status": "WARNING",
+      "issues": {
+        "critical": [],
+        "high": [
+          {
+            "id": "H1",
+            "file": "src-tauri/src/commands/collect.rs:217",
+            "description": "状态更新 fallback 路径可能静默失败。移除 Open -> Done 后，fallback 路径直接 transition 到 Done 会失败，let _ = 静默丢弃错误",
+            "suggestion": "按正确流转链执行（Pending -> Open -> InProgress -> Done），或至少记录错误日志"
+          },
+          {
+            "id": "H2",
+            "file": "src-tauri/src/commands/collect.rs:200-203",
+            "description": "let _ = 丢弃中间状态流转错误。Open、InProgress 两步中间流转的错误完全不可见",
+            "suggestion": "使用 if let Err(e) = ... { tracing::warn!(...) } 记录失败"
+          }
+        ],
+        "medium": [
+          {
+            "id": "M1",
+            "file": "discovery.rs, discovery_ai.rs",
+            "description": "大量 eprintln! 调试日志残留，应统一使用 tracing"
+          },
+          {
+            "id": "M2",
+            "file": "discovery_ai.rs:33",
+            "description": "硬编码置信度阈值 0.5，建议提取为命名常量"
+          },
+          {
+            "id": "M3",
+            "file": "collect.rs:152",
+            "description": "合成事件构建单行过长，可读性差"
+          },
+          {
+            "id": "M4",
+            "file": "collect.rs:229",
+            "description": "新任务发现直接构建 PendingTask 而非复用 discovery_ai"
+          },
+          {
+            "id": "M5",
+            "file": "DashboardView.tsx",
+            "description": "MotionCard 包装 Card 存在嵌套语义问题"
+          }
+        ],
+        "low": [
+          {
+            "id": "L1",
+            "file": "pipeline_tests.rs:147,464",
+            "description": "测试断言恒真（> 0 || == 0），无实际验证效果"
+          },
+          {
+            "id": "L2",
+            "file": "discovery.rs:153-187",
+            "description": "make_runner 和 make_runner_with_extraction 代码重复"
+          },
+          {
+            "id": "L3",
+            "file": "discovery_ai.rs",
+            "description": "删除了 test_ai_error_returns_empty 测试"
+          },
+          {
+            "id": "L4",
+            "file": "lifecycle.rs:14-18",
+            "description": "删除 Open -> Done 但未更新文档注释"
+          },
+          {
+            "id": "L5",
+            "file": "collect.rs:95-246",
+            "description": "trigger_manual_capture 函数过长（约 150 行）"
+          }
+        ]
+      }
+    }
+  },
+  "blocking_issues": [
+    {
+      "id": "BLOCK-1",
+      "type": "test_bug",
+      "description": "task_discovery_l2.rs 需要更新以匹配 discover_with_ai 的新签名（&mut TaskRunner 替代 &dyn ModelAdapter）",
+      "action": "将 L2 测试中的 &adapter 改为使用 TaskRunner 封装"
+    }
+  ],
+  "recommendations": [
+    "修复 task_discovery_l2.rs 编译错误（BLOCK-1）",
+    "修复 H1/H2：在 collect.rs 中添加状态流转错误日志",
+    "评估是否需要在 process_single_event 中添加状态更新处理逻辑"
+  ],
+  "gate_config": {
+    "max_retries": 2,
+    "current_retry": 0,
+    "timeout_seconds": 300
+  }
+}

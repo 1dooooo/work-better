@@ -1,0 +1,37 @@
+{
+  "task_id": "feat-22-keyboard-navigation",
+  "verdict": "fail",
+  "category": "feature",
+  "summary": "键盘导航功能基本实现：快捷键已注册（⌘1-4 视图切换，⌘, 设置），侧边栏已显示快捷键提示。但存在代码质量问题：formatShortcutHint 导入未使用导致 TS 编译错误，且快捷键提示硬编码为 Mac 符号缺乏跨平台支持。",
+  "requirements_coverage": [
+    {
+      "requirement": "激活键盘导航（⌘1-5 视图切换）",
+      "status": "partial",
+      "notes": "⌘1-4 和 ⌘, 已正确注册并绑定到视图切换。但任务描述中的 ⌘5 未实现（当前无第5个视图需要绑定）。Dashboard 没有快捷键，符合预期。"
+    },
+    {
+      "requirement": "更新侧边栏显示快捷键提示",
+      "status": "met",
+      "notes": "侧边栏的每个导航项都显示了对应的快捷键提示（⌘1、⌘2、⌘3、⌘4、⌘,），Tooltip 中也包含了快捷键信息。"
+    },
+    {
+      "requirement": "添加 formatShortcutHint 导入",
+      "status": "partial",
+      "notes": "已添加导入但未实际使用。导入本身不会报错，但 TS 的 noUnusedLocals 规则会导致编译失败。"
+    },
+    {
+      "requirement": "确保快捷键提示与实际绑定一致",
+      "status": "partial",
+      "notes": "快捷键映射一致（⌘1=events, ⌘2=tasks, ⌘3=timeline, ⌘4=reports, ⌘,=settings），与 useKeyboardShortcuts.ts 中的 SHORTCUTS 常量和 MainWindow.tsx 中的注册一致。但提示使用硬编码字符串而非 formatShortcutHint，跨平台不一致。"
+    }
+  ],
+  "suggestions": [
+    "使用 formatShortcutHint 替代硬编码快捷键字符串，确保跨平台一致性",
+    "修复后此功能即可通过产品审查"
+  ],
+  "suggested_action": {
+    "action": "fix_code",
+    "reason": "修复 TS 编译错误并将硬编码快捷键替换为 formatShortcutHint 调用"
+  },
+  "timestamp": "2026-06-21T07:35:00Z"
+}

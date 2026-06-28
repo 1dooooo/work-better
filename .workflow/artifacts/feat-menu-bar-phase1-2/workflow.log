@@ -1,0 +1,48 @@
+============================================================
+ Workflow Log
+ Task ID: feat-menu-bar-phase1-2
+ Started: 2026-06-19 09:46:57 CST
+ Host:    idodeMacBook-Pro.local
+ PID:     35187
+============================================================
+
+[2026-06-19 09:46:58.3N] [INFO] [PHASE] ======== 阶段开始: INIT ========
+[2026-06-19 09:46:58.3N] [DEBUG] [INIT] Git 仓库检查通过
+[2026-06-19 09:46:58.3N] [DEBUG] [INIT] Artifacts 目录: .workflow/artifacts/feat-menu-bar-phase1-2
+[2026-06-19 09:46:58.3N] [INFO] [PHASE] ======== 阶段开始: DETECT_CHANGES ========
+[2026-06-19 09:46:58.3N] [INFO] [DETECT_CHANGES] 使用 staged files
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES] 变更来源: git diff --cached
+[2026-06-19 09:46:58.3N] [INFO] [DETECT_CHANGES] 变更文件列表:
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - crates/wb-storage/src/config.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/Cargo.toml
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/capabilities/default.json
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/commands/notify.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/commands/settings.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/lib.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src/components/settings/ShortcutSettings.tsx
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src/lib/tauri.ts
+[2026-06-19 09:46:58.3N] [INFO] [DETECT_CHANGES] 代码变更文件:
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - crates/wb-storage/src/config.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/Cargo.toml
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/capabilities/default.json
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/commands/notify.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/commands/settings.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src-tauri/src/lib.rs
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src/components/settings/ShortcutSettings.tsx
+[2026-06-19 09:46:58.3N] [DEBUG] [DETECT_CHANGES]   - src/lib/tauri.ts
+[2026-06-19 09:46:58.3N] [INFO] [PHASE] ======== 阶段开始: INFER_GATE ========
+[2026-06-19 09:46:58.3N] [INFO] [DECISION] 决策: test_level=3 — 原因: 推断原因: 核心模块变更,公共接口变更,前后端同时变更
+[2026-06-19 09:46:58.3N] [INFO] [DECISION] 决策: required_agents=["dev-agent","test-agent","review-agent"] — 原因: 基于 test_level=3
+[2026-06-19 09:46:58.3N] [INFO] [PHASE] ======== 阶段开始: WRITE_OUTPUT ========
+[2026-06-19 09:46:58.3N] [INFO] [ARTIFACT] -> 写入 .workflow/artifacts/feat-menu-bar-phase1-2/dev-output.json task_id=feat-menu-bar-phase1-2
+[2026-06-19 09:46:58.3N] [INFO] [WRITE_OUTPUT] task_id: feat-menu-bar-phase1-2
+[2026-06-19 09:46:58.3N] [INFO] [WRITE_OUTPUT] changed_files: 8 个文件
+[2026-06-19 09:46:58.3N] [INFO] [WRITE_OUTPUT] code_changed_files: 8 个文件
+[2026-06-19 09:46:58.3N] [INFO] [WRITE_OUTPUT] test_level: 3
+[2026-06-19 09:46:58.3N] [INFO] [WRITE_OUTPUT] required_agents: ["dev-agent","test-agent","review-agent"]
+[2026-06-19 09:46:58.3N] [INFO] [DONE] ============================================================
+[2026-06-19 09:46:58.3N] [INFO] [DONE]  Workflow 结束
+[2026-06-19 09:46:58.3N] [INFO] [DONE]  Status:   done
+[2026-06-19 09:46:58.3N] [INFO] [DONE]  Duration: 1s
+[2026-06-19 09:46:58.3N] [INFO] [DONE]  Finished: 2026-06-19 09:46:58 CST
+[2026-06-19 09:46:58.3N] [INFO] [DONE] ============================================================

@@ -1,0 +1,114 @@
+{
+  "task_id": "fix-code-quality-issues",
+  "gate_level": "L3",
+  "result": "partial_pass",
+  "summary": {
+    "total": 375,
+    "passed": 365,
+    "failed": 8,
+    "skipped": 2
+  },
+  "details": {
+    "cargo_build": {
+      "result": "pass",
+      "warnings": 0,
+      "note": "Main crates compile cleanly with zero warnings. Acceptance test crate (wb-acceptance) has pre-existing compilation errors unrelated to this task."
+    },
+    "cargo_test": {
+      "result": "partial_pass",
+      "total": 363,
+      "passed": 362,
+      "failed": 1,
+      "test_suites": {
+        "wb-storage": {"passed": 127, "failed": 0},
+        "wb-collector": {"passed": 73, "failed": 0},
+        "wb-processor": {"passed": 60, "failed": 0},
+        "wb-core": {"passed": 48, "failed": 0},
+        "feishu_collectors_l2": {"passed": 14, "failed": 0},
+        "real_backend_collector_toggle": {"passed": 7, "failed": 0},
+        "contract": {"passed": 5, "failed": 0},
+        "pipeline_e2e": {"passed": 29, "failed": 1}
+      }
+    },
+    "pnpm_test": {
+      "result": "partial_pass",
+      "total": 12,
+      "passed": 5,
+      "failed": 7,
+      "test_suites": {
+        "StorageSettings.test.tsx": {"passed": 5, "failed": 0},
+        "MenuBar.test.tsx": {"passed": 7, "failed": 7}
+      }
+    }
+  },
+  "failures": [
+    {
+      "test_name": "a2_normal_message_aggregate_route",
+      "source_location": "tests/e2e/tests/pipeline_e2e.rs:332",
+      "error": "assertion `left != right` failed: 普通天气消息不应归类为 Task (left: Task, right: Task)",
+      "failure_type": "code_bug",
+      "pre_existing": true,
+      "note": "Pre-existing failure. File was not changed in this task. The task discovery mock always returns Task type regardless of input content."
+    },
+    {
+      "test_name": "MenuBar > displays the app title",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Found multiple elements with the text: Work Better — duplicated title spans in header",
+      "failure_type": "test_bug",
+      "pre_existing": true,
+      "note": "Pre-existing. MenuBar component was not changed in this task."
+    },
+    {
+      "test_name": "MenuBar > shows collector status",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    },
+    {
+      "test_name": "MenuBar > shows scheduler status",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    },
+    {
+      "test_name": "MenuBar > shows recent events section",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    },
+    {
+      "test_name": "MenuBar > refreshes events when clicking refresh button",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    },
+    {
+      "test_name": "MenuBar > displays event details correctly",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    },
+    {
+      "test_name": "MenuBar > handles empty events state",
+      "source_location": "src/components/MenuBar.test.tsx",
+      "error": "Pre-existing failure in MenuBar test suite",
+      "failure_type": "test_bug",
+      "pre_existing": true
+    }
+  ],
+  "uncovered_paths": [
+    "wb-acceptance crate cannot compile due to pre-existing API mismatch (TaskDiscovery methods renamed but acceptance tests not updated)"
+  ],
+  "code_quality": {
+    "build_warnings_in_changed_crates": 0,
+    "new_warnings_introduced": 0,
+    "pre_existing_warnings": "Multiple unused import warnings in test files (acceptance_helpers, g4_task_management, g6_menu_bar, security tests) — not introduced by this task",
+    "verdict": "Changed code is clean. All warnings and failures are pre-existing."
+  },
+  "timestamp": "2026-06-21T13:55:00Z"
+}

@@ -1,0 +1,56 @@
+{
+  "task_id": "feat-appstate-refactor",
+  "timestamp": "2026-06-21T14:33:37Z",
+  "changed_files": [
+    "src-tauri/src/commands/events.rs",
+    "src-tauri/src/commands/collectors.rs",
+    "src-tauri/src/commands/tasks.rs",
+    "src-tauri/src/commands/scheduler.rs",
+    "src-tauri/src/commands/audit.rs",
+    "src-tauri/src/commands/mod.rs",
+    "src-tauri/src/main.rs",
+    "crates/wb-processor/src/pipeline.rs",
+    "crates/wb-ai/src/task_runner.rs",
+    "src-tauri/src/commands/settings.rs"
+  ],
+  "code_changed_files": [
+    "src-tauri/src/commands/events.rs",
+    "src-tauri/src/commands/collectors.rs",
+    "src-tauri/src/commands/tasks.rs",
+    "src-tauri/src/commands/scheduler.rs",
+    "src-tauri/src/commands/audit.rs",
+    "src-tauri/src/commands/mod.rs",
+    "src-tauri/src/main.rs",
+    "crates/wb-processor/src/pipeline.rs",
+    "crates/wb-ai/src/task_runner.rs",
+    "src-tauri/src/commands/settings.rs"
+  ],
+  "test_level": 2,
+  "summary": "AppState 引入 + 管道解耦 + 配置统一",
+  "required_agents": ["dev-agent", "test-agent", "review-agent", "product-reviewer"],
+  "gate_config": {
+    "max_retries": 2,
+    "timeout_seconds": 600,
+    "fail_fast": false
+  },
+  "task_description": {
+    "title": "AppState 引入 + 管道解耦 + 配置统一",
+    "context": "Work Better 是 Tauri 桌面应用。当前 Tauri 命令层使用 5 个 OnceLock 全局静态管理依赖，导致命令函数无法隔离测试。ADR-001 确认这是测试有效性差距的结构性根因。",
+    "decisions": [
+      {"id": "D1", "topic": "AppState 形状", "decision": "单一 AppState 结构体持有所有依赖，通过 Tauri manage() 注入"},
+      {"id": "D2", "topic": "初始化生命周期", "decision": "删除所有 OnceLock，在 Tauri setup 阶段一次性构建 AppState"},
+      {"id": "D3", "topic": "TaskRunner 构建位置", "decision": "build_task_runner_from_config() 移到 wb-ai 作为 TaskRunner::from_config()"},
+      {"id": "D4", "topic": "测试策略", "decision": "EventLog 和 AuditLog 用 trait object，其他依赖用具体类型"},
+      {"id": "D5", "topic": "ProcessingPipeline 解耦", "decision": "PersistStep 从 ProcessingPipeline 分离，process() 只返回结果不持久化"},
+      {"id": "D6", "topic": "配置类型统一", "decision": "删除 settings.rs 的 ModelConfig DTO，前端直接使用 wb-storage::config::ModelConfig"}
+    ],
+    "acceptance_criteria": [
+      "所有 OnceLock 静态变量已删除",
+      "所有命令函数通过 State<AppState> 接收依赖",
+      "ProcessingPipeline::process() 不再持有 PersistStep",
+      "events.rs 中无重复的处理管道逻辑",
+      "settings.rs 中无 ModelConfig DTO",
+      "现有测试全部通过"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "fix-task-status-update",
+  "gate_level": "L1",
+  "result": "pass",
+  "summary": {
+    "total": 1431,
+    "passed": 1431,
+    "failed": 0,
+    "skipped": 0
+  },
+  "failures": [],
+  "uncovered_paths": [
+    {
+      "path": "src-tauri/src/commands/events.rs:process_single_event",
+      "detection_method": "llm"
+    }
+  ],
+  "execution_path_verification": {
+    "verified": true,
+    "mismatches": [],
+    "details": "process_single_event 是 private async 函数，依赖全局状态（EVENT_LOG、config），无法直接单元测试。is_status_update 逻辑在 wb-processor 的 discovery_ai 层有独立测试覆盖（test_ai_status_update_returns_empty）。events.rs 中的 is_status_update 解析逻辑与 processor 层一致：从 extraction JSON 中读取 is_status_update 字段，为 true 时跳过任务创建。"
+  },
+  "security_scan": null,
+  "notes": [
+    "E2E 测试（wb-e2e）存在预有的编译错误：Extraction 结构体缺少 is_status_update 和 related_task_id 字段。此问题在本次变更之前已存在（git stash 验证），非本次修复引入。",
+    "is_status_update 逻辑在 wb-processor::task::discovery_ai::tests::test_ai_status_update_returns_empty 中有覆盖，验证了状态更新不创建新任务。",
+    "events.rs 中的 classify_event 函数是纯函数，但无直接单元测试。其行为通过 keyword 匹配路径间接覆盖。"
+  ],
+  "timestamp": "2026-06-14T10:15:00Z"
+}

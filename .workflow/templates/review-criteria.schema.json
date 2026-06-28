@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Review Criteria",
+  "description": "product-reviewer Phase 1 的输出：审查规则和验收标准定义",
+  "type": "object",
+  "required": ["task_id", "timestamp", "review_rules", "acceptance_criteria", "key_scenarios"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "生成时间"
+    },
+    "review_rules": {
+      "type": "array",
+      "description": "审查规则列表",
+      "items": {
+        "type": "object",
+        "required": ["id", "rule", "check_method"],
+        "properties": {
+          "id": { "type": "string" },
+          "rule": { "type": "string", "description": "规则描述" },
+          "check_method": { "type": "string", "description": "检查方法" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "description": "验收标准列表",
+      "items": {
+        "type": "object",
+        "required": ["id", "criterion", "verification_method"],
+        "properties": {
+          "id": { "type": "string" },
+          "criterion": { "type": "string", "description": "验收标准描述" },
+          "verification_method": { "type": "string", "description": "验证方法" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "key_scenarios": {
+      "type": "array",
+      "description": "关键场景列表",
+      "items": {
+        "type": "object",
+        "required": ["id", "scenario", "expected_behavior"],
+        "properties": {
+          "id": { "type": "string" },
+          "scenario": { "type": "string", "description": "场景描述" },
+          "expected_behavior": { "type": "string", "description": "预期行为" },
+          "edge_cases": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "边界情况"
+          }
+        }
+      }
+    }
+  }
+}

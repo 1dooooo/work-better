@@ -1,173 +1,117 @@
 # ============================================================
-# dev-test-review workflow spec
+# dev-test-review workflow spec (v5 统一调度版)
 # ============================================================
-# Tool-agnostic workflow definition.
-# Per-tool adapters read this spec and enforce via their native
-# mechanism (hooks, rules, or user prompt).
-#
-# Agents communicate exclusively through artifact files in
-# .workflow/artifacts/{task_id}/. No shared conversation context.
+# 8 个核心 agent，平等对待，workflow-runner 统一调度
+# 所有通信通过 artifact 文件，无共享上下文
 # ============================================================
 
 name: dev-test-review
-version: "3.0"
+version: "5.0"
 description: >
-  开发-测试-审查 workflow（v3 主 Agent 编排版）。
-  主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent，始终持有控制权。
-  简单任务使用内联编排，复杂任务调用预定义 workflow。
+  开发-测试-审查 workflow（v5 统一调度版）。
+  8 个核心 agent 平等对待，workflow-runner 统一调度。
+  Phase 1 并行启动（dev + test-plan + review-criteria），
+  Phase 2 执行验证（test + review + product-review）。
 
 # ----------------------------------------------------------
-# Agent registry
+# Agent registry (8 个核心 agent)
 # ----------------------------------------------------------
 agents:
   workflow-runner:
     role: orchestrator
-    description: 轻量编排 agent，读取 artifacts 决定下一步调度
-    session: independent
+    description: 总管：接收任务、编排流程、管理重试、生成报告
     config: .claude/agents/workflow-runner.md
 
   dev-agent:
     role: developer
-    description: 写代码 + 写 L1-L2 测试
-    config: .claude/agents/dev-agent.md
+    description: 开发：业务代码 + L1/L2 测试
     outputs:
       - .workflow/artifacts/{task_id}/dev-output.json
-
-  product-reviewer:
-    role: product_owner
-    description: 产品审查，判断功能是否符合项目预期，决策 bug 还是 feature
-    config: .claude/agents/product-reviewer.md
-    inputs:
-      - .workflow/artifacts/{task_id}/dev-output.json
-    outputs:
-      - .workflow/artifacts/{task_id}/product-review.json
 
   test-agent:
     role: tester
-    description: 运行测试 + 从产品文档生成 L4-L5 测试
-    config: .claude/agents/test-agent.md
+    description: 测试：Phase 1 设计测试方法，Phase 2 执行测试
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:
+      - .workflow/artifacts/{task_id}/test-plan.json
       - .workflow/artifacts/{task_id}/test-report.json
 
   review-agent:
     role: reviewer
-    description: 代码审查 + 生成 H3-H5 安全测试
-    config: .claude/agents/review-agent.md
+    description: 审查：代码审查 + H1-H5 安全测试
     inputs:
       - .workflow/artifacts/{task_id}/dev-output.json
     outputs:
       - .workflow/artifacts/{task_id}/review-report.json
 
-  guardian-agent:
-    role: guardian
-    description: 守护者，监督整个系统，发现系统性问题
-    config: .claude/agents/guardian.md
+  product-reviewer:
+    role: product_owner
+    description: 产品：Phase 1 定义审查规则，Phase 2 执行审查
+    inputs:
+      - .workflow/artifacts/{task_id}/dev-output.json
+    outputs:
+      - .workflow/artifacts/{task_id}/review-criteria.json
+      - .workflow/artifacts/{task_id}/product-review.json
+
+  system-inspector:
+    role: supervisor
+    description: 监督：系统健康 + 执行效率监督
     inputs:
       - .workflow/artifacts/{task_id}/*.json
     outputs:
-      - .workflow/artifacts/{task_id}/system-health-report.json
+      - .workflow/artifacts/{task_id}/system-inspector-report.json
     trigger: after_each_task
 
-  optimizer-agent:
-    role: optimizer
-    description: 优化者，执行具体优化任务，搜索更好的 skill
-    config: .claude/agents/optimizer.md
-    inputs:
-      - .workflow/artifacts/{task_id}/system-health-report.json
-    outputs:
-      - .workflow/artifacts/{task_id}/optimization-plan.json
-    trigger: guardian_agent_trigger_with_user_approval
-    requires_approval: true
-
-  orchestrator-agent:
-    role: orchestrator_supervisor
-    description: 监督者，监督所有 Agent 的执行
-    config: .claude/agents/orchestrator.md
-    inputs:
-      - .workflow/artifacts/{task_id}/*.json
-    outputs:
-      - .workflow/artifacts/{task_id}/orchestration-report.json
-    trigger: after_each_task
-
-  validator-agent:
+  validator:
     role: validator
-    description: 验证者，管道交叉点验证，防止错误传播
-    config: .claude/agents/validator.md
+    description: 验证：Schema + 数据完整性验证
     inputs:
       - .workflow/artifacts/{task_id}/*.json
     outputs:
       - .workflow/artifacts/{task_id}/validation-report.json
-    trigger: after_each_phase
+    trigger: after_phase_2
 
-  cost-tracker-agent:
-    role: cost_tracker
-    description: 成本追踪者，追踪 token 使用和成本
-    config: .claude/agents/cost-tracker-agent.md
+  optimizer:
+    role: optimizer
+    description: 优化：生成优化计划，需用户审批
     inputs:
-      - .workflow/artifacts/{task_id}/*.json
+      - .workflow/artifacts/{task_id}/system-inspector-report.json
     outputs:
-      - .workflow/artifacts/{task_id}/cost-report.json
-    trigger: after_each_agent
-
-  chaos-tester-agent:
-    role: chaos_tester
-    description: 混沌测试者，随机故障注入测试
-    config: .claude/agents/chaos-tester-agent.md
-    inputs:
-      - .workflow/specs/dev-test-review.yaml
-    outputs:
-      - .workflow/artifacts/{task_id}/chaos-test-report.json
-    trigger: manual
-
-  checkpoint-manager-agent:
-    role: checkpoint_manager
-    description: 检查点管理者，管理恢复点
-    config: .claude/agents/checkpoint-manager-agent.md
-    inputs:
-      - .workflow/artifacts/{task_id}/*.json
-    outputs:
-      - .workflow/artifacts/{task_id}/checkpoint.json
-    trigger: after_each_phase
+      - .workflow/artifacts/{task_id}/optimization-plan.json
+    trigger: system_inspector_trigger
+    requires_approval: true
 
 # ----------------------------------------------------------
-# Trigger schema (触发器枚举定义)
+# Trigger schema
 # ----------------------------------------------------------
 trigger_schema:
-  description: >
-    定义 Agent 触发器的枚举值。每个 Agent 的 trigger 字段必须使用以下值之一。
   values:
+    - name: llm_recognition
+      description: LLM 主动识别（最高优先级）
+    - name: hook
+      description: PostToolUse hook 自动触发
+    - name: user_manual
+      description: 用户手动触发（兜底）
+    - name: error_response
+      description: 错误响应（最高优先级）
     - name: after_each_task
       description: 每个任务完成后触发
-    - name: after_each_phase
-      description: 每个阶段完成后触发
-    - name: after_each_agent
-      description: 每个 Agent 完成后触发
-    - name: guardian_agent_trigger
-      description: guardian Agent 审查后触发
-    - name: guardian_agent_trigger_with_user_approval
-      description: guardian Agent 审查后触发，需要用户审批
-    - name: manual
-      description: 手动触发
-    - name: error_response
-      description: 错误响应时触发
+    - name: after_phase_2
+      description: Phase 2 完成后触发
+    - name: system_inspector_trigger
+      description: 由 system-inspector 触发
 
 # ----------------------------------------------------------
-# Task complexity routing (任务复杂度路由)
+# Task routing
 # ----------------------------------------------------------
 task_routing:
-  description: >
-    任务复杂度由专门的 agent 判断，决定使用内联编排还是预定义 workflow。
   simple_task:
-    description: 简单任务，主 Agent 内联编排
     criteria:
       - 单文件修改
       - 无依赖变更
-      - 无需并行审查
-    action: 直接调用 dev-agent
+    action: 内联编排，直接调用 dev-agent
   complex_task:
-    description: 复杂任务，主 Agent 调用预定义 workflow
     criteria:
       - 多文件修改
       - 有依赖变更
@@ -175,384 +119,186 @@ task_routing:
     action: 调用 workflow('dev-test-review', { task_id })
 
 # ----------------------------------------------------------
-# Trigger rules (三级触发，按优先级)
+# Triggers
 # ----------------------------------------------------------
 triggers:
-  - priority: 1
-    method: llm_recognition
-    description: >
-      LLM 主动识别到需要子 agent 协作时，启动 workflow-runner。
-      所有工具通用，最高优先级。
-
-  - priority: 2
-    method: hook
-    description: >
-      工具层 hook 检测到 dev-output.json 写入后自动启动。
-      Claude Code: PostToolUse hook
-      Codex: hook mechanism
-      Cursor: 不支持，降级到 priority 3
-
-  - priority: 3
-    method: user_manual
-    description: 用户手动触发 workflow-runner（兜底）
-
   - priority: 0
     method: error_response
-    description: >
-      当用户明确指出错误时触发（最高优先级）。
-      优先于所有其他触发条件和重试策略。
-      workflow-runner 执行错误响应协议，记录现象、反思流程、
-      定位根因、制定改进、执行修复，输出 error-response.json。
+    description: 用户明确指出错误时触发
+  - priority: 1
+    method: llm_recognition
+    description: LLM 主动识别
+  - priority: 2
+    method: hook
+    description: PostToolUse hook 自动触发
+  - priority: 3
+    method: user_manual
+    description: 用户手动触发
 
 # ----------------------------------------------------------
-# Gate level inference
+# Gate inference
 # ----------------------------------------------------------
 gate_inference:
   input: dev-output.json
   rules:
     - condition: "any changed_file in core_modules"
       gate: L2
-      core_modules:
-        - "crates/wb-core/"
-        - "crates/wb-processor/"
-        - "crates/wb-ai/"
+      core_modules: ["crates/wb-core/", "crates/wb-processor/", "crates/wb-ai/"]
     - condition: "any changed_file in storage_modules"
       gate: L2
-      storage_modules:
-        - "crates/wb-storage/"
+      storage_modules: ["crates/wb-storage/"]
     - condition: "any changed_file in tauri_commands"
       gate: L2
-      tauri_commands:
-        - "src-tauri/src/commands/"
+      tauri_commands: ["src-tauri/src/commands/"]
     - condition: "any changed_file in frontend_only"
       gate: L1
-      frontend_only:
-        - "src/"
+      frontend_only: ["src/"]
     - condition: "any changed_file in docs_or_config"
       gate: L1
-      docs_or_config:
-        - "docs/"
-        - ".config/"
-        - "scripts/"
+      docs_or_config: ["docs/", ".config/", "scripts/"]
     - condition: default
       gate: L2
 
 # ----------------------------------------------------------
-# Execution flow (v3 主 Agent 编排版)
+# Execution flow
 # ----------------------------------------------------------
-# 核心变化：主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent。
-# 简单任务使用内联编排，复杂任务调用预定义 workflow。
-# 主 Agent 始终持有控制权，根据中间结果动态调整策略。
-# ----------------------------------------------------------
-main_agent_orchestration:
-  description: >
-    主 Agent 编排流程。主 Agent 是指挥官，使用 Workflow tool 直接编排 subagent。
-  steps:
-    - step: read_workflow_spec
-      description: 主 Agent 读取 workflow spec，理解流程
-      action: 读取 .workflow/specs/dev-test-review.yaml
-
-    - step: judge_task_complexity
-      description: 主 Agent 判断任务复杂度
-      criteria:
-        simple:
-          - 单文件修改
-          - 无依赖变更
-          - 无需并行审查
-        complex:
-          - 多文件修改
-          - 有依赖变更
-          - 需要并行审查
-
-    - step: choose_orchestration_method
-      description: 主 Agent 选择编排方式
-      simple_task: 内联编排，直接调用 dev-agent
-      complex_task: 调用预定义 workflow('dev-test-review', { task_id })
-
-    - step: execute_orchestration
-      description: 主 Agent 执行编排
-      inline: 使用 Workflow tool 的 agent() 调用
-      workflow: 使用 Workflow tool 的 workflow() 调用
-
-    - step: monitor_execution
-      description: 主 Agent 监控执行过程
-      action: 根据中间结果动态调整策略
-
-    - step: aggregate_results
-      description: 主 Agent 汇总 subagent 输出
-      action: 做出最终决策
-
 flow:
-  # ---- 阶段 0：错误响应（最高优先级，按需触发） ----
+  # 错误响应（最高优先级，按需触发）
   error_response_phase:
-    description: >
-      错误响应协议：当用户明确指出错误时触发。
-      优先于所有重试策略，workflow-runner 直接执行以下流程。
-      完成后写入 error-response.json，再决定后续走向。
     trigger: "error_response trigger fires"
     steps:
       - step: record_phenomenon
-        description: >
-          记录用户反馈的错误现象，包括：错误描述、复现路径、
-          影响范围、相关上下文（日志、截图、对话片段）。
+        description: 记录错误现象
       - step: reflect_process
-        description: >
-          反思当前工作流执行过程，检查：是否有被忽略的信号、
-          是否有跳过的检查、是否有假设未被验证。
+        description: 反思工作流执行过程
       - step: locate_root_cause
-        description: >
-          定位根因：结合现象和流程反思，确定错误的根本原因。
-          区分 code_bug / test_bug / env_issue / workflow_gap。
+        description: 定位根因
       - step: formulate_improvement
-        description: >
-          制定改进方案：针对根因提出修复措施，同时评估是否需要
-          更新 workflow spec、测试用例、或文档。
+        description: 制定改进方案
       - step: execute_fix
-        description: >
-          执行修复：触发 dev-agent 完成实际修复，修复后回到
-          相应阶段重新验证。
-    on_complete:
-      goto: evaluate_results
+        description: 触发 dev-agent 修复
     output: error-response.json
 
-  # ---- 阶段 1：开发（顺序） ----
-  dev_phase:
-    - step: run_dev
-      description: >
-        触发 dev-agent 编写代码和 L1/L2 测试。
-        dev-agent 完成后写入 dev-output.json。
-      agent: dev-agent
-      timeout: 10m
-      outputs: dev-output.json
-
-  # ---- 阶段 2：并行审查 ----
-  parallel_review_phase:
-    - step: run_test
-      description: >
-        触发 test-agent 执行测试 + 安全扫描。
-        读取 dev-output.json，根据 test_level 执行对应测试。
-      agent: test-agent
-      parallel_group: review   # 与同组 agent 并行
-      timeout: 5m
-      outputs: test-report.json
-
-    - step: run_review
-      description: >
-        触发 review-agent 代码审查 + 生成 H3-H5 安全测试建议。
-      agent: review-agent
-      parallel_group: review
-      timeout: 3m
-      outputs: review-report.json
-
-    - step: run_product_review
-      description: >
-        触发 product-reviewer 从产品定义角度审查功能实现。
-      agent: product-reviewer
-      parallel_group: review
-      timeout: 2m
-      outputs: product-review.json
-
-  # ---- 阶段 3：结果检查 ----
-  check_results:
-    - condition: "all of test-report.json, review-report.json, product-review.json exist"
-      goto: evaluate_results
-    - condition: "any output missing"
-      goto: handle_failure
-      with:
-        reason: "并行 agent 未全部完成"
-
-  evaluate_results:
-    - step: merge_suggested_actions
-      description: >
-        合并三个 agent 的 suggested_action 字段，
-        确定修复目标，避免多次重试只修一个问题。
-        合并策略：test fail + review request_changes → 合并为一次修复；
-        product fail (bug) → 优先级最高。
-
-    - step: check_product_review
-      description: 检查 product-review 结果
-      condition: "product-review.json.verdict == 'fail' and category == 'bug'"
-      goto: handle_failure
-      with:
-        source: product-reviewer
-        reason: "功能实现不符合产品定义"
-        priority: highest
-
-    - step: check_test_results
-      description: 检查测试结果（参考 suggested_action）
-      condition: "test-report.json.result == 'fail'"
-      goto: handle_failure
-      with:
-        gate: inferred
-        max_retries: 3
-        suggested_action: "test-report.json.suggested_action"
-
-    - step: check_review_results
-      description: 检查代码审查结果（参考 suggested_action）
-      condition: "review-report.json.verdict == 'request_changes'"
-      goto: handle_review_failure
-      with:
-        suggested_action: "review-report.json.suggested_action"
-
-    - condition: "all passed"
-      goto: done
-
-  # ---- 失败处理 ----
-  handle_failure:
-    - step: read_failure_location
-      description: >
-        从 test-report.json 读取 source_location 和 suggested_action。
-        如有 review-report.json 的 suggested_action，一并读取。
-    - step: check_trend
-      description: >
-        对比历史 test-report，检查同一 source_location 是否连续失败。
-        超过 trend_stop 次 → escalate。
-    - step: evaluate_env_issue
-      description: >
-        如果 suggested_action.action == "investigate_env"，
-        检查是否影响关键路径：
-        - 影响关键路径 → escalate，说明环境问题阻塞了验证
-        - 不影响关键路径 → 记录 + 隔离，继续流程
-    - step: trigger_dev_fix
-      description: >
-        触发 dev-agent 修复代码。将 test-report.json 和 review-report.json
-        （如有）一起传递给 dev-agent，实现一次修复多类问题。
-        dev-agent 读取后判定 failure_type（code_bug / test_bug / env_issue），
-        修复后写入新的 dev-output.json。
-      agent: dev-agent
-      inputs:
-        - test-report.json
-        - review-report.json
-    - step: re_run_parallel
-      description: 修复后回到并行审查阶段
-      goto: parallel_review_phase
-
-  handle_review_failure:
-    - step: check_merge_with_test
-      description: >
-        检查是否有同时存在的 test 失败。如果有，合并到 handle_failure 流程，
-        避免 dev-agent 分两次修复。如果没有，单独处理 review 问题。
-    - step: trigger_dev_fix
-      description: >
-        触发 dev-agent 读取 review-report.json，修复审查发现的问题。
-        传递 suggested_action.target_files 作为修复指引。
-      agent: dev-agent
-    - step: re_run_parallel
-      description: 修复后回到并行审查阶段
-      goto: parallel_review_phase
-
-  escalate:
-    - step: write_final_report
-      description: >
-        写入 final-report.json，status=blocked 或 escalated，
-        包含 escalation_reason 和 uncovered_paths。
-
-  done:
-    - step: archive_artifacts
-      description: 将 artifacts 目录归档（保留，可清理）
-    - step: write_final_report
-      description: 写入 final-report.json，status=done
-
-  # ---- 阶段 4：监督和优化（任务完成后） ----
-  post_task_phase:
+  # Phase 1: 并行启动（三个 agent 同时开始，各自独立工作）
+  phase_1_parallel_start:
     description: >
-      任务完成后的监督和优化阶段。
-      并行触发 guardian-agent、orchestrator-agent、cost-tracker-agent。
+      三个 agent 同时启动，各自独立工作：
+      - dev-agent：编写业务代码 + L1/L2 测试
+      - test-agent：设计测试方法、定义验证目标
+      - product-reviewer：定义审查规则、明确验收标准
     steps:
-      - step: run_guardian
-        description: >
-          触发 guardian-agent 监督整个系统健康状况。
-          读取所有 artifact，分析系统级问题。
-        agent: guardian-agent
-        parallel_group: post_task
-        timeout: 2m
-        outputs: system-health-report.json
+      - step: run_dev
+        agent: dev-agent
+        timeout: 10m
+        outputs: dev-output.json
 
-      - step: run_orchestrator
-        description: >
-          触发 orchestrator-agent 监督执行效率。
-          读取所有 artifact，分析执行问题。
-        agent: orchestrator-agent
-        parallel_group: post_task
-        timeout: 2m
-        outputs: orchestration-report.json
+      - step: run_test_plan
+        agent: test-agent
+        timeout: 5m
+        outputs: test-plan.json
 
-      - step: run_cost_tracker
-        description: >
-          触发 cost-tracker-agent 追踪 token 使用和成本。
-          读取所有 artifact，计算成本。
-        agent: cost-tracker-agent
-        parallel_group: post_task
-        timeout: 1m
-        outputs: cost-report.json
+      - step: run_review_criteria
+        agent: product-reviewer
+        timeout: 5m
+        outputs: review-criteria.json
 
+    # 使用 Workflow tool 的 parallel() 调用实现真正并行
+    parallel: true
+
+    on_complete:
+      goto: phase_2_execute_validation
+
+  # Phase 2: 执行验证（基于 Phase 1 的输出）
+  phase_2_execute_validation:
+    description: >
+      基于 Phase 1 的输出，执行验证：
+      - test-agent：执行之前设计的测试
+      - product-reviewer：按之前定义的标准审查
+      - review-agent：代码审查 + H1-H5 安全测试
+    steps:
+      - step: run_test_execute
+        agent: test-agent
+        inputs: [dev-output.json, test-plan.json]
+        timeout: 10m
+        outputs: test-report.json
+
+      - step: run_product_review
+        agent: product-reviewer
+        inputs: [dev-output.json, review-criteria.json]
+        timeout: 5m
+        outputs: product-review.json
+
+      - step: run_review
+        agent: review-agent
+        inputs: [dev-output.json]
+        timeout: 5m
+        outputs: review-report.json
+
+    # 使用 Workflow tool 的 parallel() 调用实现真正并行
+    parallel: true
+
+    on_complete:
+      goto: phase_3_validation
+
+  # Phase 3: 验证（Phase 2 完成后）
+  phase_3_validation:
+    description: >
+      Phase 2 完成后，调用 validator 验证所有 artifact。
+    steps:
       - step: run_validator
-        description: >
-          触发 validator-agent 验证所有 artifact。
-          进行 schema 验证、一致性检查、完整性检查。
-        agent: validator-agent
-        parallel_group: post_task
-        timeout: 1m
+        agent: validator
+        timeout: 2m
         outputs: validation-report.json
 
     on_complete:
-      goto: check_post_task_results
+      goto: check_results
 
-  check_post_task_results:
-    - condition: "all of system-health-report.json, orchestration-report.json, cost-report.json, validation-report.json exist"
-      goto: evaluate_post_task_results
+  # 结果检查
+  check_results:
+    - condition: "all of dev-output.json, test-plan.json, review-criteria.json, test-report.json, product-review.json, review-report.json exist"
+      goto: evaluate_results
     - condition: "any output missing"
-      goto: handle_post_task_failure
-      with:
-        reason: "监督 agent 未全部完成"
+      goto: handle_failure
 
-  evaluate_post_task_results:
-    - step: check_system_health
-      description: 检查系统健康状况
-      condition: "system-health-report.json.overall_health == 'critical'"
-      goto: handle_system_issue
+  evaluate_results:
+    - step: merge_suggested_actions
+      description: 合并三个 agent 的 suggested_action
+    - step: check_product_review
+      condition: "product-review.json.verdict == 'fail' and category == 'bug'"
+      goto: handle_failure
       with:
-        source: guardian-agent
-        reason: "系统健康状况严重"
         priority: highest
-
+    - step: check_test_results
+      condition: "test-report.json.result == 'fail'"
+      goto: handle_failure
+    - step: check_review_results
+      condition: "review-report.json.verdict == 'request_changes'"
+      goto: handle_review_failure
     - step: check_validation
-      description: 检查验证结果
       condition: "validation-report.json.overall_valid == false"
       goto: handle_validation_failure
-      with:
-        source: validator-agent
-        reason: "artifact 验证失败"
-        priority: high
-
     - condition: "all passed"
-      goto: optimization_phase
+      goto: phase_4_supervision
 
-  optimization_phase:
-    description: >
-      优化阶段：当 guardian-agent 发现 Agent 级问题时，
-      触发 optimizer-agent 生成优化计划。
-    trigger: "system-health-report.json contains agent-level issues"
-    steps:
-      - step: run_optimizer
-        description: >
-          触发 optimizer-agent 分析优化点，生成优化计划。
-          需要用户审批后才能执行优化。
-        agent: optimizer-agent
-        timeout: 5m
-        outputs: optimization-plan.json
-        requires_approval: true
+  # 失败处理
+  handle_failure:
+    - step: read_failure_location
+      description: 读取 source_location 和 suggested_action
+    - step: check_trend
+      description: 检查同一 location 是否连续失败
+    - step: trigger_dev_fix
+      agent: dev-agent
+      inputs: [test-report.json, review-report.json, product-review.json]
+    - step: re_run_phase_2
+      goto: phase_2_execute_validation
 
-    on_complete:
-      goto: done
-
-  handle_system_issue:
-    - step: notify_user
-      description: 通知用户系统级问题
-      action: 展示 system-health-report.json
-    - step: wait_for_user_decision
-      description: 等待用户决定如何处理
-      goto: done
+  handle_review_failure:
+    - step: check_merge_with_test
+      description: 检查是否有同时存在的 test 失败
+    - step: trigger_dev_fix
+      agent: dev-agent
+    - step: re_run_phase_2
+      goto: phase_2_execute_validation
 
   handle_validation_failure:
     - step: notify_user
@@ -562,194 +308,68 @@ flow:
       description: 等待用户决定如何处理
       goto: done
 
-  handle_post_task_failure:
-    - step: log_failure
-      description: 记录监督 agent 失败
-      action: 写入 workflow.log
-    - step: continue_workflow
-      description: 继续 workflow，不阻塞主流程
+  escalate:
+    - step: write_final_report
+      description: 写入 final-report.json，status=blocked
+
+  # Phase 4: 监督（任务完成后）
+  phase_4_supervision:
+    description: >
+      任务完成后，调用 system-inspector 进行系统监督。
+    steps:
+      - step: run_system_inspector
+        agent: system-inspector
+        timeout: 3m
+        outputs: system-inspector-report.json
+
+    on_complete:
+      goto: check_inspector_results
+
+  check_inspector_results:
+    - condition: "system-inspector-report.json contains agent-level issues"
+      goto: trigger_optimizer
+    - condition: "no agent-level issues"
       goto: done
 
-# ----------------------------------------------------------
-# Distributed tracing (分布式追踪)
-# ----------------------------------------------------------
-# 端到端追踪，结构化日志。
-distributed_tracing:
-  description: >
-    分布式追踪：端到端追踪，结构化日志。
-  tracing_format: structured_json
-  trace_fields:
-    - trace_id
-    - span_id
-    - parent_span_id
-    - agent_name
-    - operation
-    - start_time
-    - end_time
-    - duration_ms
-    - status
-    - error_message
-  log_levels:
-    - DEBUG
-    - INFO
-    - WARN
-    - ERROR
-  output_path: .workflow/artifacts/{task_id}/workflow.log
-  retention_days: 7
+  trigger_optimizer:
+    description: >
+      如果 system-inspector 发现 Agent 级问题，
+      触发 optimizer 生成优化计划（需用户审批）。
+    steps:
+      - step: run_optimizer
+        agent: optimizer
+        timeout: 5m
+        outputs: optimization-plan.json
+        requires_approval: true
 
-checkpoint_recovery:
-  description: >
-    检查点恢复：从检查点恢复，避免从头开始。
-  checkpoint_triggers:
-    - after_each_phase
-    - after_agent_failure
-    - after_validation_failure
-  recovery_strategies:
-    - name: resume_from_checkpoint
-      description: 从最近的检查点恢复
-    - name: restart_phase
-      description: 重新开始当前阶段
-    - name: restart_workflow
-      description: 重新开始整个 workflow
-  checkpoint_storage:
-    - path: .workflow/artifacts/{task_id}/checkpoint.json
-    - max_checkpoints: 10
-    - retention_hours: 24
+    on_complete:
+      goto: done
 
-chaos_testing_framework:
-  description: >
-    混沌测试框架：系统化测试韧性，随机故障注入。
-  fault_types:
-    - name: agent_timeout
-      description: Agent 执行超时
-      probability: 0.1
-    - name: agent_output_error
-      description: Agent 输出格式错误
-      probability: 0.05
-    - name: artifact_corruption
-      description: Artifact 文件损坏
-      probability: 0.02
-    - name: schema_validation_failure
-      description: Schema 验证失败
-      probability: 0.03
-  testing_modes:
-    - name: manual
-      description: 手动触发
-    - name: scheduled
-      description: 定期触发
-    - name: on_release
-      description: 发布前触发
-  reporting:
-    - generate_report: true
-    - notify_user: true
-    - log_details: true
-
-quality_evaluation:
-  description: >
-    质量评估：5 个核心评估维度，确保输出质量。
-  dimensions:
-    - name: task_completion
-      description: 任务完成度评估
-      weight: 0.30
-    - name: faithfulness
-      description: 忠实度/依据性评估
-      weight: 0.25
-    - name: refusal_correctness
-      description: 拒绝正确性评估
-      weight: 0.15
-    - name: guardrail_compliance
-      description: 护栏合规性评估
-      weight: 0.15
-    - name: tool_selection_accuracy
-      description: 工具选择准确性评估
-      weight: 0.15
-  evaluation_triggers:
-    - after_each_task
-    - on_release
-    - on_flagged_interactions
-  scoring:
-    scale: 0-100
-    passing_threshold: 70
-    excellent_threshold: 90
-
-cost_limits:
-  description: >
-    成本限制：设置每个 workflow 的 token 上限，控制成本。
-  default_budget_usd: 1.00
-  warning_threshold_percent: 80
-  hard_limit_percent: 100
-  per_agent_limits:
-    dev-agent:
-      max_tokens: 100000
-      max_cost_usd: 0.50
-    test-agent:
-      max_tokens: 50000
-      max_cost_usd: 0.25
-    review-agent:
-      max_tokens: 30000
-      max_cost_usd: 0.15
-    product-reviewer:
-      max_tokens: 20000
-      max_cost_usd: 0.10
-  on_limit_exceeded:
-    - notify_user: true
-    - stop_workflow: false
-    - log_reason: true
-
-circuit_breaker:
-  description: >
-    熔断器机制：当 Agent 持续失败时，停止重试，防止级联故障。
-  states:
-    - name: closed
-      description: 正常状态，允许重试
-    - name: open
-      description: 熔断状态，停止重试
-    - name: half_open
-      description: 半开状态，允许少量请求测试恢复
-  rules:
-    - agent: dev-agent
-      failure_threshold: 3
-      recovery_timeout: 5m
-    - agent: test-agent
-      failure_threshold: 2
-      recovery_timeout: 3m
-    - agent: review-agent
-      failure_threshold: 2
-      recovery_timeout: 3m
-    - agent: product-reviewer
-      failure_threshold: 2
-      recovery_timeout: 3m
-  on_trip:
-    - notify_user: true
-    - log_reason: true
-    - skip_remaining_agents: true
+  done:
+    - step: archive_artifacts
+      description: 归档 artifacts
+    - step: write_final_report
+      description: 写入 final-report.json，status=done
 
 # ----------------------------------------------------------
 # Retry strategy
 # ----------------------------------------------------------
-# 注意：error_response_phase（错误响应协议）优先于所有重试策略。
-# 当用户明确指出错误时，workflow-runner 跳过重试逻辑，
-# 直接进入错误响应流程，执行根因分析和改进。
 retry:
   L1:
     max_retries: 3
     trend_stop: 2
-    description: "单元测试修复成本低，多给机会"
   L2:
     max_retries: 2
     trend_stop: 2
-    description: "集成测试修复涉及模块间协调"
   L4:
     max_retries: 1
     trend_stop: 1
-    description: "E2E 修复成本高，一次修不好就上报"
   L5:
     max_retries: 0
     trend_stop: 0
-    description: "验收测试失败意味着产品需求不达标"
 
 # ----------------------------------------------------------
-# Artifact contracts (file paths)
+# Artifacts
 # ----------------------------------------------------------
 artifacts:
   base_dir: .workflow/artifacts/{task_id}/
@@ -759,104 +379,70 @@ artifacts:
       writer: workflow-runner
       readers: [dev-agent, user]
       schema: .workflow/templates/error-response.schema.json
-      description: 错误响应协议输出，记录现象、根因、改进措施和修复结果
     dev_output:
       path: dev-output.json
       writer: dev-agent
-      readers: [workflow-runner, product-reviewer, test-agent, review-agent]
+      readers: [workflow-runner, test-agent, review-agent, product-reviewer]
       schema: .workflow/templates/dev-output.schema.json
-    product_review:
-      path: product-review.json
+    test_plan:
+      path: test-plan.json
+      writer: test-agent
+      readers: [workflow-runner, test-agent]
+      schema: .workflow/templates/test-plan.schema.json
+    review_criteria:
+      path: review-criteria.json
       writer: product-reviewer
-      readers: [workflow-runner, dev-agent]
-      schema: .workflow/templates/product-review.schema.json
+      readers: [workflow-runner, product-reviewer]
+      schema: .workflow/templates/review-criteria.schema.json
     test_report:
       path: test-report.json
       writer: test-agent
       readers: [workflow-runner, dev-agent]
       schema: .workflow/templates/test-report.schema.json
+    product_review:
+      path: product-review.json
+      writer: product-reviewer
+      readers: [workflow-runner, dev-agent]
+      schema: .workflow/templates/product-review.schema.json
     review_report:
       path: review-report.json
       writer: review-agent
       readers: [workflow-runner]
       schema: .workflow/templates/review-report.schema.json
+    validation_report:
+      path: validation-report.json
+      writer: validator
+      readers: [workflow-runner]
+      schema: .workflow/templates/validation-report.schema.json
+    system_inspector_report:
+      path: system-inspector-report.json
+      writer: system-inspector
+      readers: [workflow-runner, optimizer]
+      schema: .workflow/templates/system-inspector-report.schema.json
+    optimization_plan:
+      path: optimization-plan.json
+      writer: optimizer
+      readers: [workflow-runner, user]
+      schema: .workflow/templates/optimization-plan.schema.json
     final_report:
       path: final-report.json
       writer: workflow-runner
       readers: [user]
       schema: .workflow/templates/final-report.schema.json
-    system_health_report:
-      path: system-health-report.json
-      writer: guardian-agent
-      readers: [workflow-runner, user, optimizer-agent]
-      schema: .workflow/templates/system-health-report.schema.json
-    orchestration_report:
-      path: orchestration-report.json
-      writer: orchestrator-agent
-      readers: [workflow-runner, user]
-      schema: .workflow/templates/orchestration-report.schema.json
-    cost_report:
-      path: cost-report.json
-      writer: cost-tracker-agent
-      readers: [workflow-runner, user]
-      schema: .workflow/templates/cost-report.schema.json
-    validation_report:
-      path: validation-report.json
-      writer: validator-agent
-      readers: [workflow-runner, user]
-      schema: .workflow/templates/validation-report.schema.json
-    optimization_plan:
-      path: optimization-plan.json
-      writer: optimizer-agent
-      readers: [workflow-runner, user, guardian-agent]
-      schema: .workflow/templates/optimization-plan.schema.json
 
 # ----------------------------------------------------------
-# Uncovered paths detection (P2)
+# Uncovered paths detection
 # ----------------------------------------------------------
 uncovered_paths_detection:
-  description: >
-    检测变更路径是否被测试覆盖。采用三阶段策略：
-    脚本粗筛（文件级）+ 代码复用检查（函数签名级）+ LLM 细检（函数级 + 执行路径验证）。
   stage_1_script:
-    description: "文件级粗筛：对比 changed_files 与测试文件映射"
+    description: "文件级粗筛"
     tool: scripts/test-impact.sh
-    detection_method: script
-    method: >
-      运行 scripts/test-impact.sh 获取受影响的测试组，
-      对比 dev-output.json 中的 changed_files，
-      标记无对应测试文件的路径。
-    output: 写入 test-report.json 的 uncovered_files 字段
+    output: test-report.json 的 uncovered_files 字段
   stage_1_5_reuse:
-    description: "代码复用粗筛：检测同一功能的多处实现"
-    detection_method: script
-    method: >
-      对比 changed_files 中新增/修改的函数签名与项目已有实现。
-      提取 diff 中的函数名和参数签名，
-      在 crates/、src/ 目录下搜索相同或相似签名的现有函数，
-      标记可能存在重复实现的路径。
-      相似度阈值：函数名匹配 + 参数类型一致视为潜在重复。
-    output: 写入 test-report.json 的 code_reuse_warnings 字段
-    severity_rules:
-      - condition: "完全相同签名 + 不同文件"
-        severity: high
-        action: "建议合并或复用已有实现"
-      - condition: "相似签名（名称相似 + 参数子集重叠）"
-        severity: medium
-        action: "建议人工确认是否为有意区分"
+    description: "代码复用粗筛"
+    output: test-report.json 的 code_reuse_warnings 字段
   stage_2_llm:
-    description: >
-      函数级细检 + 执行路径一致性验证：
-      LLM 分析变更函数是否有对应测试用例，
-      并验证测试覆盖的代码路径与生产执行的代码路径一致。
-    detection_method: llm
-    method: >
-      test-agent 读取 changed_files 的 diff，
-      识别新增/修改的函数签名，
-      检查是否有对应的测试函数覆盖。
-      同时追踪函数的调用链和分支路径，
-      对比测试中实际执行的路径与生产环境的预期执行路径，
-      识别测试未覆盖的关键分支。
+    description: "函数级细检 + 执行路径验证"
     output:
-      uncovered_paths: 写入 test-report.json 的 uncovered_paths 字段
-      execution_path_verification: 写入 test-report.json 的 execution_path_verification 字段
+      uncovered_paths: test-report.json 的 uncovered_paths 字段
+      execution_path_verification: test-report.json 的 execution_path_verification 字段

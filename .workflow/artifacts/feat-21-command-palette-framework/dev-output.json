@@ -1,0 +1,20 @@
+{
+  "task_id": "feat-21-command-palette-framework",
+  "timestamp": "2026-06-21T07:26:31Z",
+  "changed_files": [
+    "src/components/CommandPalette.tsx",
+    "src/components/layout/MainWindow.tsx"
+  ],
+  "code_changed_files": [
+    "src/components/CommandPalette.tsx",
+    "src/components/layout/MainWindow.tsx"
+  ],
+  "test_level": 1,
+  "summary": "集成命令面板基础框架（⌘K 触发）",
+  "required_agents": ["test-agent", "review-agent", "product-reviewer"],
+  "gate_config": {
+    "max_retries": 2,
+    "timeout_seconds": 300,
+    "fail_fast": false
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "task_id": "menubar-unified-design",
+  "task_description": "实现 MenuBar 统一设计系统：添加玻璃态 token、创建 GlassPanel/GlassCard 组件、提取 MenuBar 子组件和 hooks、重构 MenuBar.tsx",
+  "design_spec": "docs/brainstorming/specs/2026-06-27-menubar-unified-design.md",
+  "status": "completed",
+  "changed_files": [
+    "src/index.css",
+    "src/components/ui/glass-panel.tsx",
+    "src/components/ui/glass-card.tsx",
+    "src/components/menubar/index.ts",
+    "src/components/menubar/MenuBarHeader.tsx",
+    "src/components/menubar/MenuBarContent.tsx",
+    "src/components/menubar/MenuBarActions.tsx",
+    "src/components/menubar/EventListItem.tsx",
+    "src/components/menubar/TaskListItem.tsx",
+    "src/components/menubar/NotificationGroup.tsx",
+    "src/components/menubar/StatusIndicator.tsx",
+    "src/hooks/useMenuBarData.ts",
+    "src/hooks/useAutoRefresh.ts",
+    "src/hooks/useWindowResize.ts",
+    "src/components/MenuBar.tsx",
+    "src/App.tsx",
+    "src/components/MenuBar.test.tsx"
+  ],
+  "acceptance_criteria": [
+    "MenuBar 和 MainWindow 使用相同的设计 token",
+    "两个窗口都支持明暗主题切换",
+    "MenuBar 使用共享 UI 组件（Badge、Button 等）",
+    "MenuBar.tsx 主文件不超过 150 行",
+    "所有新组件有 TypeScript 类型定义",
+    "玻璃态效果在明暗模式下都正常显示"
+  ],
+  "implementation_summary": {
+    "glass_tokens_added": true,
+    "glass_panel_created": true,
+    "glass_card_created": true,
+    "menubar_components_created": 7,
+    "hooks_created": 3,
+    "menubar_refactored": true,
+    "forced_theme_removed": true,
+    "menubar_lines": 103,
+    "tests_passed": 57,
+    "typescript_check_passed": true,
+    "security_scan_passed": true
+  },
+  "timestamp": "2026-06-27T19:35:00+08:00"
+}

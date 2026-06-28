@@ -1,0 +1,44 @@
+{
+  "task_id": "feat-22-keyboard-navigation",
+  "verdict": "request_changes",
+  "findings": [
+    {
+      "severity": "high",
+      "title": "未使用的导入导致 TypeScript 编译错误",
+      "file": "src/components/layout/Sidebar.tsx",
+      "line": 24,
+      "description": "formatShortcutHint 从 useKeyboardShortcuts 导入但从未使用。这导致 TS6133 编译错误，阻塞构建。应使用 formatShortcutHint 生成快捷键提示字符串，或移除该导入。"
+    },
+    {
+      "severity": "medium",
+      "title": "快捷键提示硬编码为 Mac 符号，缺少跨平台支持",
+      "file": "src/components/layout/Sidebar.tsx",
+      "line": 42,
+      "description": "NAV_ITEMS 中的 shortcut 字段硬编码为 '⌘1'、'⌘2' 等 Mac 专用符号。而 CommandPalette.tsx 使用 formatShortcutHint 正确处理了跨平台（Mac 显示 ⌘，Windows/Linux 显示 Ctrl）。Sidebar 应保持一致，使用 formatShortcutHint。"
+    },
+    {
+      "severity": "low",
+      "title": "Sidebar 组件缺少单元测试",
+      "file": "src/components/layout/Sidebar.tsx",
+      "line": null,
+      "description": "Sidebar 组件没有对应的测试文件。建议至少添加渲染测试和快捷键提示显示测试。"
+    }
+  ],
+  "suggested_action": {
+    "action": "fix_code",
+    "target_files": ["src/components/layout/Sidebar.tsx"],
+    "critical_findings": ["未使用的导入导致 TS 编译错误"],
+    "reason": "需要修复 TS 编译错误，并将硬编码快捷键替换为 formatShortcutHint 调用以保持跨平台一致性"
+  },
+  "code_reuse_issues": [
+    {
+      "severity": "medium",
+      "title": "formatShortcutHint 已存在但未被复用",
+      "file": "src/components/layout/Sidebar.tsx",
+      "line": 42,
+      "description": "useKeyboardShortcuts.ts 中已有 formatShortcutHint 函数用于跨平台快捷键格式化，CommandPalette.tsx 已正确使用，但 Sidebar.tsx 选择硬编码字符串而非复用该函数。",
+      "existing_function": "formatShortcutHint"
+    }
+  ],
+  "timestamp": "2026-06-21T07:35:00Z"
+}

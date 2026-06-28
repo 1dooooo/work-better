@@ -1,0 +1,19 @@
+[2026-06-23T10:00:00+08:00] workflow-runner: 任务开始 - fix-menubar-text
+[2026-06-23T10:00:00+08:00] 任务描述: 将 MenuBar.tsx header 中的 "Work Better" 改为 "WorkBetter"
+[2026-06-23T10:00:00+08:00] 任务类型: 简单变更 - workflow-runner 直接完成
+[2026-06-23T10:00:01+08:00] Phase 1: 读取源文件 - MenuBar.tsx
+[2026-06-23T10:00:01+08:00] 发现目标文本在第 291 行: "Work Better"
+[2026-06-23T10:00:02+08:00] Phase 1: 代码变更完成 - 将 "Work Better" 改为 "WorkBetter"
+[2026-06-23T10:00:03+08:00] Phase 2: 搜索相关测试文件
+[2026-06-23T10:00:03+08:00] 找到测试文件: src/components/MenuBar.test.tsx
+[2026-06-23T10:00:03+08:00] 找到测试文件: tests/ts/e2e/f6-menubar-data-flow.spec.ts
+[2026-06-23T10:00:04+08:00] Phase 2: 更新单元测试文件
+[2026-06-23T10:00:04+08:00] 更新 3 处 "Work Better" 引用为 "WorkBetter":
+  - 第 113 行: displays the app title 测试
+  - 第 684 行: Header + Status 合并显示测试
+  - 第 889 行: hides today processed count 测试
+[2026-06-23T10:00:05+08:00] Phase 2: E2E 测试文件无需更新（未引用 "Work Better"）
+[2026-06-23T10:00:06+08:00] Phase 3: 运行单元测试验证
+[2026-06-23T10:00:07+08:00] 测试结果: 57 passed, 0 failed
+[2026-06-23T10:00:07+08:00] 所有测试通过 ✓
+[2026-06-23T10:00:08+08:00] 任务完成

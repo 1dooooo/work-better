@@ -1,0 +1,151 @@
+{
+  "task_id": "menu-bar-ui-polish",
+  "gate_level": "L5",
+  "result": "pass",
+  "summary": {
+    "total": 57,
+    "passed": 57,
+    "failed": 0,
+    "skipped": 0
+  },
+  "coverage": {
+    "MenuBar.tsx": {
+      "statements": 91.08,
+      "branches": 89.02,
+      "functions": 71.42,
+      "lines": 91.08,
+      "uncovered_lines": "246-260, 269, 428"
+    }
+  },
+  "test_suites": {
+    "L4_execution_path_verification": {
+      "getEventSummary": {
+        "total": 17,
+        "passed": 17,
+        "coverage": [
+          "string content direct display",
+          "string content truncation at 60 chars",
+          "text field object (ManualNote format)",
+          "multiple metadata fields object",
+          "summary field object (highest priority)",
+          "title field object (second priority)",
+          "message field object",
+          "nested object extraction — textKeys inner keys",
+          "nested object — non-textKeys key falls back to JSON",
+          "null content displays as string 'null'",
+          "undefined content displays as string 'undefined'",
+          "boolean content displays as string",
+          "array content displays as JSON string",
+          "empty string content",
+          "empty object content falls back to JSON",
+          "sender field object",
+          "boolean field displays as checkmark/cross"
+        ]
+      },
+      "event_type_config": {
+        "total": 12,
+        "passed": 12,
+        "coverage": [
+          "Message", "DocumentChange", "TaskUpdate", "Meeting",
+          "CalendarEvent", "Email", "Approval", "OkrUpdate",
+          "Browsing", "AppActivity", "ManualNote",
+          "UnknownType fallback to UNKN"
+        ]
+      },
+      "ipc_call_paths": {
+        "total": 3,
+        "passed": 3,
+        "coverage": [
+          "refresh calls all Tauri commands (getUnprocessedCount, getEvents(10), getPendingNotifications, getPendingTasks, getSystemStatus)",
+          "quick action buttons call correct Tauri commands (showCaptureWindow, take_screenshot, show_main_window)",
+          "process button calls triggerBatchProcess and refreshes"
+        ]
+      }
+    },
+    "L5_e2e_tests": {
+      "complete_data_load_flow": {
+        "total": 2,
+        "passed": 2,
+        "coverage": [
+          "refresh success renders all areas simultaneously (header status, event list, notifications, pending tasks, quick actions)",
+          "partial API failure still renders available data"
+        ]
+      },
+      "notification_max_height": {
+        "total": 2,
+        "passed": 2,
+        "coverage": [
+          "notification container has max-h-[120px] and overflow-y-auto",
+          "each group shows max 3 notifications with +N more indicator"
+        ]
+      },
+      "aria_label_accessibility": {
+        "total": 2,
+        "passed": 2,
+        "coverage": [
+          "all quick action buttons have correct aria-labels (主窗口, 速记, 截图, 处理)",
+          "processing state updates aria-label to 处理中"
+        ]
+      },
+      "header_status_merge": {
+        "total": 2,
+        "passed": 2,
+        "coverage": [
+          "header displays app name and system status in same line",
+          "scheduler paused state shows 已暂停"
+        ]
+      },
+      "event_type_labels": {
+        "total": 1,
+        "passed": 1,
+        "coverage": [
+          "event type labels display as colored blocks with rounded corners"
+        ]
+      },
+      "notification_title_body_split": {
+        "total": 2,
+        "passed": 2,
+        "coverage": [
+          "notification items display title and body separately",
+          "empty body does not show body area"
+        ]
+      }
+    }
+  },
+  "execution_path_analysis": {
+    "getEventSummary_paths_verified": {
+      "priority_1_text_fields": "summary, title, text, message, content, body, description, name, subject — all checked in order",
+      "priority_2_detail_fields": "sender, app, url, action, status, approved, chat_id, doc_id, okr_id, meeting_id, event_id, duration_min — first 2 combined",
+      "priority_3_nested_extraction": "Only keys in textKeys are checked for nested objects; non-textKeys keys fall through to JSON.stringify",
+      "fallback_json": "JSON.stringify with 60-char truncation"
+    },
+    "event_type_coverage": "All 11 Rust EventType enum variants (Message, DocumentChange, TaskUpdate, Meeting, CalendarEvent, Email, Approval, OkrUpdate, Browsing, AppActivity, ManualNote) confirmed mapped in EVENT_TYPE_CONFIG",
+    "ipc_commands_verified": [
+      "get_unprocessed_count",
+      "get_events (limit=10)",
+      "get_pending_notifications",
+      "get_pending_tasks",
+      "get_system_status",
+      "show_main_window",
+      "show_capture_window",
+      "take_screenshot",
+      "trigger_batch_process"
+    ]
+  },
+  "failures": [],
+  "uncovered_paths": [
+    {
+      "path": "getEventSummary: deeply nested objects (3+ levels)",
+      "reason": "Not a realistic production data format; covered by JSON.stringify fallback",
+      "severity": "low"
+    },
+    {
+      "path": "handleDismissNotification click interaction",
+      "reason": "Existing test covers notification display; dismiss interaction is a simple state filter",
+      "severity": "low"
+    }
+  ],
+  "test_file": "src/components/MenuBar.test.tsx",
+  "test_file_lines": 526,
+  "timestamp": "2026-06-23T09:30:00+08:00"
+}

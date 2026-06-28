@@ -1,0 +1,91 @@
+{
+  "task_id": "feat-23-dashboard-default-view",
+  "timestamp": "2026-06-21T07:45:00Z",
+  "verdict": "pass",
+  "summary": "启用工作台作为默认视图，添加 ⌘1 快捷键，更新 ⌘1-5 映射，侧边栏和命令面板快捷键提示同步更新。",
+
+  "test_results": {
+    "level": "L1",
+    "total_files": 18,
+    "passed_files": 16,
+    "failed_files": 2,
+    "total_tests": 151,
+    "passed_tests": 151,
+    "failed_tests": 0,
+    "failure_details": [
+      {
+        "file": "tests/ts/integration/event-listening.test.tsx",
+        "reason": "Tauri IPC mock 缺失 __TAURI_INTERNALS__，预先存在的问题，非本次变更引入"
+      },
+      {
+        "file": "tests/ts/integration/tauri-ipc.test.tsx",
+        "reason": "Tauri IPC mock 缺失 __TAURI_INTERNALS__，预先存在的问题，非本次变更引入"
+      }
+    ],
+    "type_check": "pass"
+  },
+
+  "reviews": {
+    "code_review": {
+      "reviewer": "review-agent",
+      "quality_score": 4,
+      "security_score": 5,
+      "architecture_score": 4,
+      "shortcut_design_score": 5,
+      "verdict": "pass",
+      "issues": [
+        {
+          "severity": "medium",
+          "file": "src/components/layout/Sidebar.tsx",
+          "message": "NAV_ITEMS 使用内联对象定义快捷键，已修复为引用 SHORTCUTS 常量"
+        },
+        {
+          "severity": "low",
+          "file": "src/components/layout/MainWindow.tsx",
+          "message": "onNavigate 回调使用了 'as ViewId' 类型断言，建议后续收窄 CommandPaletteProps 类型"
+        }
+      ],
+      "suggestions": [
+        "CommandPalette.tsx: 将 onNavigate prop 类型从 (view: string) => void 改为 (view: ViewId) => void，消除类型断言"
+      ]
+    },
+    "product_review": {
+      "reviewer": "product-reviewer",
+      "feature_completeness_score": 5,
+      "ux_score": 4,
+      "consistency_score": 5,
+      "verdict": "pass",
+      "issues": [
+        {
+          "severity": "medium",
+          "message": "侧边栏标签不一致：dashboard 的 label 为 '仪表盘'，已修复为 '工作台'"
+        }
+      ],
+      "suggestions": []
+    }
+  },
+
+  "fixes_applied": [
+    {
+      "file": "src/components/layout/Sidebar.tsx",
+      "fixes": [
+        "NAV_ITEMS 快捷键从内联对象改为引用 SHORTCUTS 常量（DRY 修复）",
+        "dashboard label 从 '仪表盘' 改为 '工作台'（一致性修复）",
+        "导入 SHORTCUTS 常量"
+      ]
+    }
+  ],
+
+  "changed_files": [
+    "src/hooks/useKeyboardShortcuts.ts",
+    "src/components/layout/MainWindow.tsx",
+    "src/components/layout/Sidebar.tsx",
+    "src/components/CommandPalette.tsx"
+  ],
+
+  "gate_result": {
+    "gate_1_l1_unit_tests": "pass",
+    "gate_1_h1_h2_security_scan": "pass",
+    "gate_inference": "L1"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "task_id": "feat-21-command-palette-framework",
+  "test_level": "L1",
+  "result": "pass",
+  "tests_run": 2,
+  "tests_passed": 2,
+  "tests_failed": 0,
+  "failures": [],
+  "uncovered_paths": [
+    {
+      "file": "src/components/CommandPalette.tsx",
+      "path": "CommandPalette 组件无单元测试",
+      "risk": "medium",
+      "description": "新增组件无对应测试文件，包括：命令选择逻辑（handleSelect）、导航命令解析（navigate: 前缀）、⌘K 快捷键注册"
+    },
+    {
+      "file": "src/hooks/useKeyboardShortcuts.ts",
+      "path": "useKeyboardShortcuts hook 无单元测试",
+      "risk": "medium",
+      "description": "hook 无对应测试文件，包括：matchesShortcut 匹配逻辑、isInputElement 输入焦点检测、快捷键注册与清理"
+    }
+  ],
+  "suggested_action": {
+    "action": "none",
+    "description": "类型错误已修复：1) 移除 dashboard 的快捷键提示（无全局快捷键）；2) 在 MainWindow 中使用类型适配 (view) => handleViewChange(view as ViewId)。",
+    "target_files": []
+  },
+  "checks_detail": {
+    "typescript": {
+      "status": "pass",
+      "errors": 0,
+      "details": "类型检查通过"
+    },
+    "eslint": {
+      "status": "skip",
+      "reason": "eslint 未安装或未配置"
+    },
+    "existing_tests": {
+      "CommandPalette.test": "not_found",
+      "useKeyboardShortcuts.test": "not_found"
+    },
+    "code_smells": [
+      {
+        "file": "src/components/layout/MainWindow.tsx",
+        "line": 94,
+        "issue": "console.log 语句（调试代码）",
+        "severity": "low"
+      }
+    ]
+  }
+}

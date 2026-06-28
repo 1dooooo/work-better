@@ -1,0 +1,37 @@
+{
+  "task_id": "refactor-db-path",
+  "verdict": "pass",
+  "category": "bug",
+  "summary": "第二轮审查通过。resolve_fallback_path 正确实现了 debug/release 模式分离：dev 模式自动检测项目根目录并使用 data/work-better.db，release 模式使用 Tauri app_data_dir。data/ 已在 .gitignore 中，满足'数据在项目目录且被 git 忽略'的需求。",
+  "requirements_coverage": [
+    {
+      "requirement": "dev 启动的数据应该在项目目录",
+      "status": "met",
+      "notes": "resolve_fallback_path 在 #[cfg(debug_assertions)] 下检测 cwd 是否有 Cargo.toml 或 data/ 目录，若是则使用 cwd/data/work-better.db。dev 启动时 cwd 通常就是项目根目录，逻辑正确。"
+    },
+    {
+      "requirement": "数据被 git 忽略",
+      "status": "met",
+      "notes": ".gitignore 第 69 行已包含 data/ 条目，覆盖了 data/ 目录及其中的 work-better.db。"
+    },
+    {
+      "requirement": "release 模式不受影响",
+      "status": "met",
+      "notes": "release 构建时 #[cfg(debug_assertions)] 代码被编译排除，直接走 Tauri app_data_dir 路径，与之前行为一致。"
+    },
+    {
+      "requirement": "resolve_db_path 去重",
+      "status": "met",
+      "notes": "events.rs 和 audit.rs 均调用 super::db::resolve_db_path，不再有重复实现。"
+    },
+    {
+      "requirement": "错误处理一致性",
+      "status": "met",
+      "notes": "所有函数返回 Result，无 panic/expect。create_dir_all 失败通过 ? 传播。"
+    }
+  ],
+  "suggestions": [
+    "当前 resolve_fallback_path 仅检查 Cargo.toml 或 data/ 目录存在性。如果用户在非项目目录下运行 debug 二进制且碰巧有 data/ 孮目录，会意外使用项目本地路径。可考虑额外检查 .git 目录或 src-tauri/ 目录以提高置信度，但当前实现对正常使用场景已足够。",
+    "eprintln 日志在生产构建中不会出现（仅 debug），但建议后续统一使用 tracing 或 log crate 替代 eprintln 以便日志级别控制。"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "task_id": "fix-task-discovery-context",
+  "task_type": "fix",
+  "changed_files": [
+    {
+      "path": "crates/wb-ai/src/adapter.rs",
+      "change_type": "modified",
+      "diff_summary": "Added TaskContext struct for passing existing tasks to AI. Added is_status_update and related_task_id fields to Extraction struct with serde(default) for backward compatibility."
+    },
+    {
+      "path": "crates/wb-ai/src/anthropic.rs",
+      "change_type": "modified",
+      "diff_summary": "Updated extract() prompt to include task context section and ask for is_status_update/related_task_id fields. Added build_task_context_section() helper function."
+    },
+    {
+      "path": "crates/wb-ai/src/openai.rs",
+      "change_type": "modified",
+      "diff_summary": "Updated extract() prompt to include task context section and ask for is_status_update/related_task_id fields. Reuses build_task_context_section from anthropic module."
+    },
+    {
+      "path": "crates/wb-ai/src/lib.rs",
+      "change_type": "modified",
+      "diff_summary": "Added TaskContext to public exports."
+    },
+    {
+      "path": "crates/wb-processor/src/task/discovery_ai.rs",
+      "change_type": "modified",
+      "diff_summary": "Modified discover_with_ai() to accept existing_tasks parameter. When AI returns is_status_update=true, returns empty vec instead of creating new task. Creates synthetic event with task_context embedded in content. Added 4 new tests for status update detection."
+    },
+    {
+      "path": "crates/wb-processor/src/task/discovery.rs",
+      "change_type": "modified",
+      "diff_summary": "Modified TaskDiscovery::discover_with_ai() to automatically build TaskContext from pending tasks and pass to discovery_ai. Added end-to-end test for status update detection."
+    },
+    {
+      "path": "crates/wb-processor/src/pipeline_tests.rs",
+      "change_type": "modified",
+      "diff_summary": "Added is_status_update and related_task_id fields to all Extraction initializers to match updated struct."
+    }
+  ],
+  "affected_modules": ["wb-ai", "wb-processor"],
+  "new_tests": [
+    "discovery_ai::tests::test_ai_status_update_returns_empty",
+    "discovery_ai::tests::test_ai_new_task_with_context",
+    "discovery_ai::tests::test_create_synthetic_event_with_context",
+    "discovery_ai::tests::test_create_synthetic_event_without_context",
+    "discovery::tests::test_discover_with_ai_status_update_no_duplicate",
+    "anthropic::tests::test_build_task_context_section_empty",
+    "anthropic::tests::test_build_task_context_section_with_tasks",
+    "anthropic::tests::test_build_task_context_section_empty_array"
+  ],
+  "acceptance_criteria": [
+    "When user sends two semantically related messages, system detects status update instead of creating duplicate task",
+    "AI model receives existing task list as context for judgment",
+    "When AI determines status update, returns is_status_update=true with related_task_id"
+  ],
+  "timestamp": "2026-06-14T10:30:00+08:00",
+  "test_summary": {
+    "wb_ai_tests": "127 passed, 0 failed",
+    "wb_processor_tests": "461 passed, 0 failed",
+    "total": "588 passed, 0 failed"
+  }
+}

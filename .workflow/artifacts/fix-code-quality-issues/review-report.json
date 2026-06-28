@@ -1,0 +1,102 @@
+{
+  "task_id": "fix-code-quality-issues",
+  "verdict": "approve",
+  "summary": {
+    "files_reviewed": 7,
+    "critical_issues": 0,
+    "high_issues": 2,
+    "medium_issues": 4,
+    "low_issues": 3
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "category": "quality",
+      "file": "crates/wb-collector/src/feishu/wrappers.rs",
+      "line": 14,
+      "description": "LARK_CLI 常量在三个文件中重复定义：collector.rs:16、wrappers.rs:14、settings.rs:11。更严重的是，工具可用性检查存在两套不同实现：wrappers.rs 使用 is_lark_cli_available()（Path::exists，仅检查文件存在），而 collector.rs 和 settings.rs 使用 runner::check_tool_available()（执行 --version 验证可执行性）。两者语义不同，可能产生不一致判定。",
+      "suggestion": "将 LARK_CLI 常量提取到 feishu 模块公共位置（如 mod.rs），统一使用 runner::check_tool_available 作为单一检查源，删除 wrappers.rs 中的 is_lark_cli_available()。"
+    },
+    {
+      "severity": "high",
+      "category": "quality",
+      "file": "crates/wb-collector/src/feishu/wrappers.rs",
+      "line": 22,
+      "description": "四个 Wrapper 结构体（Docs、Projects、Calendar、Approvals）的 Collector trait 实现高度重复：collect() 和 health_check() 逻辑完全相同，仅委托目标不同。216 行中约 160 行是重复模式。",
+      "suggestion": "使用 macro_rules! 生成重复的 Collector trait 实现，或引入泛型 Wrapper<T> 来消除重复。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "crates/wb-storage/src/sqlite/event_log.rs",
+      "line": 43,
+      "description": "parse_datetime() 在解析失败时静默回退到默认值（epoch），row_to_event() 中 source/event_type 等字段也使用 unwrap_or 默认值。这会掩盖数据损坏问题，导致查询结果中出现 1970-01-01 时间戳或错误的事件类型而无任何日志。",
+      "suggestion": "至少在 fallback 时记录 warn 日志，或改为返回错误让调用方决定如何处理。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src-tauri/src/commands/notify.rs",
+      "line": 48,
+      "description": "PENDING_NOTIFICATIONS 使用 std::sync::Mutex（同步锁）在 async 上下文中。虽然当前操作（push/filter/retain）足够快不会造成明显阻塞，但在 tokio runtime 中持有同步锁仍存在阻塞线程的风险。",
+      "suggestion": "考虑改用 tokio::sync::Mutex，或在 lock_notifications() 中添加文档说明为何选择同步锁。"
+    },
+    {
+      "severity": "medium",
+      "category": "performance",
+      "file": "src-tauri/src/commands/settings.rs",
+      "line": 392,
+      "description": "list_models() 和 test_model() 每次调用都创建新的 reqwest::Client。HTTP client 内部维护连接池，频繁创建会浪费资源并增加延迟。",
+      "suggestion": "使用 lazy_static 或 once_cell 共享全局 reqwest::Client 实例。"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "crates/wb-storage/src/sqlite/event_log.rs",
+      "line": 141,
+      "description": "param_idx 变量在 until 条件块（最后一个分支）移除递增后，虽功能正确，但作为可变计数器手动维护容易出错。后续若在 until 之后添加新条件，容易遗漏递增。",
+      "suggestion": "将 param_idx 改为从 param_values.len() + 1 动态计算，消除手动维护计数器的风险。"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src-tauri/src/commands/settings.rs",
+      "line": 439,
+      "description": "format_model_name() 使用简单的 contains() 匹配，顺序敏感。例如 'gpt-4o-mini' 会先匹配 'gpt-4o-mini' 分支，但 'gpt-4o-2024' 会匹配 'gpt-4o' 分支而非更精确的匹配。",
+      "suggestion": "使用更精确的匹配策略（如前缀匹配 + 版本号提取），或接受当前行为但添加注释说明匹配优先级。"
+    },
+    {
+      "severity": "low",
+      "category": "performance",
+      "file": "src-tauri/src/commands/settings.rs",
+      "line": 602,
+      "description": "truncate() 函数每次调用都分配 Vec<char> 来计算字符数。对于频繁调用的场景（如日志输出），这会产生不必要的内存分配。",
+      "suggestion": "使用 s.chars().count() 先计算长度，或直接用 s.char_indices() 找到截断点。"
+    },
+    {
+      "severity": "low",
+      "category": "security",
+      "file": "src-tauri/src/commands/notify.rs",
+      "line": 62,
+      "description": "send_notification 接受 NotifyRequest 但未对 title/body 长度做限制。恶意或异常的超长字符串可能导致内存问题或系统通知显示异常。",
+      "suggestion": "添加合理的长度上限验证（如 title 200 字符，body 2000 字符）。"
+    }
+  ],
+  "security_tests": {
+    "h3_passed": true,
+    "h4_passed": true,
+    "h5_passed": true,
+    "tests_generated": 0,
+    "notes": "本次变更主要是代码清理（移除死代码、未使用导入/函数/结构体、添加工具可用性前置检查）。不涉及新增用户输入处理、数据库查询或认证逻辑。event_log.rs 的 SQL 查询继续使用参数化查询，db.rs 的路径遍历防护保持完整，settings.rs 的 API key 处理遵循桌面应用惯例。"
+  },
+  "positive_observations": [
+    "collector.rs 的 collect() 方法新增 lark-cli 可用性前置检查，实现优雅降级",
+    "manager.rs 移除 get_groups() 中未使用的 enabled 读锁，减少不必要开销",
+    "event_log.rs 移除 until 条件后死代码 param_idx += 1",
+    "db.rs 移除冗余的 use tauri::Manager 导入，改善作用域精确性",
+    "settings.rs 移除未使用的 get_collector_statuses_internal() 和 CollectorBrief，经全局搜索确认无外部引用",
+    "所有 SQL 查询使用参数化占位符，无注入风险",
+    "db.rs 的 resolve_custom_path 正确拒绝包含 '..' 的路径遍历攻击"
+  ],
+  "timestamp": "2026-06-21T14:00:00Z"
+}

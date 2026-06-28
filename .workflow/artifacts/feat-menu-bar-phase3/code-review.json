@@ -1,0 +1,88 @@
+{
+  "task_id": "feat-menu-bar-phase3",
+  "timestamp": "2026-06-19T12:00:00Z",
+  "reviewer": "workflow-runner",
+  "verdict": "pass",
+  "summary": "Phase 3 菜单栏重设计代码审查通过。实现符合 design-system.md 紧凑型列表规范，代码质量良好，无阻塞性问题。",
+  "files_reviewed": [
+    "src/components/MenuBar.tsx",
+    "src-tauri/src/commands/settings.rs",
+    "src-tauri/src/lib.rs",
+    "src/lib/tauri.ts",
+    "src/App.tsx",
+    "src/components/MenuBar.test.tsx"
+  ],
+  "findings": [
+    {
+      "severity": "info",
+      "category": "design-compliance",
+      "location": "src/components/MenuBar.tsx",
+      "message": "Header 高度 min-h-[44px] 与规范 min-h-[48px] 有 4px 差异",
+      "detail": "design-system.md 定义 Header 高度为 min-h-[48px]，MenuBar 实现使用 min-h-[44px]。差异可能是有意适配菜单栏有限空间，但建议确认是否为设计决策。"
+    },
+    {
+      "severity": "info",
+      "category": "design-compliance",
+      "location": "src/components/MenuBar.tsx",
+      "message": "内边距 px-4 与规范 px-5 有差异",
+      "detail": "规范定义 Header 内边距为 px-5 py-3，列表项为 px-5 py-2。MenuBar 实现统一使用 px-4。差异可能是适配菜单栏宽度限制。"
+    },
+    {
+      "severity": "info",
+      "category": "design-compliance",
+      "location": "src/components/MenuBar.tsx",
+      "message": "列表项高度 min-h-[36px] 与规范 min-h-[40px] 有差异",
+      "detail": "规范定义列表项高度为 min-h-[40px]，MenuBar 实现使用 min-h-[36px]。差异可能是适配菜单栏空间。"
+    },
+    {
+      "severity": "info",
+      "category": "design-compliance",
+      "location": "src/components/MenuBar.tsx",
+      "message": "来源列宽度 min-w-[50px] 与规范 min-w-[80px] 有差异",
+      "detail": "规范定义来源列最小宽度为 min-w-[80px]，MenuBar 实现使用 min-w-[50px]。差异可能是适配菜单栏宽度限制。"
+    },
+    {
+      "severity": "info",
+      "category": "code-quality",
+      "location": "src/components/MenuBar.tsx",
+      "message": "事件类型配色扩展了 note 和 task 类型",
+      "detail": "design-system.md 定义了 message/issue/pr/document 四种配色，MenuBar 新增了 note（紫色）和 task（橙色）配色。扩展合理，符合产品需求。"
+    },
+    {
+      "severity": "info",
+      "category": "code-quality",
+      "location": "src-tauri/src/commands/settings.rs",
+      "message": "SystemStatus 结构体设计合理",
+      "detail": "SystemStatus 包含 collectors_total、collectors_healthy、scheduler_running、unprocessed_count 四个字段，覆盖菜单栏需要展示的系统状态信息。"
+    },
+    {
+      "severity": "info",
+      "category": "code-quality",
+      "location": "src/components/MenuBar.tsx",
+      "message": "数据刷新策略合理",
+      "detail": "使用 30 秒间隔自动刷新，Promise.all 并行获取数据，catch 兜底处理错误，符合桌面应用最佳实践。"
+    },
+    {
+      "severity": "info",
+      "category": "test-coverage",
+      "location": "src/components/MenuBar.test.tsx",
+      "message": "测试覆盖完整",
+      "detail": "10 个测试覆盖：基础渲染、标题显示、空状态、事件列表、通知、快捷操作、系统状态、调度状态、未处理计数。"
+    }
+  ],
+  "issues": [],
+  "recommendations": [
+    {
+      "priority": "low",
+      "category": "design-alignment",
+      "message": "确认菜单栏与规范的间距差异是否为设计决策",
+      "detail": "MenuBar 的间距（px-4、min-h-[36px]、min-w-[50px]）与 design-system.md 规范（px-5、min-h-[40px]、min-w-[80px]）有系统性差异。如果是有意适配菜单栏空间限制，建议在代码注释或 design-system.md 中说明。"
+    },
+    {
+      "priority": "low",
+      "category": "enhancement",
+      "message": "考虑添加 Tooltip 到截断内容",
+      "detail": "事件内容摘要使用 truncate 截断，建议添加 Tooltip 显示完整内容，提升用户体验。"
+    }
+  ]
+}

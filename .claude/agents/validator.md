@@ -1,6 +1,7 @@
 ---
 name: validator
-description: 验证者，管道交叉点验证，防止错误传播
+description: >
+  验证：Schema + 数据完整性验证。当需要验证 artifact 的数据格式和完整性时使用。
 type: agent
 domain: validation
 created: 2026-06-21

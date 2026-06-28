@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Test Plan",
+  "description": "test-agent Phase 1 的输出：测试方法设计和验证目标定义",
+  "type": "object",
+  "required": ["task_id", "timestamp", "test_method", "validation_targets", "test_environment"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "任务 ID"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "生成时间"
+    },
+    "test_method": {
+      "type": "object",
+      "description": "测试方法设计",
+      "required": ["approach", "tools", "scope"],
+      "properties": {
+        "approach": {
+          "type": "string",
+          "description": "测试方法（如：黑盒测试、白盒测试、灰盒测试）"
+        },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "测试工具列表"
+        },
+        "scope": {
+          "type": "string",
+          "description": "测试范围"
+        }
+      }
+    },
+    "validation_targets": {
+      "type": "array",
+      "description": "验证目标列表",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "criteria"],
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string" },
+          "criteria": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    },
+    "test_environment": {
+      "type": "object",
+      "description": "测试环境准备",
+      "properties": {
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "依赖项"
+        },
+        "setup_steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "环境准备步骤"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "task_id": "menu-bar-ui-polish",
+  "verdict": "needs_work",
+  "category": "feature",
+  "feature_id": "F6.1.4",
+  "feature_name": "菜单栏常驻 UI 优化",
+  "summary": "变更方向正确，解决了用户反馈的 5 个核心问题（事件摘要 bug、信息密度低、事件标签不醒目、按钮过大、布局空白）。getEventSummary 重写和 Header+Status 合并是高质量改进。但快速按钮从文字改为纯图标引入了可发现性风险，且缺少无障碍属性。建议小幅调整后批准。",
+  "requirements_coverage": [
+    {
+      "requirement": "F6.1.4 即时信息展示",
+      "status": "met",
+      "notes": "事件列表、通知分组、今日待办、系统状态全部保留。Header+Status 合并后信息密度提升，不丢失任何数据。"
+    },
+    {
+      "requirement": "F6.1.4 快捷操作入口",
+      "status": "partial",
+      "notes": "4 个快捷按钮（主窗口/速记/截图/处理）全部保留。但从文字标签改为纯图标+tooltip，用户需 hover 才能理解按钮用途，可发现性下降。详见 'issues' 字段。"
+    },
+    {
+      "requirement": "F6.1.4 信息密度优先",
+      "status": "met",
+      "notes": "Header 从两行合并为一行，事件标签从纯文字改为色块，通知区域 padding 收紧，整体信息密度显著提升。"
+    },
+    {
+      "requirement": "getEventSummary 修复",
+      "status": "met",
+      "notes": "三优先级智能提取策略（文本字段 → 组合字段 → 嵌套对象 → compact JSON）彻底解决了 JSON 内容截断显示 'not' 的 bug。"
+    },
+    {
+      "requirement": "设计原则：操作不超过两次点击",
+      "status": "met",
+      "notes": "快捷按钮仍为一次点击触发，通知标记已读一次点击。操作路径未退化。"
+    }
+  ],
+  "scenarios_validated": [
+    {
+      "scenario": "用户查看系统状态",
+      "status": "pass",
+      "detail": "Header 一行展示：应用名 + 采集器健康 + 调度状态 + 今日处理数 + 未处理计数 Badge。信息完整且紧凑。"
+    },
+    {
+      "scenario": "用户扫描最近事件",
+      "status": "pass",
+      "detail": "事件列表：类型色块（带背景色）+ 内容摘要 + 相对时间。色块标签比纯文字更醒目，视觉层次清晰。"
+    },
+    {
+      "scenario": "用户查看通知",
+      "status": "pass",
+      "detail": "通知按类型分组（待确认/提醒/已完成），左侧彩色边框区分，每组最多 3 条，超出显示 '+N 更多'。"
+    },
+    {
+      "scenario": "用户执行快捷操作",
+      "status": "partial",
+      "detail": "按钮功能完整，但纯图标模式下新用户无法直觉理解按钮含义。详见 issues。"
+    },
+    {
+      "scenario": "事件内容为 JSON 对象",
+      "status": "pass",
+      "detail": "getEventSummary 三优先级提取：先找 summary/title/text 等可读字段，再组合 sender/app 等细节字段，再尝试嵌套对象，最终 compact JSON fallback。不会出现 'not' 的截断 bug。"
+    }
+  ],
+  "issues": [
+    {
+      "id": "P0-1",
+      "severity": "high",
+      "category": "usability",
+      "title": "快速按钮可发现性不足",
+      "description": "4 个快捷按钮从带文字标签的大按钮改为 28x28 纯图标按钮。虽然有 title 属性提供 tooltip，但 macOS 菜单栏的 tooltip 显示有明显延迟（约 1-2 秒），新用户首次使用时无法快速理解每个图标的含义。",
+      "recommendation": "保留图标按钮的紧凑布局，但增加以下任一措施：(1) 在按钮行上方或下方添加一行极小的标签文字（text-[7px]），如 '窗口 | 速记 | 截图 | 处理'；(2) 首次打开时显示一次性的引导 tooltip；(3) 至少为 '处理' 按钮（Play 图标）保留文字标签，因为 Play 图标含义不够直觉。参考 iStat Menus：图标按钮 + hover 时显示功能名称。",
+      "evidence": "ActionButton 组件仅使用 title 属性，无 aria-label，无 visible label。Play 图标在不同应用中含义差异大（播放/开始/执行）。"
+    },
+    {
+      "id": "P1-1",
+      "severity": "medium",
+      "category": "accessibility",
+      "title": "快捷按钮缺少无障碍属性",
+      "description": "ActionButton 组件使用 title 属性但缺少 aria-label。对于屏幕阅读器用户，title 属性的可访问性不如 aria-label。",
+      "recommendation": "为 ActionButton 添加 aria-label={tooltip}，确保屏幕阅读器能正确朗读按钮用途。",
+      "evidence": "第 486-501 行：ActionButton 仅使用 title={tooltip}，无 aria-label。"
+    },
+    {
+      "id": "P1-2",
+      "severity": "medium",
+      "category": "usability",
+      "title": "28x28 按钮尺寸偏大",
+      "description": "macOS 菜单栏弹出窗口的标准交互元素尺寸通常在 20-24px。当前 28x28 的按钮在紧凑的菜单栏面板中显得偏大，与周围 9-11px 字号的文字不够协调。Raycast 的快捷按钮通常在 22-24px。",
+      "recommendation": "将 ActionButton 尺寸从 h-7 w-7（28px）调整为 h-6 w-6（24px），图标从 h-3.5 w-3.5（14px）调整为 h-3 w-3（12px）。这既保持足够的点击目标，又与整体字号更协调。",
+      "evidence": "第 488 行：'flex h-7 w-7'。Raycast/Fantastical 的菜单栏按钮通常在 20-24px 范围。"
+    },
+    {
+      "id": "P1-3",
+      "severity": "medium",
+      "category": "edge_case",
+      "title": "通知区域缺少最大高度限制",
+      "description": "当某类通知数量较多（如 10+ 条 Confirm），虽然每组限制显示 3 条，但如果有 3 个分组各 3 条通知，加上分组标题，通知区域可能占据较大空间，挤压事件列表的显示区域。",
+      "recommendation": "为通知区域设置 max-height（如 max-h-32），超出时使用内部滚动。或限制同时显示的分组数量。",
+      "evidence": "第 400-448 行：通知区域无 max-height 约束，使用 pb-1 space-y-0.5 自然排列。"
+    },
+    {
+      "id": "P2-1",
+      "severity": "low",
+      "category": "design",
+      "title": "事件类型色块字号极小",
+      "description": "事件类型标签使用 text-[8px]（约 6pt），这在高 Retina 屏幕上虽然可读，但已接近人体工程学下限。对于 MSG、DOC 等 3-4 字母标签，可读性尚可，但如果 fallback 到更长的自定义标签（如 event.slice(0, 4).toUpperCase()），可能出现截断。",
+      "recommendation": "保持 text-[8px] 但确认 w-7 宽度足以容纳所有标签。对 fallback 标签增加 overflow-hidden。",
+      "evidence": "第 349 行：'text-[8px] font-bold w-7'。第 72 行 fallback：'type.slice(0, 4).toUpperCase()' 可能产生 4 字符标签。"
+    }
+  ],
+  "design_debt": [
+    {
+      "id": "DD-1",
+      "description": "MenuBar 使用硬编码的 --glass-bg/--glass-blur CSS 变量，与 T3.4 毛玻璃效果任务重叠。当前实现已满足基本需求，T3.4 统一时可整合。",
+      "priority": "low"
+    },
+    {
+      "id": "DD-2",
+      "description": "事件列表无点击交互——用户无法从菜单栏直接跳转到事件详情。之前的产品审查已标记为 medium 优先级增强建议。",
+      "priority": "medium"
+    }
+  ],
+  "suggested_action": {
+    "action": "fix_and_approve",
+    "reason": "核心变更方向正确，getEventSummary 修复和信息密度提升是高质量改进。需要处理 P0-1（快速按钮可发现性）和 P1-1（无障碍属性）后批准。P1-2 和 P2-1 可作为 follow-up 处理。",
+    "required_fixes": [
+      "P0-1: 为快速按钮增加可见标签或引导提示",
+      "P1-1: 为 ActionButton 添加 aria-label 属性"
+    ],
+    "optional_fixes": [
+      "P1-2: 按钮尺寸从 28px 调整为 24px",
+      "P1-3: 通知区域增加 max-height 限制"
+    ]
+  }
+}

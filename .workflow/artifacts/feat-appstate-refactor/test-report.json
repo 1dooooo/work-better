@@ -1,0 +1,132 @@
+{
+  "task_id": "feat-appstate-refactor",
+  "timestamp": "2026-06-21T15:10:00Z",
+  "agent": "test-agent",
+  "result": "fail",
+  "gate_level": 2,
+  "summary": "AppState 重构尚未实施。代码仍使用 5 个 OnceLock 全局静态，所有验收标准均未满足。Rust 测试全绿，前端测试有 55 个预存失败。",
+  "test_results": {
+    "rust": {
+      "total": 713,
+      "passed": 713,
+      "failed": 0,
+      "crates": {
+        "work-better (src-tauri)": { "passed": 27, "failed": 0 },
+        "wb-core": { "passed": 60, "failed": 0 },
+        "wb-collector": { "passed": 99, "failed": 0 },
+        "wb-processor": { "passed": 435, "failed": 0 },
+        "wb-ai": { "passed": 127, "failed": 0 },
+        "wb-storage": { "passed": 48, "failed": 0 },
+        "wb-scheduler": { "passed": 11, "failed": 0 }
+      }
+    },
+    "frontend": {
+      "total": 193,
+      "passed": 138,
+      "failed": 55,
+      "failed_files": [
+        "tests/ts/integration/event-listening.test.tsx",
+        "tests/ts/integration/tauri-ipc.test.tsx",
+        "src/capture/CaptureWindow.test.tsx",
+        "src/components/MenuBar.test.tsx",
+        "src/components/Sidebar.test.tsx",
+        "src/hooks/useKeyboardShortcuts.test.ts",
+        "src/lib/store.test.tsx",
+        "src/components/settings/FreshnessSettings.test.tsx",
+        "src/components/views/TasksView.test.tsx"
+      ],
+      "failure_root_cause": "window.__TAURI_INTERNALS__ 未 mock，导致 transformCallback 报错。这是预存问题，非本次变更引入。"
+    }
+  },
+  "security_scan": {
+    "result": "pass",
+    "findings": {
+      "hardcoded_secrets": "none",
+      "sql_injection": "none",
+      "path_traversal": "properly_blocked",
+      "unsafe_blocks": "none",
+      "clippy_warnings": 7,
+      "clippy_details": "7 个 style warnings（map_or -> is_some_and），无安全问题",
+      "cargo_audit": "未安装 cargo-audit，跳过"
+    }
+  },
+  "acceptance_criteria": {
+    "all_oncelock_deleted": {
+      "status": "not_met",
+      "detail": "5 个文件仍使用 OnceLock：events.rs (EVENT_LOG), collectors.rs (COLLECTOR_MANAGER), tasks.rs (TASK_MANAGER + TASK_DISCOVERY), scheduler.rs (SCHEDULER), audit.rs (AUDIT_LOG)",
+      "files": [
+        "src-tauri/src/commands/events.rs:52",
+        "src-tauri/src/commands/collectors.rs:7",
+        "src-tauri/src/commands/tasks.rs:13,16",
+        "src-tauri/src/commands/scheduler.rs:7",
+        "src-tauri/src/commands/audit.rs:10"
+      ]
+    },
+    "commands_use_state_appstate": {
+      "status": "not_met",
+      "detail": "AppState 结构体不存在于代码库中。所有命令仍通过 get_xxx() 全局函数获取依赖。"
+    },
+    "pipeline_no_persist_step": {
+      "status": "not_met",
+      "detail": "ProcessingPipeline 仍持有 PersistStep 字段（pipeline.rs:53），process() 内部调用 self.persistor.persist()（pipeline.rs:223）"
+    },
+    "events_no_duplicate_pipeline": {
+      "status": "not_met",
+      "detail": "events.rs 的 process_single_event() 包含独立的 classify + extract + audit 逻辑，与 pipeline.rs 的 ProcessingPipeline 重复"
+    },
+    "settings_no_model_config_dto": {
+      "status": "not_met",
+      "detail": "settings.rs 仍定义 ModelConfig DTO（第 15-25 行），未使用 wb-storage::config::ModelConfig"
+    },
+    "existing_tests_pass": {
+      "status": "partial",
+      "detail": "Rust 全部通过（713/713），前端有 55 个预存失败（Tauri IPC mock 问题，非本次变更引入）"
+    }
+  },
+  "uncovered_paths": [
+    {
+      "location": "src-tauri/src/commands/events.rs",
+      "function": "process_single_event",
+      "issue": "内联处理逻辑无法独立测试。依赖全局 OnceLock，无法注入 mock EventLog。",
+      "severity": "high",
+      "suggested_test": "AppState 注入后，添加 integration test：mock EventLog + TaskRunner，验证 process_single_event 完整流程"
+    },
+    {
+      "location": "src-tauri/src/commands/events.rs",
+      "function": "build_task_runner_from_config",
+      "issue": "读取文件系统配置构建 TaskRunner，无法在测试中 mock 配置。",
+      "severity": "high",
+      "suggested_test": "移到 wb-ai 作为 TaskRunner::from_config() 后，添加单元测试验证配置解析"
+    },
+    {
+      "location": "src-tauri/src/commands/collectors.rs",
+      "function": "register_builtin_collectors",
+      "issue": "依赖全局 COLLECTOR_MANAGER 和 settings::load_config()，无法测试注册逻辑。",
+      "severity": "medium",
+      "suggested_test": "AppState 注入后，测试 register_builtin_collectors 正确注册 14 个采集器"
+    },
+    {
+      "location": "src-tauri/src/commands/tasks.rs",
+      "function": "discover_tasks_from_text",
+      "issue": "直接调用 build_task_runner_from_config()，无法 mock AI 模型。",
+      "severity": "medium",
+      "suggested_test": "注入 mock TaskRunner 后，测试 discover_tasks_from_text 的各种输入"
+    },
+    {
+      "location": "src-tauri/src/commands/audit.rs",
+      "function": "get_processing_audits / get_execution_logs",
+      "issue": "依赖全局 AUDIT_LOG OnceLock，无法测试查询逻辑。",
+      "severity": "medium",
+      "suggested_test": "AppState 注入后，测试审计日志查询和权限检查"
+    },
+    {
+      "location": "crates/wb-processor/src/pipeline.rs",
+      "function": "ProcessingPipeline::process",
+      "issue": "PersistStep 耦合在 pipeline 内部，process() 既处理又持久化，违反单一职责。NeedsFix 分支跳过持久化但未返回持久化状态。",
+      "severity": "high",
+      "suggested_test": "解耦后，分别测试 process()（纯计算）和 persist()（I/O），验证分离正确性"
+    }
+  ],
+  "suggested_action": "block",
+  "suggested_action_detail": "dev-agent 尚未实施 AppState 重构。代码仍使用 5 个 OnceLock 全局静态，所有 6 个验收标准均未满足。建议：1) dev-agent 先完成代码变更并提交；2) 重新运行 test-agent 验证。当前状态无法进行有意义的 L2 集成测试，因为被测代码未变更。"
+}

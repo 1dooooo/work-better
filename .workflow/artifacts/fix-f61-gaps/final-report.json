@@ -1,0 +1,44 @@
+{
+  "task_id": "fix-f61-gaps",
+  "status": "done",
+  "test_summary": {
+    "total_tests_run": 11,
+    "all_passed": true,
+    "retry_count": 0,
+    "gate_levels_executed": ["L1"]
+  },
+  "review_summary": {
+    "verdict": "approve",
+    "findings_count": 0
+  },
+  "security_summary": {
+    "h_layer_passed": true,
+    "vulnerabilities_found": 0,
+    "security_tests_generated": 0
+  },
+  "changes_summary": {
+    "P0-1_screenshot_shortcut": {
+      "status": "fixed",
+      "files": ["src-tauri/src/lib.rs"],
+      "description": "注册 Cmd+Shift+S 截图全局快捷键，默认快捷键列表增加 screenshot 类型，handler 中根据 key code 区分 capture/screenshot 操作"
+    },
+    "P0-2_notification_click": {
+      "status": "fixed",
+      "files": ["src/components/MenuBar.tsx"],
+      "description": "通知项支持点击跳转，点击后标记已读并打开主窗口，通过 Tauri event 系统发送 navigate-to 事件"
+    },
+    "P1-1_today_tasks": {
+      "status": "fixed",
+      "files": ["src/components/MenuBar.tsx"],
+      "description": "菜单栏增加今日待办信息区，调用 getPendingTasks API 展示待处理任务"
+    },
+    "P1-2_manual_process": {
+      "status": "fixed",
+      "files": ["src/components/MenuBar.tsx"],
+      "description": "快捷操作区域增加处理按钮，调用 triggerBatchProcess API，显示处理中状态"
+    }
+  },
+  "uncovered_paths": [],
+  "escalation_reason": null,
+  "timestamp": "2026-06-19T10:20:00+08:00"
+}

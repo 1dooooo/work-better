@@ -1,0 +1,74 @@
+{
+  "task_id": "feat-menu-bar-refactor",
+  "verdict": "approve",
+  "summary": {
+    "files_reviewed": 2,
+    "critical_issues": 0,
+    "high_issues": 0,
+    "medium_issues": 3,
+    "low_issues": 3
+  },
+  "issues": [
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/MenuBar.tsx",
+      "line": 401,
+      "description": "通知区域 JSX 嵌套深度达 6 层（div > conditional > map > div > map > div），超过 4 层推荐阈值",
+      "suggestion": "提取 NotificationGroup 和 NotificationItem 为独立子组件，降低嵌套深度并提升可测试性"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/MenuBar.tsx",
+      "line": 198,
+      "description": "MenuBar 组件约 268 行，包含数据获取、事件处理、多个子区域渲染。职责过多，不利于单元测试",
+      "suggestion": "拆分为 useMenuBarData hook（数据获取与状态管理）+ Presentational 组件（纯渲染），或至少将事件列表、通知区域、快捷操作提取为独立组件"
+    },
+    {
+      "severity": "medium",
+      "category": "quality",
+      "file": "src/components/MenuBar.tsx",
+      "line": 276,
+      "description": "handleOpenMainWindow 使用 .catch(() => {}) 静默吞掉错误，与其他 handler（均有 console.error）不一致",
+      "suggestion": "统一错误处理策略，至少添加 console.error 或使用已有的错误日志模式"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src/components/MenuBar.tsx",
+      "line": 49,
+      "description": "EVENT_TYPE_CONFIG 同时维护 PascalCase 和 snake_case 两种格式，存在重复数据维护负担",
+      "suggestion": "在 getEventTypeConfig 中做大小写归一化（如 toLowerCase 匹配），减少配置表重复项"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "src/components/MenuBar.tsx",
+      "line": 128,
+      "description": "getEventSummary 的 detailKeys 数组硬编码了 12 个字段名，与后端数据模型耦合",
+      "suggestion": "可考虑将 detailKeys 提取为常量或从类型定义推导，减少与后端字段名的隐式耦合"
+    },
+    {
+      "severity": "low",
+      "category": "performance",
+      "file": "src/components/MenuBar.test.tsx",
+      "line": 86,
+      "description": "getEventSummary 的边界情况测试缺失：嵌套对象提取、JSON fallback、null/undefined content、boolean 字段处理",
+      "suggestion": "补充 getEventSummary 的独立单元测试，覆盖 4 层提取策略的各分支"
+    }
+  ],
+  "security_tests": {
+    "h3_passed": true,
+    "h4_passed": true,
+    "h5_passed": true,
+    "tests_generated": 0,
+    "notes": [
+      "H3: 无 innerHTML/dangerouslySetInnerHTML 使用，所有用户内容通过 React JSX 文本节点渲染，XSS 风险低",
+      "H3: notification.action_url 通过 Tauri emit 传递给后端，未直接用于 window.open，路径安全",
+      "H4: 所有异步操作均有 try/catch 或 .catch()，错误信息不泄露敏感数据（仅 console.error）",
+      "H5: 组件为纯前端展示层，无认证/授权逻辑；所有数据操作通过 Tauri IPC 调用后端，权限边界在后端"
+    ]
+  },
+  "timestamp": "2026-06-23T12:00:00Z"
+}

@@ -1,6 +1,7 @@
 ---
 name: optimizer
-description: 优化者，执行具体优化任务，搜索更好的 skill
+description: >
+  优化：生成优化计划，需用户审批。当需要优化 Agent prompt、workflow spec 或 skill 时使用。
 type: agent
 domain: optimization
 created: 2026-06-21
