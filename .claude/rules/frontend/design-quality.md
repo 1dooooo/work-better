@@ -1,6 +1,16 @@
-> This file extends [common/patterns.md](../common/patterns.md) with web-specific design-quality guidance.
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.css"
+  - "**/*.html"
+---
 
-# Web Design Quality Standards
+# Frontend Design Quality Standards
+
+> This file extends [common/patterns.md](../common/patterns.md) with design-quality guidance.
 
 ## Anti-Template Policy
 

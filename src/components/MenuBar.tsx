@@ -488,7 +488,19 @@ export default function MenuBar() {
     if (typeof ResizeObserver === "undefined") return;
 
     const resizeWindow = () => {
-      const height = node.scrollHeight;
+      // 直接计算所有子元素的高度总和
+      let totalHeight = 0;
+      for (const child of Array.from(node.children)) {
+        const rect = child.getBoundingClientRect();
+        totalHeight += rect.height;
+      }
+
+      // 如果子元素高度为 0，回退到 scrollHeight
+      if (totalHeight === 0) {
+        totalHeight = node.scrollHeight;
+      }
+
+      const height = Math.max(totalHeight, 100);
       const win = getCurrentWindow();
       win.setSize(new LogicalSize(360, height)).catch(() => {});
     };

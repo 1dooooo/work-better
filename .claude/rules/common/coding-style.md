@@ -26,32 +26,6 @@ Rationale: Immutable data prevents hidden side effects, makes debugging easier, 
 - Avoid copy-paste implementation drift
 - Introduce abstractions when repetition is real, not speculative
 
-#### How to Apply DRY
-
-**Before implementing**, search for existing implementations:
-
-```bash
-# Search for a specific function across Rust crates
-grep -r "function_name" crates/
-
-# Search for function definitions in Rust
-rg "fn |function" --type rust
-
-# Search for similar patterns across the codebase
-rg "pattern_to_match" --type rust -l
-```
-
-**During code review**, verify DRY compliance:
-
-- Check if new functions duplicate existing utilities
-- Verify shared logic has been extracted into reusable modules
-- Confirm abstractions are justified, not speculative
-
-**When to check:**
-
-- **Development time:** Before writing a new function, search if an equivalent already exists
-- **Review time:** After implementation, verify no duplication was introduced
-- **Refactoring time:** When modifying duplicated code, consolidate into a single source
 
 ### YAGNI (You Aren't Gonna Need It)
 
@@ -85,11 +59,8 @@ ALWAYS validate at system boundaries:
 
 ## Naming Conventions
 
-- Variables and functions: `camelCase` with descriptive names
 - Booleans: prefer `is`, `has`, `should`, or `can` prefixes
-- Interfaces, types, and components: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
-- Custom hooks: `camelCase` with a `use` prefix
 
 ## Code Smells to Avoid
 
@@ -105,13 +76,3 @@ Use named constants for meaningful thresholds, delays, and limits.
 
 Split large functions into focused pieces with clear responsibilities.
 
-## Code Quality Checklist
-
-Before marking work complete:
-- [ ] Code is readable and well-named
-- [ ] Functions are small (<50 lines)
-- [ ] Files are focused (<800 lines)
-- [ ] No deep nesting (>4 levels)
-- [ ] Proper error handling
-- [ ] No hardcoded values (use constants or config)
-- [ ] No mutation (immutable patterns used)

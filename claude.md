@@ -51,7 +51,7 @@ status: active
 
 **workflow-runner 负责：**
 
-- 按固定流程编排：dev → test+review+product-review → validator
+- 按 v5 流程编排：Phase 1 并行启动（dev + test-plan + review-criteria）→ Phase 2 执行验证（test + review + product-review）→ Phase 3 验证 → Phase 4 监督
 - 管理重试逻辑和熔断器
 - 生成最终报告
 

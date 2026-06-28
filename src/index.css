@@ -123,6 +123,13 @@
   --glass-bg: oklch(100% 0 0 / 0.8);
   --glass-border: oklch(100% 0 0 / 0.2);
 
+  /* ── Glass Panel (静谧蓝色调) ── */
+  --color-glass-bg: oklch(98% 0.005 250 / 0.8);
+  --color-glass-border: oklch(30% 0.05 250 / 0.12);
+  --color-glass-accent: oklch(50% 0.18 250);
+  --color-glass-muted: oklch(60% 0.02 250 / 0.6);
+  --color-glass-hover: oklch(95% 0.01 250 / 0.9);
+
   /* ── Layout ── */
   --sidebar-width: 200px;
 
@@ -305,5 +312,12 @@
     --glass-blur: 16px;
     --glass-bg: oklch(13% 0 0 / 0.85);
     --glass-border: oklch(100% 0 0 / 0.1);
+
+    /* ── Glass Panel (Dark, 静谧蓝色调) ── */
+    --color-glass-bg: oklch(18% 0.012 250 / 0.85);
+    --color-glass-border: oklch(70% 0.08 250 / 0.15);
+    --color-glass-accent: oklch(65% 0.15 250);
+    --color-glass-muted: oklch(40% 0.02 250 / 0.6);
+    --color-glass-hover: oklch(22% 0.02 250 / 0.9);
   }
 }

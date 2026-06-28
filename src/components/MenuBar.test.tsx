@@ -7,6 +7,16 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: vi.fn().mockReturnValue({
+    setSize: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+vi.mock("@tauri-apps/api/dpi", () => ({
+  LogicalSize: vi.fn().mockImplementation((w, h) => ({ width: w, height: h })),
+}));
+
 vi.mock("../lib/tauri", () => ({
   getEvents: vi.fn().mockResolvedValue([]),
   getUnprocessedCount: vi.fn().mockResolvedValue(0),
@@ -108,9 +118,11 @@ describe("MenuBar", () => {
     expect(container).toBeTruthy();
   });
 
-  it("displays the app title", () => {
+  it("displays the app title", async () => {
     render(<MenuBar />);
-    expect(screen.getByText("Work Better")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Work Better")).toBeInTheDocument();
+    });
   });
 
   it("shows empty state when no events", async () => {

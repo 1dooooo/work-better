@@ -1,4 +1,5 @@
 # Rules
+
 ## Structure
 
 Rules are organized into a **common** layer plus **language-specific** directories:
@@ -14,19 +15,27 @@ rules/
 │   ├── hooks.md
 │   ├── agents.md
 │   └── security.md
-├── typescript/      # TypeScript/JavaScript specific
-├── angular/         # Angular specific
-├── python/          # Python specific
-├── golang/          # Go specific
-├── web/             # Web and frontend specific
-├── swift/           # Swift specific
-├── php/             # PHP specific
-├── ruby/            # Ruby / Rails specific
-└── arkts/           # HarmonyOS / ArkTS specific
+├── frontend/        # Frontend-specific (TypeScript, React, CSS, HTML)
+│   ├── coding-style.md
+│   ├── testing.md
+│   ├── performance.md
+│   ├── patterns.md
+│   ├── hooks.md
+│   ├── design-quality.md
+│   └── security.md
+├── rust/            # Rust-specific
+│   ├── coding-style.md
+│   ├── testing.md
+│   ├── patterns.md
+│   ├── hooks.md
+│   └── security.md
+└── workflow.md      # Multi-Agent workflow rules
 ```
 
 - **common/** contains universal principles — no language-specific code examples.
-- **Language directories** extend the common rules with framework-specific patterns, tools, and code examples. Each file references its common counterpart.
+- **frontend/** merges TypeScript and web-specific rules for frontend development.
+- **rust/** contains Rust-specific patterns, testing, and security rules.
+- **workflow.md** defines the mandatory multi-agent workflow for code changes.
 
 ## Installation
 
@@ -34,17 +43,8 @@ rules/
 
 ```bash
 # Install common + one or more language-specific rule sets
-./install.sh typescript
-./install.sh angular
-./install.sh python
-./install.sh golang
-./install.sh web
-./install.sh swift
-./install.sh php
-./install.sh ruby
-./install.sh arkts
-
-# Install multiple languages at once
+./install.sh frontend
+./install.sh rust
 ./install.sh typescript python
 ```
 
@@ -68,15 +68,8 @@ mkdir -p ~/.claude/rules/ecc
 cp -r rules/common ~/.claude/rules/ecc/
 
 # Install language-specific rules based on your project's tech stack
-cp -r rules/typescript ~/.claude/rules/ecc/
-cp -r rules/angular ~/.claude/rules/ecc/
-cp -r rules/python ~/.claude/rules/ecc/
-cp -r rules/golang ~/.claude/rules/ecc/
-cp -r rules/web ~/.claude/rules/ecc/
-cp -r rules/swift ~/.claude/rules/ecc/
-cp -r rules/php ~/.claude/rules/ecc/
-cp -r rules/ruby ~/.claude/rules/ecc/
-cp -r rules/arkts ~/.claude/rules/ecc/
+cp -r rules/frontend ~/.claude/rules/ecc/
+cp -r rules/rust ~/.claude/rules/ecc/
 
 # Attention ! ! ! Configure according to your actual project requirements; the configuration here is for reference only.
 ```
@@ -86,7 +79,8 @@ For project-local rules, use the same namespace under the project root:
 ```bash
 mkdir -p .claude/rules/ecc
 cp -r rules/common .claude/rules/ecc/
-cp -r rules/typescript .claude/rules/ecc/
+cp -r rules/frontend .claude/rules/ecc/
+cp -r rules/rust .claude/rules/ecc/
 ```
 
 ## Rules vs Skills
@@ -98,9 +92,9 @@ Language-specific rule files reference relevant skills where appropriate. Rules 
 
 ## Adding a New Language
 
-To add support for a new language (e.g., `rust/`):
+To add support for a new language (e.g., `golang/`):
 
-1. Create a `rules/rust/` directory
+1. Create a `rules/golang/` directory
 2. Add files that extend the common rules:
    - `coding-style.md` — formatting tools, idioms, error handling patterns
    - `testing.md` — test framework, coverage tools, test organization
@@ -113,14 +107,14 @@ To add support for a new language (e.g., `rust/`):
    ```
 4. Reference existing skills if available, or create new ones under `skills/`.
 
-For non-language domains like `web/`, follow the same layered pattern when there is enough reusable domain-specific guidance to justify a standalone ruleset.
+For non-language domains like `frontend/`, follow the same layered pattern when there is enough reusable domain-specific guidance to justify a standalone ruleset.
 
 ## Rule Priority
 
 When language-specific rules and common rules conflict, **language-specific rules take precedence** (specific overrides general). This follows the standard layered configuration pattern (similar to CSS specificity or `.gitignore` precedence).
 
 - `rules/common/` defines universal defaults applicable to all projects.
-- `rules/golang/`, `rules/python/`, `rules/swift/`, `rules/php/`, `rules/typescript/`, etc. override those defaults where language idioms differ.
+- `rules/frontend/`, `rules/rust/`, etc. override those defaults where language idioms differ.
 
 ### Example
 

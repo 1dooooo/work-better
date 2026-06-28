@@ -12,7 +12,7 @@ function App() {
   }
   if (view === "tray") {
     return (
-      <ThemeProvider attribute="data-theme" forcedTheme="dark">
+      <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
         <MenuBar />
       </ThemeProvider>
     );

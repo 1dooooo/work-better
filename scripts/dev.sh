@@ -59,5 +59,8 @@ rm -rf node_modules/.vite dist
 rm -rf "$HOME/Library/Caches/$TAURI_IDENTIFIER/WebKit" 2>/dev/null || true
 rm -rf "$HOME/Library/Caches/$TAURI_IDENTIFIER/WebsiteData" 2>/dev/null || true
 
+# 确保 pnpm 等工具在 PATH 中（HOME 重定向可能影响 shell profile 加载）
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 echo "🚀 启动开发模式..."
 pnpm exec tauri dev
