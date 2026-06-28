@@ -91,7 +91,67 @@ export async function getUnprocessedCount(page: Page): Promise<number> {
   });
 }
 
+// ─── Mock 辅助函数（遗留 stub，待迁移至真实 Tauri IPC） ──────────
+
+export interface MockState {
+  events: any[];
+  invokeLog: string[];
+}
+
+export function createDefaultMockState(): MockState {
+  return { events: [], invokeLog: [] };
+}
+
+export async function injectTauriMock(
+  _page: Page,
+  _state: MockState,
+): Promise<void> {
+  // TODO: 替换为真实 Tauri IPC 调用
+}
+
+export async function getMockState(_page: Page): Promise<MockState> {
+  // TODO: 替换为真实 Tauri IPC 调用
+  return createDefaultMockState();
+}
+
+export async function getInvokeLog(_page: Page): Promise<string[]> {
+  // TODO: 替换为真实 Tauri IPC 调用
+  return [];
+}
+
+export async function overrideInvoke(
+  _page: Page,
+  _command: string,
+  _handler: (...args: any[]) => any,
+): Promise<void> {
+  // TODO: 替换为真实 Tauri IPC 调用
+}
+
+export function createMockEvent(overrides: Record<string, any> = {}): any {
+  return {
+    id: `mock-${Date.now()}`,
+    source: "manual",
+    content: "test event",
+    created_at: new Date().toISOString(),
+    processed: false,
+    ...overrides,
+  };
+}
+
+// ─── 自定义 Test Fixtures ──────────────────────────────────────
+
+type TestFixtures = {
+  mockState: MockState;
+};
+
+const testWithFixtures = base.extend<TestFixtures>({
+  mockState: async ({}, use) => {
+    await use(createDefaultMockState());
+  },
+});
+
 // ─── 导出测试框架 ─────────────────────────────────────────────
 
 export { expect };
-export { test as base };
+export { base };
+export { testWithFixtures as test };

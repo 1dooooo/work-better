@@ -9,6 +9,9 @@
 import { test, expect } from "@playwright/test";
 import { getEvents } from "./helpers";
 
+// TODO: add setupTestEnvironment/cleanupTestEnvironment when backend commands are implemented
+// (set_test_mode / cleanup_test_data in Rust backend)
+
 test.describe("F1: Manual Capture Flow", () => {
   test("F1-01: Type text and manual capture creates event in state", async ({
     page,
@@ -43,10 +46,10 @@ test.describe("F1: Manual Capture Flow", () => {
         e.content === "This is a test capture note" && e.source === "manual",
     );
     expect(captured).toBeDefined();
-    expect(captured.type).toBe("note");
+    expect(captured?.type).toBe("note");
   });
 
-  test("F1-02: Capture with image attachment records attachment metadata", async ({
+  test("F1-02: Capture without image does not show preview", async ({
     page,
   }) => {
     // 导航到速记窗口

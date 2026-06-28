@@ -149,7 +149,7 @@ status: active
 | Tauri 环境 | `cargo tauri dev` | 启动真实的 Tauri app |
 | Playwright 配置 | `playwright.config.ts` | baseURL: http://localhost:1420 |
 | 飞书 API 隔离 | MSW mock server | 模拟飞书 API 响应 |
-| 测试数据 | 临时目录 | `/tmp/work-better-test-{timestamp}` |
+| 测试数据 | 临时目录 | `/tmp/work-better-test-{timestamp}`（函数已定义但尚未接入 spec，见 TODO） |
 | 测试命令 | `pnpm test:e2e:dev` | 运行 E2E 测试 |
 
 ## Agent 可解析性设计
