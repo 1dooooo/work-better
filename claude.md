@@ -39,28 +39,30 @@ status: active
 
 **所有代码变更（crates/、src/、src-tauri/），主 Agent 必须：**
 
-1. 调用 `workflow-runner`，传入任务描述
-2. 等待 workflow-runner 返回结果
-3. 将结果汇报给用户
+1. 调用 `workflow-advisor`，传入任务描述
+2. 等待 workflow-advisor 返回执行计划
+3. 按执行计划依次调用相应 agent
+4. 将结果汇报给用户
 
-**主 Agent 禁止：**
+**主 Agent 职责：**
 
-- 直接调用 dev-agent、test-agent、review-agent、product-reviewer
-- 直接写代码（由 workflow-runner 委托 dev-agent 完成）
-- 直接运行测试（由 workflow-runner 委托 test-agent 完成）
+- 调用 workflow-advisor 获取执行计划
+- 按计划调用 dev-agent、test-agent、review-agent、product-reviewer、validator、system-inspector、optimizer
+- 汇总结果，汇报给用户
 
-**workflow-runner 负责：**
+**workflow-advisor 职责：**
 
-- 按 v5 流程编排：Phase 1 并行启动（dev + test-plan + review-criteria）→ Phase 2 执行验证（test + review + product-review）→ Phase 3 验证 → Phase 4 监督
-- 管理重试逻辑和熔断器
-- 生成最终报告
+- 分析任务，制定执行计划（调用顺序、依赖关系）
+- 推断 Gate 级别（L1/L2）
+- 监督执行是否符合流程
+- 汇总结果，生成最终报告
 
 **Hook 自动保障：**
 
 - PreToolUse hook 在代码变更时自动创建 workflow artifact
 - 无需手动创建 dev-output.json
 
-→ [workflow-runner 定义](.claude/agents/workflow-runner.md) — 完整流程和路由表
+→ [workflow-advisor 定义](.claude/agents/workflow-advisor.md) — 完整流程和路由表
 
 ## 关键引用
 

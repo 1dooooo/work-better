@@ -3,7 +3,7 @@ title: CODEMAP 索引
 type: index
 domain: codemaps
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-06-28
 status: active
 ---
 
@@ -29,7 +29,6 @@ status: active
 | AI 适配 | [wb-ai.codemap.md](wb-ai.codemap.md) | `crates/wb-ai/` | 模型路由、预算、适配器 |
 | 定时任务 | [wb-scheduler.codemap.md](wb-scheduler.codemap.md) | `crates/wb-scheduler/` | 调度、依赖、重试 |
 | 前端 | [frontend.codemap.md](frontend.codemap.md) | `src/` + `src-tauri/` | React UI + Tauri 命令 |
-| 测试 | [testing.codemap.md](testing.codemap.md) | 测试文件 | 测试体系导航（原 testing/ 目录） |
 
 ## 维护规则
 

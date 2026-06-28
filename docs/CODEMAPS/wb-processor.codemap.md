@@ -4,7 +4,7 @@ type: codemap
 domain: architecture
 crate: wb-processor
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-06-28
 status: active
 ---
 
@@ -24,6 +24,13 @@ status: active
 | `classifier.rs` | 事件分类器（规则引擎） | `Classifier`, `ProcessingRoute` (Instant/Aggregate/Pattern/Archive) |
 | `extraction.rs` | 实体提取 | `EntityExtractor`, `ExtractedData` |
 | `persist.rs` | 持久化步骤 | `PersistStep` — 生成 Obsidian 路径、写入文件 |
+
+### 处理路径 (`paths/`)
+
+| 文件 | 职责 | 关键类型 |
+|------|------|---------|
+| `mod.rs` | 路径子模块导出 | — |
+| `instant.rs` | 即时处理路径 | 快速处理低延迟事件 |
 
 ### 审核子系统
 
@@ -53,10 +60,8 @@ status: active
 | `model.rs` | 任务发现模型 | 任务发现的数据结构 |
 | `create.rs` | 任务创建 | 从提取结果创建 Task |
 | `discovery.rs` | 任务自动发现入口 | 通用发现逻辑 |
+| `discovery_ai.rs` | AI 驱动的任务发现 | 使用 AI 模型从各类事件中识别任务 |
 | `discovery_confirm.rs` | 发现确认流程 | 用户确认机制 |
-| `discovery_email.rs` | 邮件任务识别 | 从邮件中提取任务 |
-| `discovery_meeting.rs` | 会议待办提取 | 从会议纪要中提取任务 |
-| `discovery_message.rs` | 消息任务识别 | 从聊天消息中识别任务 |
 | `hierarchy.rs` | 任务层级 | 父子任务关系 |
 | `lifecycle.rs` | 任务生命周期 | 状态流转管理 |
 | `sync.rs` | 飞书任务同步 | 双向同步逻辑 |

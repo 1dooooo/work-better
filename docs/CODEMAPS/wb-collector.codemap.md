@@ -4,7 +4,7 @@ type: codemap
 domain: architecture
 crate: wb-collector
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-06-28
 status: active
 ---
 
@@ -24,6 +24,7 @@ status: active
 | `manager.rs` | 采集器热插拔管理器 | `CollectorManager` — register/unregister/enable/disable/collect_all |
 | `config.rs` | 采集器配置 | 采集器开关、飞书认证等配置 |
 | `runner.rs` | 采集器运行器 | 定时触发采集、写入 EventLog |
+| `collector_task.rs` | 采集器定时任务 | 实现 `ScheduledTask` trait，供 Scheduler 调度 |
 
 ### 飞书采集器 (`feishu/`)
 
@@ -43,6 +44,7 @@ status: active
 | `spreadsheets.rs` | 电子表格采集 | 单元格变更 | `feishu.spreadsheets` |
 | `wiki.rs` | 知识库采集 | 节点变更 | `feishu.wiki` |
 | `minutes.rs` | 妙记采集 | 录音总结、待办、章节 | `feishu.minutes` |
+| `wrappers.rs` | 飞书数据包装器 | 飞书 API 响应的数据结构转换 | — |
 
 ### 系统行为采集器 (`system/`)
 

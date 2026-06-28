@@ -3,7 +3,7 @@ title: 架构总览
 type: structural
 domain: architecture
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 status: active
 ---
 
@@ -34,7 +34,11 @@ status: active
 │                        处理层                                │
 │   分类器 · 四条处理路径(即时/聚合/模式/归档)                   │
 │   小模型→大模型升级 · 审核代理 · 全链路审计                    │
-│   SLA 时效管理 · 模型调度与 token 预算                        │
+│   SLA 时效管理                                                │
+├─────────────────────────────────────────────────────────────┤
+│                        AI 适配层                              │
+│   模型路由 · 大小模型升级策略 · Token 预算管理                 │
+│   Anthropic/OpenAI 适配器 · Prompt 模板                       │
 ├─────────────────────────────────────────────────────────────┤
 │                        采集层                                │
 │   飞书采集器(可热插拔,多级开关) · 系统行为采集器               │
@@ -54,6 +58,7 @@ status: active
 | 处理层 | [modules/processing.md](modules/processing.md) | 消费事件，分类、提取、分析，输出 WorkRecord |
 | 存储层 | [modules/storage.md](modules/storage.md) | 三层存储（Obsidian/向量DB/SQLite），信息保鲜 |
 | 呈现层 | [modules/presentation.md](modules/presentation.md) | 菜单栏、主窗口、速记窗口、系统通知 |
+| AI 适配层 | — | 模型路由、大小模型升级策略、Token 预算管理 |
 | 定时任务 | [modules/scheduler.md](modules/scheduler.md) | 跨层定时任务调度、依赖管理、执行日志 |
 
 ## 数据流

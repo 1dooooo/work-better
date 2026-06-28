@@ -3,7 +3,7 @@ title: 贡献指南
 type: guide
 domain: development
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 status: active
 ---
 
@@ -25,6 +25,54 @@ bash .claude/scripts/setup-dev.sh
 # 4. 启动 Claude Code
 claude
 ```
+
+## 可用脚本
+
+<!-- AUTO-GENERATED -->
+> 以下表格从 `package.json` 和 `Cargo.toml` 自动生成，勿手动编辑。
+
+### 前端 (pnpm)
+
+| 命令 | 说明 |
+|------|------|
+| `pnpm dev` | 启动 Vite 开发服务器 |
+| `pnpm build` | TypeScript 编译 + Vite 生产构建 |
+| `pnpm preview` | 预览生产构建 |
+| `pnpm tauri` | Tauri CLI 入口 |
+| `pnpm test` | 运行单元测试（vitest run） |
+| `pnpm test:unit` | 运行单元测试（同 test） |
+| `pnpm test:unit:watch` | 单元测试 watch 模式 |
+| `pnpm test:int` | 运行集成测试（vitest integration config） |
+| `pnpm test:e2e` | 运行 E2E 测试（Playwright） |
+| `pnpm test:all` | 运行全部测试（unit → int → e2e） |
+| `pnpm test:coverage` | 运行单元测试并生成覆盖率报告 |
+| `pnpm test:rust` | 运行 Rust 测试（cargo nextest） |
+| `pnpm test:rust:ci` | 运行 Rust 测试（CI profile） |
+
+### Rust Workspace (cargo)
+
+| 命令 | 说明 |
+|------|------|
+| `cargo build` | 编译整个 workspace |
+| `cargo nextest run --workspace` | 运行所有 crate 的测试 |
+| `cargo clippy --workspace` | Rust 代码检查 |
+
+### Rust Workspace 成员
+
+| Crate | 职责 |
+|-------|------|
+| `src-tauri` | Tauri 桌面应用入口 |
+| `crates/wb-core` | 核心数据结构（Event、Task、WorkRecord） |
+| `crates/wb-collector` | 采集层（飞书、系统、手动） |
+| `crates/wb-processor` | 处理层（分类、提取、审核、报告） |
+| `crates/wb-storage` | 存储层（Obsidian、SQLite、向量DB） |
+| `crates/wb-ai` | AI 模型路由、预算、适配器 |
+| `crates/wb-scheduler` | 定时任务调度 |
+| `tests/acceptance` | 验收测试 |
+| `tests/integration` | 集成测试 |
+| `tests/e2e` | 端到端测试 |
+| `crates/wb-real-backend-tests` | 真实后端测试 |
+<!-- /AUTO-GENERATED -->
 
 ## 开发环境要求
 

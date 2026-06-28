@@ -4,7 +4,7 @@ type: codemap
 domain: architecture
 crate: wb-scheduler
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-06-28
 status: active
 ---
 
@@ -24,13 +24,6 @@ status: active
 | `dependency.rs` | 任务依赖管理 | `DependencyGraph` — 前置依赖检查 |
 | `resource.rs` | 资源感知 | `should_defer()` — 低预算时推迟低优先级任务 |
 | `log.rs` | 执行日志 | 任务执行状态和结果记录 |
-
-### 测试文件 (`tests/`)
-
-| 文件 | 职责 |
-|------|------|
-| `scheduler_tests.rs` | 调度器核心测试 |
-| `real_backend_scheduler_pause.rs` | 真实后端暂停/恢复测试 |
 
 ## 数据流
 

@@ -3,7 +3,7 @@ title: 开发环境搭建
 type: guide
 domain: development
 created: 2026-06-06
-updated: 2026-06-06
+updated: 2026-06-28
 status: active
 ---
 
@@ -55,8 +55,8 @@ Claude Code 启动后会自动加载：
 - `CLAUDE.md` → 项目入口指令
 - `.claude/settings.json` → hooks、环境变量、插件配置（setup 脚本自动生成）
 - `.claude/rules/` → 编码规范（按语言分层，已纳入 Git）
-- `.claude/agents/` → 自定义 agent（ECC 插件提供）
-- `.claude/skills/` → 可调用的技能（ECC 插件提供）
+- `.claude/agents/` → 项目自定义 agent（多 Agent 协作体系）
+- `.claude/skills/` → 可调用的技能
 
 ## 项目结构概览
 
@@ -69,10 +69,11 @@ work-better/
 │   ├── wb-collector/      #   采集层（飞书、系统、手动）
 │   ├── wb-processor/      #   处理层（分类、审核、报告）
 │   ├── wb-storage/        #   存储层（Obsidian、向量DB、SQLite）
+│   ├── wb-ai/             #   AI 模型路由与预算
 │   ├── wb-scheduler/      #   定时任务调度
-│   └── wb-ai/             #   AI 模型路由与预算
+│   └── wb-real-backend-tests/ # 真实后端测试
 ├── src/                   # React 19 前端（TypeScript）
-├── test/                  # 前端集成与 E2E 测试
+├── tests/                 # 测试（acceptance/integration/e2e）
 ├── CLAUDE.md              # Claude Code 入口（指向 agent.md）
 ├── agent.md               # Agent 指南：核心思想、文档索引、自维护规范
 ├── CONTRIBUTING.md         # 贡献指南（入口文档）
@@ -143,28 +144,27 @@ work-better/
 | 层级 | 说明 |
 |------|------|
 | `common/` | 语言无关的通用原则（始终生效） |
-| `zh/` | 通用原则的中文翻译 |
-| `typescript/` | TypeScript 特定规范 |
-| `python/` | Python 特定规范 |
-| `web/` | 前端特定规范 |
-| `golang/` | Go 特定规范 |
-| ... | 更多语言见 `rules/README.md` |
+| `frontend/` | 前端特定规范（React/TypeScript） |
+| `rust/` | Rust 特定规范 |
+| `workflow.md` | 多 Agent 工作流规则 |
 
 **语言特定规范优先于通用规范**（同 CSS 特异性）。
 
-### agents/ — 自定义 Agent（ECC 提供）
+### agents/ — 项目自定义 Agent
 
-需先安装 ECC 插件。预置的专业 agent，通过 `Agent` 工具自动调度或手动使用：
+项目定义了一套多 Agent 协作体系，通过 `Agent` 工具自动调度或手动使用：
 
 | Agent | 用途 |
 |-------|------|
-| `code-reviewer` | 代码质量审查 |
-| `security-reviewer` | 安全漏洞分析 |
-| `tdd-guide` | 测试驱动开发引导 |
-| `planner` | 实现方案规划 |
-| `architect` | 架构设计 |
-| `build-error-resolver` | 构建错误修复 |
-| `doc-updater` | 文档同步更新 |
+| `workflow-advisor` | 流程顾问——分析任务、制定执行计划、监督流程 |
+| `workflow-runner` | 工作流执行器——编排多阶段 agent 调用 |
+| `dev-agent` | 开发 agent——代码实现 |
+| `test-agent` | 测试 agent——测试编写与验证 |
+| `review-agent` | 代码审查 agent |
+| `product-reviewer` | 产品审查 agent——从用户视角验证 |
+| `validator` | 验证 agent——功能正确性验证 |
+| `system-inspector` | 系统巡检 agent——全局一致性检查 |
+| `optimizer` | 优化 agent——性能与代码质量优化建议 |
 
 ### skills/ — 可调用技能（ECC 提供）
 
@@ -196,7 +196,7 @@ work-better/
 1. **研究复用**：搜索现有实现，优先复用
 2. **先规划**：使用 `/plan` 或 planner agent
 3. **TDD**：先写测试，再实现，再重构
-4. **代码审查**：code-reviewer agent 自动审查
+4. **代码审查**：review-agent 自动审查
 5. **提交**：遵循 conventional commits 格式
 
 ### Hooks 行为
@@ -250,7 +250,7 @@ export ECC_HOOK_PROFILE=minimal
 
 ### Q: 想添加新的语言规则？
 
-参考 `rules/README.md` 中的「Adding a New Language」章节。
+在 `.claude/rules/` 下新建子目录，放入 Markdown 规则文件即可。参考 `common/` 目录的结构。
 
 ### Q: settings.json 和 settings.local.json 的区别？
 
