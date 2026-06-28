@@ -33,7 +33,7 @@ You run in an **independent session** from dev-agent. You communicate
 exclusively via artifact files — never via shared conversation state.
 
 ```
-Trigger (from workflow-runner)
+Trigger (from 主 Agent)
     │
     ▼
 1. Read dev-output.json

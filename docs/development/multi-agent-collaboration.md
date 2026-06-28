@@ -24,7 +24,6 @@ updated: 2026-06-28
 | Agent | 职责 | 写代码 | 写测试 | 审查代码 | 产品审查 | 规划建议 |
 |-------|------|--------|--------|---------|---------|---------|
 | **workflow-advisor** | 任务分析 + 执行计划 + 流程监督 | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **workflow-runner** | 工作流编排 + 自动重试 + 结果汇总 | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **dev-agent** | 功能开发 + L1-L2 测试 | ✅ | ✅ (L1-L2) | ❌ | ❌ | ❌ |
 | **test-agent** | 测试执行 + L4-L5 测试生成 | ❌ | ✅ (L4-L5) | ❌ | ❌ | ❌ |
 | **review-agent** | 代码审查 + H3-H5 安全测试 | ❌ | ✅ (H3-H5) | ✅ | ❌ | ❌ |
@@ -147,7 +146,7 @@ run-workflow.sh（CLI 入口）
 | `system-inspector-report.json` | system-inspector | workflow | [system-inspector-report.schema.json](../../.workflow/templates/system-inspector-report.schema.json) |
 | `optimization-plan.json` | optimizer | workflow, 用户 | [optimization-plan.schema.json](../../.workflow/templates/optimization-plan.schema.json) |
 | `error-response.json` | workflow | dev | [error-response.schema.json](../../.workflow/templates/error-response.schema.json) |
-| `final-report.json` | workflow-runner | 用户 | [final-report.schema.json](../../.workflow/templates/final-report.schema.json) |
+| `final-report.json` | 主 Agent | 用户 | [final-report.schema.json](../../.workflow/templates/final-report.schema.json) |
 
 ### 通信规则
 
@@ -160,12 +159,12 @@ run-workflow.sh（CLI 入口）
 
 ### 优先级 1：LLM 主动识别
 
-LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runner。
+LLM 识别到当前任务需要多 agent 协作时，主 Agent 调用 workflow-advisor 获取执行计划。
 这是最自然的触发方式，适用于所有开发工具。
 
 ### 优先级 2：Hook 自动触发
 
-工具层 hook 在 dev-output.json 写入后自动启动 workflow-runner。
+工具层 hook 在代码变更时自动创建 artifact，主 Agent 调用 workflow-advisor 获取执行计划。
 
 | 工具 | Hook 机制 | 强度 |
 |------|----------|------|
@@ -175,7 +174,7 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
 
 ### 优先级 3：用户手动触发
 
-用户手动启动 workflow-runner（兜底方案）。
+用户手动触发主 Agent 启动 workflow（兜底方案）。
 
 ## 重试策略
 
@@ -208,7 +207,7 @@ LLM 识别到当前任务需要多 agent 协作时，主动启动 workflow-runne
 
 ### Claude Code
 
-- Agents: `.claude/agents/workflow-runner.md`
+- Agents: `.claude/agents/workflow-advisor.md`
 - Hooks: `.claude/settings.json` 中配置 `PostToolUse` hook
 - Rules: `.claude/rules/` 中注入 workflow 提示
 
@@ -279,7 +278,7 @@ log_gate_result "gate名" "pass|fail" "详情"
 
 ### Agent 层日志
 
-workflow-runner agent 通过 Bash 命令追加日志：
+workflow-advisor 通过 Bash 命令追加日志：
 
 ```bash
 echo "[$(date '+%Y-%m-%d %H:%M:%S.%3N')] [INFO] [PHASE] message" >> "$LOG_FILE"
@@ -343,5 +342,5 @@ scripts/
 └── workflow-log-view.sh           # 日志查看工具
 
 .claude/agents/
-└── workflow-runner.md             # workflow-agent 定义（含日志指令）
+└── workflow-advisor.md             # workflow-agent 定义（含日志指令）
 ```

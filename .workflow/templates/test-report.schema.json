@@ -80,7 +80,7 @@
     },
     "suggested_action": {
       "type": ["object", "null"],
-      "description": "给 workflow-runner 的下一步建议，减少 LLM 推理负担",
+      "description": "给主 Agent 的下一步建议，减少 LLM 推理负担",
       "properties": {
         "action": {
           "type": "string",

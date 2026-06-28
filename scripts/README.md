@@ -97,7 +97,7 @@ claude --agents "$(cat ~/.claude/agents.json)"
 - `~/.claude/agents/product-reviewer.md` — 产品审查者
 - `~/.claude/agents/test-agent.md` — 测试执行者
 - `~/.claude/agents/review-agent.md` — 代码审查者
-- `~/.claude/agents/workflow-runner.md` — 流程编排者
+- `~/.claude/agents/workflow-advisor.md` — 流程顾问
 
 ### 使用通用 agent 替代
 

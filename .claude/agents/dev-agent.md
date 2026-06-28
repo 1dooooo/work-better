@@ -20,7 +20,7 @@ model: sonnet
 
 ## 输入
 
-- 用户需求（从 workflow-runner 传入）
+- 用户需求（从主 Agent 传入）
 - 修复模式：test-report.json / review-report.json
 
 ## 输出

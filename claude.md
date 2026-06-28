@@ -3,7 +3,7 @@ title: Agent Guide
 type: guide
 domain: development
 created: 2026-06-07
-updated: 2026-06-23
+updated: 2026-06-28
 status: active
 ---
 
@@ -32,6 +32,7 @@ status: active
 | AI 适配 | `crates/wb-ai/` | [wb-ai.codemap.md](docs/CODEMAPS/wb-ai.codemap.md) | 模型路由、预算、适配器 |
 | 定时任务 | `crates/wb-scheduler/` | [wb-scheduler.codemap.md](docs/CODEMAPS/wb-scheduler.codemap.md) | 调度、依赖、重试 |
 | 前端 | `src/` + `src-tauri/` | [frontend.codemap.md](docs/CODEMAPS/frontend.codemap.md) | React UI + Tauri 命令 |
+| 真实后端测试 | `crates/wb-real-backend-tests/` | — | 真实后端集成测试 |
 
 **渐进式读取**：`CLAUDE.md` → CODEMAP → 目标源文件（最多 3 层定位）
 

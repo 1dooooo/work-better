@@ -1,7 +1,7 @@
 # ============================================================
 # dev-test-review workflow spec (v5 统一调度版)
 # ============================================================
-# 8 个核心 agent，平等对待，workflow-runner 统一调度
+# 8 个核心 agent，平等对待，主 Agent + workflow-advisor 统一调度
 # 所有通信通过 artifact 文件，无共享上下文
 # ============================================================
 
@@ -9,7 +9,7 @@ name: dev-test-review
 version: "5.0"
 description: >
   开发-测试-审查 workflow（v5 统一调度版）。
-  8 个核心 agent 平等对待，workflow-runner 统一调度。
+  8 个核心 agent 平等对待，主 Agent + workflow-advisor 统一调度。
   Phase 1 并行启动（dev + test-plan + review-criteria），
   Phase 2 执行验证（test + review + product-review）。
 
@@ -17,10 +17,10 @@ description: >
 # Agent registry (8 个核心 agent)
 # ----------------------------------------------------------
 agents:
-  workflow-runner:
-    role: orchestrator
-    description: 总管：接收任务、编排流程、管理重试、生成报告
-    config: .claude/agents/workflow-runner.md
+  workflow-advisor:
+    role: advisor
+    description: 顾问：分析任务、制定计划、监督流程
+    config: .claude/agents/workflow-advisor.md
 
   dev-agent:
     role: developer
@@ -376,57 +376,57 @@ artifacts:
   files:
     error_response:
       path: error-response.json
-      writer: workflow-runner
+      writer: workflow-advisor
       readers: [dev-agent, user]
       schema: .workflow/templates/error-response.schema.json
     dev_output:
       path: dev-output.json
       writer: dev-agent
-      readers: [workflow-runner, test-agent, review-agent, product-reviewer]
+      readers: [workflow-advisor, test-agent, review-agent, product-reviewer]
       schema: .workflow/templates/dev-output.schema.json
     test_plan:
       path: test-plan.json
       writer: test-agent
-      readers: [workflow-runner, test-agent]
+      readers: [workflow-advisor, test-agent]
       schema: .workflow/templates/test-plan.schema.json
     review_criteria:
       path: review-criteria.json
       writer: product-reviewer
-      readers: [workflow-runner, product-reviewer]
+      readers: [workflow-advisor, product-reviewer]
       schema: .workflow/templates/review-criteria.schema.json
     test_report:
       path: test-report.json
       writer: test-agent
-      readers: [workflow-runner, dev-agent]
+      readers: [workflow-advisor, dev-agent]
       schema: .workflow/templates/test-report.schema.json
     product_review:
       path: product-review.json
       writer: product-reviewer
-      readers: [workflow-runner, dev-agent]
+      readers: [workflow-advisor, dev-agent]
       schema: .workflow/templates/product-review.schema.json
     review_report:
       path: review-report.json
       writer: review-agent
-      readers: [workflow-runner]
+      readers: [workflow-advisor]
       schema: .workflow/templates/review-report.schema.json
     validation_report:
       path: validation-report.json
       writer: validator
-      readers: [workflow-runner]
+      readers: [workflow-advisor]
       schema: .workflow/templates/validation-report.schema.json
     system_inspector_report:
       path: system-inspector-report.json
       writer: system-inspector
-      readers: [workflow-runner, optimizer]
+      readers: [workflow-advisor, optimizer]
       schema: .workflow/templates/system-inspector-report.schema.json
     optimization_plan:
       path: optimization-plan.json
       writer: optimizer
-      readers: [workflow-runner, user]
+      readers: [workflow-advisor, user]
       schema: .workflow/templates/optimization-plan.schema.json
     final_report:
       path: final-report.json
-      writer: workflow-runner
+      writer: workflow-advisor
       readers: [user]
       schema: .workflow/templates/final-report.schema.json
 

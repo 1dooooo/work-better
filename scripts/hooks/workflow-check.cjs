@@ -217,7 +217,7 @@ function autoCreateWorkflow(projectRoot, filePath) {
 
     console.error(`[workflow-check] ✅ Auto-created workflow: ${taskId}`);
     console.error(`[workflow-check] Artifact dir: ${taskDir}`);
-    console.error(`[workflow-check] Please call workflow-runner to continue.`);
+    console.error(`[workflow-check] Please call workflow-advisor to continue.`);
 
     return { created: true, taskId, error: '' };
   } catch (e) {

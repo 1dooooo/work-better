@@ -32,7 +32,6 @@ status: active
 | Agent | 职责 | 负责的测试层 |
 |-------|------|------------|
 | workflow-advisor | 任务分析 + 执行计划 | 无（规划角色） |
-| workflow-runner | 流程编排 + 自动重试 | 无（只负责调度和报告） |
 | dev-agent | 功能开发 | L1-L2（单元/集成） |
 | test-agent | 测试执行与生成 | L4-L5（E2E/验收）+ H1-H2（安全扫描） |
 | review-agent | 代码审查 | H3-H5（安全测试生成） |
@@ -211,7 +210,7 @@ Phase 2 (并行):
         └── system-inspector: 系统巡检
         │
         ▼
-Phase 3: workflow-runner 汇总 → final-report.json
+Phase 3: 主 Agent 汇总 → final-report.json
         │
         └── 有失败 → dev-agent 修复 → 重跑 Phase 2
 ```
@@ -232,7 +231,7 @@ Agent 之间通过 `.workflow/artifacts/{task_id}/` 下的文件通信：
 | system-inspector-report.json | system-inspector | workflow |
 | optimization-plan.json | optimizer | workflow, 用户 |
 | error-response.json | workflow | dev |
-| final-report.json | workflow-runner | 用户 |
+| final-report.json | 主 Agent | 用户 |
 
 > 详见 [多 Agent 协作开发规范](../development/multi-agent-collaboration.md)
 

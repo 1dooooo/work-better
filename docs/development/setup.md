@@ -157,7 +157,6 @@ work-better/
 | Agent | 用途 |
 |-------|------|
 | `workflow-advisor` | 流程顾问——分析任务、制定执行计划、监督流程 |
-| `workflow-runner` | 工作流执行器——编排多阶段 agent 调用 |
 | `dev-agent` | 开发 agent——代码实现 |
 | `test-agent` | 测试 agent——测试编写与验证 |
 | `review-agent` | 代码审查 agent |

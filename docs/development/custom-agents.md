@@ -10,7 +10,6 @@ status: active
 
 本项目使用多 Agent 协作开发模式，需要注册 9 个自定义 agent：
 - **workflow-advisor** — 流程顾问（任务分析、执行计划、流程监督）
-- **workflow-runner** — 工作流执行器（编排多阶段 agent 调用）
 - **dev-agent** — 开发 agent（代码实现 + L1-L2 测试）
 - **test-agent** — 测试 agent（L4-L5 测试生成与执行）
 - **review-agent** — 代码审查 agent（代码质量 + H3-H5 安全测试）
@@ -139,9 +138,9 @@ prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，执行测试。"
 Agent type: review-agent
 prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，执行代码审查。"
 
-# 使用 workflow-runner
-Agent type: workflow-runner
-prompt: "读取 .workflow/artifacts/{task_id}/dev-output.json，编排 workflow。"
+# 使用 workflow-advisor
+Agent type: workflow-advisor
+prompt: "读取任务描述，制定执行计划。"
 ```
 
 ## 故障排查

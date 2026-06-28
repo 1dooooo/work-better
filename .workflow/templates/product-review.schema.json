@@ -40,7 +40,7 @@
     },
     "suggested_action": {
       "type": ["object", "null"],
-      "description": "给 workflow-runner 的下一步建议",
+      "description": "给主 Agent 的下一步建议",
       "properties": {
         "action": {
           "type": "string",

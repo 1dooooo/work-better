@@ -1,17 +1,51 @@
 {
   "task_id": "refactor-menubar",
-  "task_description": "菜单栏 UI/UX 重构：修复图标消失 bug，优化信息层次，基于网络搜索的设计最佳实践",
+  "task_type": "refactor",
   "changed_files": [
-    "src/components/MenuBar.tsx",
-    "src/App.tsx"
+    {
+      "path": "src/components/MenuBar.tsx",
+      "change_type": "modified",
+      "diff_summary": "Refactored from 792 lines to 112 lines. Removed inline logic and JSX, now uses useMenuBarData, useAutoRefresh, useWindowResize hooks and MenuBarHeader, MenuBarContent, MenuBarActions subcomponents."
+    },
+    {
+      "path": "src/components/menubar/EventListItem.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-accent-blue) -> text-macos-blue, var(--color-muted-foreground) -> text-muted-foreground, var(--color-glass-hover) -> bg-accent, var(--color-text-hint) -> text-muted-foreground/50"
+    },
+    {
+      "path": "src/components/menubar/NotificationGroup.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-macos-orange) -> text-macos-orange, var(--color-accent-blue) -> text-macos-blue, var(--color-macos-green) -> text-macos-green, var(--color-glass-muted) -> text-muted-foreground, var(--color-glass-hover) -> bg-accent"
+    },
+    {
+      "path": "src/components/menubar/TaskListItem.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-glass-hover) -> bg-accent, var(--color-glass-border) -> border-border, var(--color-text-hint) -> text-muted-foreground, var(--color-glass-muted) -> text-muted-foreground/40"
+    },
+    {
+      "path": "src/components/menubar/StatusIndicator.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-success) -> bg-macos-green, var(--color-muted-foreground) -> bg-muted-foreground, var(--color-text-hint) -> text-muted-foreground, var(--color-glass-muted) -> text-muted-foreground/40"
+    },
+    {
+      "path": "src/components/menubar/MenuBarActions.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-glass-accent) -> bg-macos-blue, var(--color-text-hint) -> text-muted-foreground, var(--color-glass-hover) -> bg-accent, var(--color-glass-border) -> border-border"
+    },
+    {
+      "path": "src/components/menubar/MenuBarHeader.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-glass-border) -> border-border, var(--color-glass-accent) -> bg-macos-blue, text-white -> text-primary-foreground"
+    },
+    {
+      "path": "src/components/menubar/MenuBarContent.tsx",
+      "change_type": "modified",
+      "diff_summary": "Replaced CSS variables with Tailwind classes: var(--color-glass-muted) -> text-muted-foreground, var(--color-text-hint) -> text-muted-foreground, var(--color-glass-hover) -> bg-accent, var(--color-glass-border) -> border-border"
+    }
   ],
-  "gate_level": "L1",
-  "changes_summary": [
-    "修复根因：App.tsx 中 ThemeProvider 使用 enableSystem 导致浅色主题下白字白底不可见",
-    "MenuBar 强制使用深色毛玻璃主题（与 Raycast/Fantastical 一致）",
-    "优化信息层次：主状态 → 次要信息 → 详情",
-    "统一使用设计系统 Token",
-    "改善加载状态和空状态"
+  "affected_modules": [
+    "frontend",
+    "menubar"
   ],
-  "timestamp": "2026-06-23T12:00:00+08:00"
+  "timestamp": "2026-06-28T16:50:00+08:00"
 }

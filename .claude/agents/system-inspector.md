@@ -42,7 +42,7 @@ model: sonnet
 - 写测试（这是 test-agent 的职责）
 - 审查代码（这是 review-agent 的职责）
 - 执行优化（这是 optimizer Agent 的职责）
-- 编排任务（这是 workflow-runner 的职责）
+- 编排任务（这是主 Agent 的职责）
 
 ## 输入
 
@@ -55,7 +55,7 @@ model: sonnet
 ## 触发时机
 
 - 在每个任务完成后自动触发
-- 由 workflow-runner 调用
+- 由主 Agent 调用
 
 ## 执行流程
 
