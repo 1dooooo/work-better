@@ -9,10 +9,7 @@
  */
 import { test, expect } from "@playwright/test";
 import {
-  waitForMainWindow,
   navigateToView,
-  setupTestEnvironment,
-  cleanupTestEnvironment,
   getEvents,
   getUnprocessedCount,
 } from "./helpers";
@@ -27,8 +24,38 @@ test.afterAll(() => {
   feishuServer.close();
 });
 
-test.afterEach(() => {
+// TODO: add setupTestEnvironment/cleanupTestEnvironment when backend commands are implemented
+test.afterEach(async ({ page }) => {
   feishuServer.resetHandlers();
+
+  // Restore state mutated by F2-02 (chat ID) and F2-03 (feishu toggle)
+  try {
+    await page.goto("/");
+    await navigateToView(page, "设置");
+
+    // Restore chat ID to empty/default
+    const chatIdInput = page.locator('input[placeholder="输入飞书会话 ID"]');
+    if (await chatIdInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await chatIdInput.fill("");
+      await chatIdInput.blur();
+      await page.waitForTimeout(300);
+    }
+
+    // Re-enable feishu collector if it was disabled
+    const feishuToggle = page.locator(
+      '[data-collector="feishu"] .collector-toggle',
+    );
+    if (await feishuToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
+      const isDisabled =
+        (await feishuToggle.getAttribute("aria-checked")) === "false";
+      if (isDisabled) {
+        await feishuToggle.click();
+        await page.waitForTimeout(300);
+      }
+    }
+  } catch {
+    // Best-effort cleanup — don't fail the test on cleanup errors
+  }
 });
 
 test.describe("F2: Feishu Collection Flow", () => {
