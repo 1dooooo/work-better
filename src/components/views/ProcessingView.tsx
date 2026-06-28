@@ -116,7 +116,7 @@ export default function ProcessingView() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="processing-container">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function ProcessingView() {
               const isProcessing = processingEvent === event.id;
 
               return (
-                <Card key={event.id} className="border-border">
+                <Card key={event.id} className="border-border" data-testid={`processing-event-${event.id}`}>
                   <CardHeader className="flex flex-row items-center gap-2 px-4 py-3">
                     <Badge variant="outline" className="text-[11px]">
                       {event.type}
@@ -235,6 +235,7 @@ export default function ProcessingView() {
                           onClick={() => handleProcess(event.id)}
                           disabled={isProcessing}
                           className="gap-1.5"
+                          data-testid={`process-button-${event.id}`}
                         >
                           {isProcessing ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
