@@ -3,99 +3,87 @@
  *
  * Tests the manual capture functionality across CaptureWindow and MenuBar.
  * Verifies that typed text triggers Tauri invoke and events appear in state.
+ *
+ * 运行在真实 Tauri 环境中，使用真实的 Tauri IPC。
  */
-import {
-  test,
-  expect,
-  getMockState,
-  getInvokeLog,
-  injectTauriMock,
-  createDefaultMockState,
-} from "./helpers";
+import { test, expect } from "@playwright/test";
+import { getEvents } from "./helpers";
 
 test.describe("F1: Manual Capture Flow", () => {
   test("F1-01: Type text and manual capture creates event in state", async ({
     page,
-    mockState,
   }) => {
-    // Navigate to the capture window view
+    // 导航到速记窗口
     await page.goto("/?view=capture");
 
-    // Wait for the capture textarea to appear
-    const textarea = page.locator(".capture__input");
+    // 等待速记窗口加载
+    const textarea = page.locator("textarea");
     await expect(textarea).toBeVisible();
 
-    // Type a note
+    // 输入笔记内容
     await textarea.fill("This is a test capture note");
 
-    // Click the submit button
-    const submitBtn = page.locator(".capture__submit");
+    // 点击提交按钮
+    const submitBtn = page.getByRole("button", { name: "提交" });
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
-    // Verify success toast appears
-    await expect(page.locator(".capture__toast--success")).toBeVisible();
-    await expect(page.locator(".capture__toast--success")).toHaveText("已捕获");
+    // 验证成功提示
+    await expect(page.getByText("已捕获")).toBeVisible();
 
-    // Verify the invoke log contains the correct command
-    const log = await getInvokeLog(page);
-    const captureCall = log.find((l) => l.cmd === "trigger_manual_capture");
-    expect(captureCall).toBeDefined();
-    expect(captureCall!.args.text).toBe("This is a test capture note");
+    // 等待后端处理完成
+    await page.waitForTimeout(1000);
 
-    // Verify the event was added to mock state
-    const state = await getMockState(page);
-    const captured = state.events.find(
-      (e) =>
+    // 通过 Tauri IPC 查询事件
+    const events = await getEvents(page, 10, 0);
+
+    // 验证事件已创建
+    const captured = events.find(
+      (e: any) =>
         e.content === "This is a test capture note" && e.source === "manual",
     );
     expect(captured).toBeDefined();
-    expect(captured!.type).toBe("note");
+    expect(captured.type).toBe("note");
   });
 
   test("F1-02: Capture with image attachment records attachment metadata", async ({
     page,
-    mockState,
   }) => {
-    // The CaptureWindow supports pasting images via the onPaste handler.
-    // When an image is pasted, it sets imageData state and shows a preview.
-    // The mock invoke already handles attachments via the image_data arg.
-    //
-    // Since Playwright cannot easily simulate clipboard paste with image data,
-    // we verify the UI structure supports image preview and that the submit
-    // flow works correctly with text-only input (the image is optional).
-
+    // 导航到速记窗口
     await page.goto("/?view=capture");
 
-    const textarea = page.locator(".capture__input");
+    // 等待速记窗口加载
+    const textarea = page.locator("textarea");
     await expect(textarea).toBeVisible();
 
-    // Fill text
+    // 输入笔记内容
     await textarea.fill("Note with potential image");
 
-    // Verify the image preview section is NOT visible (no image pasted)
-    await expect(page.locator(".capture__image-preview")).not.toBeVisible();
+    // 验证图片预览区域不可见（没有粘贴图片）
+    // CaptureWindow 中图片预览只在粘贴图片后显示
+    const previewContainer = page.locator("img[alt='粘贴的图片']");
+    await expect(previewContainer).not.toBeVisible();
 
-    // Submit the capture
-    const submitBtn = page.locator(".capture__submit");
+    // 点击提交按钮
+    const submitBtn = page.getByRole("button", { name: "提交" });
     await submitBtn.click();
 
-    // Verify success (the mock has a 30ms delay, toast appears after invoke resolves)
-    await expect(page.locator(".capture__toast--success")).toBeVisible({
-      timeout: 5000,
-    });
+    // 验证成功提示
+    await expect(page.getByText("已捕获")).toBeVisible({ timeout: 5000 });
 
-    // Verify the event was created
-    const state = await getMockState(page);
-    const captured = state.events.find(
-      (e) => e.content === "Note with potential image",
+    // 等待后端处理完成
+    await page.waitForTimeout(1000);
+
+    // 通过 Tauri IPC 查询事件
+    const events = await getEvents(page, 10, 0);
+
+    // 验证事件已创建
+    const captured = events.find(
+      (e: any) => e.content === "Note with potential image",
     );
     expect(captured).toBeDefined();
 
-    // Verify the UI has the image preview structure ready
-    // (the CSS class exists in the component for when an image IS pasted)
-    const previewContainer = page.locator(".capture__image-preview");
-    // It should not be visible since no image was pasted
+    // 验证图片预览结构不可见（没有粘贴图片）
     await expect(previewContainer).not.toBeVisible();
   });
 });
