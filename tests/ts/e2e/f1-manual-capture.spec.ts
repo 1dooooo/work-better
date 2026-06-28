@@ -38,7 +38,7 @@ test.describe("F1: Manual Capture Flow", () => {
     await page.waitForTimeout(1000);
 
     // 通过 Tauri IPC 查询事件
-    const events = await getEvents(page, 10, 0);
+    const events = await getEvents(page, 10);
 
     // 验证事件已创建
     const captured = events.find(
@@ -78,7 +78,7 @@ test.describe("F1: Manual Capture Flow", () => {
     await page.waitForTimeout(1000);
 
     // 通过 Tauri IPC 查询事件
-    const events = await getEvents(page, 10, 0);
+    const events = await getEvents(page, 10);
 
     // 验证事件已创建
     const captured = events.find(

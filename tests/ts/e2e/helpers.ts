@@ -42,13 +42,20 @@ export async function cleanupTestEnvironment(page: Page): Promise<void> {
 
 /**
  * 等待主窗口加载完成
+ *
+ * 使用 aside 元素（Sidebar 组件的根元素）作为就绪标志。
+ * Sidebar 组件渲染为 <aside>，包含 "Work Better" 品牌文字。
  */
 export async function waitForMainWindow(page: Page): Promise<void> {
-  await page.waitForSelector(".sidebar", { timeout: 30000 });
+  await page.locator("aside").waitFor({ state: "visible", timeout: 30000 });
 }
 
 /**
  * 导航到指定视图
+ *
+ * Sidebar 中每个导航项渲染为 <TooltipTrigger> 按钮，
+ * 包含图标和标签文本（如 "事件"、"设置"）。
+ * 使用 getByRole + 精确匹配来定位。
  *
  * @param page - Playwright page 对象
  * @param viewLabel - 视图标签文本（如 "事件"、"设置"）
@@ -58,27 +65,27 @@ export async function navigateToView(
   viewLabel: string,
 ): Promise<void> {
   await waitForMainWindow(page);
-  await page.click(`.sidebar__item:has-text("${viewLabel}")`);
+  await page.getByRole("button", { name: viewLabel, exact: true }).click();
 }
 
 // ─── 事件查询 ─────────────────────────────────────────────────
 
 /**
  * 通过 Tauri IPC 查询事件列表
+ *
+ * 注意：Rust 后端 `get_events` 命令仅接受 `limit` 参数，不支持 `offset`。
  */
 export async function getEvents(
   page: Page,
   limit: number = 50,
-  offset: number = 0,
 ): Promise<any[]> {
   return page.evaluate(
-    ({ limit, offset }) => {
+    (limit) => {
       return (window as any).__TAURI__.core.invoke("get_events", {
         limit,
-        offset,
       });
     },
-    { limit, offset },
+    limit,
   );
 }
 
@@ -139,6 +146,7 @@ export function createMockEvent(overrides: Record<string, any> = {}): any {
 }
 
 // ─── 自定义 Test Fixtures ──────────────────────────────────────
+// 仅 F3-F6 使用（当前已 skip），F1/F2 直接从 @playwright/test 导入 test
 
 type TestFixtures = {
   mockState: MockState;
