@@ -138,10 +138,10 @@ infer_required_agents() {
     local agents='["dev-agent"]'
 
     if [ "$level" -ge 2 ]; then
-        agents='["dev-agent","test-agent"]'
+        agents='["dev-agent","test-agent","product-reviewer"]'
     fi
     if [ "$level" -ge 3 ]; then
-        agents='["dev-agent","test-agent","review-agent"]'
+        agents='["dev-agent","test-agent","review-agent","product-reviewer"]'
     fi
 
     echo "$agents"

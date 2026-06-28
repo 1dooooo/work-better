@@ -4,6 +4,7 @@ type: structural
 domain: development
 created: 2026-06-07
 updated: 2026-06-28
+status: active
 ---
 
 # 多 Agent 协作开发规范
@@ -140,7 +141,7 @@ run-workflow.sh（CLI 入口）
 | `test-report.json` | test-agent | workflow, dev | [test-report.schema.json](../../.workflow/templates/test-report.schema.json) |
 | `test-plan.json` | test-agent | workflow | [test-plan.schema.json](../../.workflow/templates/test-plan.schema.json) |
 | `review-report.json` | review-agent | workflow | [review-report.schema.json](../../.workflow/templates/review-report.schema.json) |
-| `review-criteria.json` | review-agent | workflow | [review-criteria.schema.json](../../.workflow/templates/review-criteria.schema.json) |
+| `review-criteria.json` | product-reviewer | workflow | [review-criteria.schema.json](../../.workflow/templates/review-criteria.schema.json) |
 | `product-review.json` | product-reviewer | workflow, dev | [product-review.schema.json](../../.workflow/templates/product-review.schema.json) |
 | `validation-report.json` | validator | workflow | [validation-report.schema.json](../../.workflow/templates/validation-report.schema.json) |
 | `system-inspector-report.json` | system-inspector | workflow | [system-inspector-report.schema.json](../../.workflow/templates/system-inspector-report.schema.json) |

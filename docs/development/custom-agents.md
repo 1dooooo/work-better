@@ -8,7 +8,7 @@ status: active
 
 ## 概述
 
-本项目使用多 Agent 协作开发模式，需要注册 9 个自定义 agent：
+本项目使用多 Agent 协作开发模式，需要注册 8 个自定义 agent：
 - **workflow-advisor** — 流程顾问（任务分析、执行计划、流程监督）
 - **dev-agent** — 开发 agent（代码实现 + L1-L2 测试）
 - **test-agent** — 测试 agent（L4-L5 测试生成与执行）
@@ -49,14 +49,29 @@ prompt: "你是 [agent 角色]。职责：[具体职责]..."
 
 ### 位置
 
+- `.claude/agents/` — 项目级 agent 定义（本项目使用）
 - `~/.claude/agents/` — 全局 agent 定义
-- `.claude/agents/` — 项目级 agent 定义
 
 ### 格式
 
-Agent 定义文件使用**简单 Markdown 格式**（不要使用 frontmatter）：
+Agent 定义文件使用 **Markdown + frontmatter 格式**：
 
 ```markdown
+---
+name: agent-name
+description: >
+  简短描述。
+type: agent
+domain: 领域
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+status: active
+tools:
+  - Read
+  - Write
+model: sonnet
+---
+
 # Agent Name
 
 职责描述。
@@ -78,17 +93,13 @@ Agent 定义文件使用**简单 Markdown 格式**（不要使用 frontmatter）
 ## 约束
 
 - 约束条件
-
-## 协作
-
-与其他 agent 的协作方式
 ```
 
-**⚠️ 重要**：文件必须以 `# Agent Name` 开头，不要使用 `---\nname: ...\n---` 的 frontmatter 格式。
+**⚠️ 重要**：文件必须包含 frontmatter（`---` 分隔符），`name` 和 `description` 字段为必填。
 
 ## agents.json 配置
 
-`~/.claude/agents.json` 文件定义了自定义 agent 的配置：
+`.claude/agents.json` 文件定义了自定义 agent 的配置：
 
 ```json
 {
@@ -149,8 +160,8 @@ prompt: "读取任务描述，制定执行计划。"
 
 如果自定义 agent 不可用：
 
-1. 检查 `~/.claude/agents.json` 是否存在
-2. 检查 agent 定义文件是否在 `~/.claude/agents/` 目录下
+1. 检查 `.claude/agents.json` 是否存在
+2. 检查 agent 定义文件是否在 `.claude/agents/` 目录下
 3. **检查文件格式**：必须以 `# Agent Name` 开头，不要使用 frontmatter
 4. 使用启动脚本重新启动 Claude Code
 5. 或使用 `general-purpose` agent 替代

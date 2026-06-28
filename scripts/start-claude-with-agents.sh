@@ -15,7 +15,7 @@ log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 # 检查 agents.json 是否存在
-AGENTS_CONFIG="$HOME/.claude/agents.json"
+AGENTS_CONFIG=".claude/agents.json"
 if [ ! -f "$AGENTS_CONFIG" ]; then
     log_warn "agents.json 不存在: $AGENTS_CONFIG"
     log_warn "请先创建 agents.json 文件"

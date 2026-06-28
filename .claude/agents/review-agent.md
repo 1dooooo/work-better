@@ -203,6 +203,6 @@ Write `.workflow/artifacts/{task_id}/review-report.json`:
 
 ## Reference
 
-- Security guidelines: `docs/security/`
+- Security guidelines: `docs/testing/layers/security.md`
 - Code style: `.claude/rules/common/coding-style.md`
 - Artifact schemas: `.workflow/templates/`

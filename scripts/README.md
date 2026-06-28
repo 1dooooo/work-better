@@ -88,16 +88,19 @@ cat .workflow/artifacts/feat-my-feature/final-report.json
 ./scripts/start-claude-with-agents.sh
 
 # 方式 2：手动传入
-claude --agents "$(cat ~/.claude/agents.json)"
+claude --agents "$(cat .claude/agents.json)"
 ```
 
 ### Agent 定义文件
 
-- `~/.claude/agents/dev-agent.md` — 开发者 agent
-- `~/.claude/agents/product-reviewer.md` — 产品审查者
-- `~/.claude/agents/test-agent.md` — 测试执行者
-- `~/.claude/agents/review-agent.md` — 代码审查者
-- `~/.claude/agents/workflow-advisor.md` — 流程顾问
+- `.claude/agents/workflow-advisor.md` — 流程顾问
+- `.claude/agents/dev-agent.md` — 开发者 agent
+- `.claude/agents/test-agent.md` — 测试执行者
+- `.claude/agents/review-agent.md` — 代码审查者
+- `.claude/agents/product-reviewer.md` — 产品审查者
+- `.claude/agents/validator.md` — 验证 agent
+- `.claude/agents/system-inspector.md` — 系统巡检 agent
+- `.claude/agents/optimizer.md` — 优化 agent
 
 ### 使用通用 agent 替代
 

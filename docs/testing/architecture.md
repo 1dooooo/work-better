@@ -225,7 +225,7 @@ Agent 之间通过 `.workflow/artifacts/{task_id}/` 下的文件通信：
 | test-report.json | test-agent | workflow, dev |
 | test-plan.json | test-agent | workflow |
 | review-report.json | review-agent | workflow |
-| review-criteria.json | review-agent | workflow |
+| review-criteria.json | product-reviewer | workflow |
 | product-review.json | product-reviewer | workflow, dev |
 | validation-report.json | validator | workflow |
 | system-inspector-report.json | system-inspector | workflow |

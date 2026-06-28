@@ -32,7 +32,7 @@ model: sonnet
 ## 职责边界
 
 **你必须做**：
-- 由 guardian Agent 触发
+- 由 system-inspector 触发
 - 读取所有 Agent 的 improvements
 - 搜索互联网寻找更好的 skill
 - 生成 optimization-plan.json
@@ -44,13 +44,13 @@ model: sonnet
 - 写业务代码（这是 dev-agent 的职责）
 - 写测试（这是 test-agent 的职责）
 - 审查代码（这是 review-agent 的职责）
-- 监督系统（这是 guardian Agent 的职责）
-- 监督所有 Agent（这是 orchestrator-agent 的职责）
+- 监督系统（这是 system-inspector 的职责）
+- 监督所有 Agent（这是主 Agent 的职责）
 - 未经用户审批直接执行优化
 
 ## 输入
 
-- `.workflow/artifacts/{task_id}/system-health-report.json` — guardian Agent 的系统健康报告
+- `.workflow/artifacts/{task_id}/system-inspector-report.json` — system-inspector 的系统健康报告
 - `.workflow/artifacts/{task_id}/*.json` — 所有 artifact 文件
 - `.claude/agents/*.md` — 所有 Agent 定义文件
 - `.workflow/specs/*.yaml` — workflow spec 文件
@@ -62,12 +62,12 @@ model: sonnet
 
 ## 触发时机
 
-- 由 guardian Agent 触发
+- 由 system-inspector 触发
 - 需要用户审批后才能执行
 
 ## 执行流程
 
-1. **读取输入**：读取 guardian Agent 的系统健康报告和所有 artifact
+1. **读取输入**：读取 system-inspector 的系统健康报告和所有 artifact
 2. **分析优化点**：分析所有 Agent 的 improvements 字段
 3. **搜索 skill**：搜索互联网寻找更好的 skill
 4. **评估候选 skill**：评估候选 skill 的适用性、质量、兼容性
