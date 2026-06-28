@@ -127,7 +127,7 @@ export default function EventsView() {
   const unprocessedCount = filteredEvents.filter((e) => !e.processed).length;
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="events-container" className="flex h-full flex-col">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-5 py-3 min-h-[48px]">
         <div className="flex items-center gap-3">
@@ -151,6 +151,7 @@ export default function EventsView() {
             </SelectContent>
           </Select>
           <Button
+            data-testid="collect-button"
             size="sm"
             onClick={handleCollect}
             disabled={collecting}
@@ -190,7 +191,7 @@ export default function EventsView() {
             const isExpanded = expandedEvents.has(event.id);
             const contentStr = getContentString(event.content);
             return (
-              <div key={event.id} className={`border-b border-border/50 ${index === focusedIndex ? "border-l-2 border-l-primary bg-muted/30" : ""}`}>
+              <div key={event.id} data-testid={`event-item-${event.id}`} className={`border-b border-border/50 ${index === focusedIndex ? "border-l-2 border-l-primary bg-muted/30" : ""}`}>
                 {/* Event row - clickable to toggle expand */}
                 <div
                   className="group flex items-center px-5 py-2 hover:bg-muted/50 transition-colors cursor-pointer min-h-[40px]"

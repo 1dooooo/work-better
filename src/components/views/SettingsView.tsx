@@ -37,7 +37,7 @@ const SETTINGS_TABS: SettingsTab[] = [
 
 export default function SettingsView() {
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="settings-container" className="flex h-full flex-col">
       {/* Header */}
       <header className="border-b border-border px-6 py-4">
         <h1 className="text-lg font-semibold">设置</h1>
@@ -50,7 +50,7 @@ export default function SettingsView() {
             {SETTINGS_TABS.map((tab) => {
               const Icon = tab.icon;
               return (
-                <TabsTrigger key={tab.id} value={tab.id}>
+                <TabsTrigger key={tab.id} value={tab.id} data-testid={`settings-tab-${tab.id}`}>
                   <Icon className="h-4 w-4" />
                   {tab.label}
                 </TabsTrigger>

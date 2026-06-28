@@ -80,7 +80,7 @@ export default function Sidebar({
   });
 
   return (
-    <aside className={cn(
+    <aside data-testid="sidebar" className={cn(
       "flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200",
       collapsed ? "w-[52px]" : "w-[200px]"
     )}>
@@ -107,6 +107,7 @@ export default function Sidebar({
             return (
               <Tooltip key={item.id}>
                 <TooltipTrigger
+                  data-testid={`nav-item-${item.id}`}
                   onClick={() => onViewChange(item.id)}
                   className={cn(
                     "flex h-8 w-full items-center rounded-md px-2.5 text-sm transition-colors",

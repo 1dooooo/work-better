@@ -188,7 +188,7 @@ export default function CollectorSettings() {
       {/* Collector Groups */}
       <div className="space-y-2">
         <Label>采集器</Label>
-        <div className="space-y-3">
+        <div data-testid="collector-list" className="space-y-3">
           {(groups ?? []).map((group) => (
             <div
               key={group.id}
@@ -237,6 +237,7 @@ export default function CollectorSettings() {
                         {getHealthBadge(collector)}
                       </div>
                       <Switch
+                        data-testid={`collector-toggle-${collector.id}`}
                         checked={collector.enabled}
                         disabled={!group.enabled}
                         onCheckedChange={(checked) =>
@@ -283,6 +284,7 @@ export default function CollectorSettings() {
       <div className="space-y-2">
         <Label htmlFor="chat-id">飞书会话 ID</Label>
         <Input
+          data-testid="feishu-chat-id-input"
           id="chat-id"
           value={chatId}
           onChange={(e) => setChatId(e.target.value)}
