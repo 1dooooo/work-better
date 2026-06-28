@@ -1,0 +1,72 @@
+{
+  "task_id": "test-v5-workflow",
+  "timestamp": "2026-06-28T16:10:00+08:00",
+  "test_method": {
+    "approach": "灰盒测试 - 结合工作流规范（白盒）与实际执行验证（黑盒）",
+    "tools": [
+      "workflow-runner agent",
+      "artifact schema validator",
+      "shell script for artifact inspection"
+    ],
+    "scope": "验证 v5 统一调度工作流的核心流程：Phase 1 并行启动、Phase 2 执行验证、Artifact 通信完整性、重试与失败处理"
+  },
+  "validation_targets": [
+    {
+      "id": "VT-01",
+      "description": "Phase 1 并行启动：三个 agent（dev-agent、test-agent、product-reviewer）能同时启动并独立输出 artifact",
+      "criteria": "dev-output.json、test-plan.json、review-criteria.json 三个文件在 Phase 1 完成后均存在且 schema 合法",
+      "priority": "critical"
+    },
+    {
+      "id": "VT-02",
+      "description": "Phase 2 执行验证：test-agent、review-agent、product-reviewer 基于 Phase 1 输出执行验证并生成报告",
+      "criteria": "test-report.json、review-report.json、product-review.json 三个文件在 Phase 2 完成后均存在且 schema 合法",
+      "priority": "critical"
+    },
+    {
+      "id": "VT-03",
+      "description": "Artifact 文件通信完整性：所有 artifact 文件符合 schema 定义，字段完整且类型正确",
+      "criteria": "validator agent 输出 validation-report.json，overall_valid=true，无 schema 违规",
+      "priority": "critical"
+    },
+    {
+      "id": "VT-04",
+      "description": "Gate 推断逻辑：根据 changed_files 正确推断门禁级别（L1/L2）",
+      "criteria": "仅 src/ 变更推断为 L1，crates/ 变更推断为 L2，推断结果记录在 workflow-runner 日志中",
+      "priority": "high"
+    },
+    {
+      "id": "VT-05",
+      "description": "重试与失败处理：测试失败时触发 dev-agent 修复并重新执行 Phase 2",
+      "criteria": "模拟 test-report.json result=fail 时，workflow-runner 正确调用 dev-agent 并重新执行验证",
+      "priority": "high"
+    },
+    {
+      "id": "VT-06",
+      "description": "Phase 4 系统监督：任务完成后 system-inspector 生成监督报告",
+      "criteria": "system-inspector-report.json 存在且包含 agent 级健康状态评估",
+      "priority": "medium"
+    },
+    {
+      "id": "VT-07",
+      "description": "最终报告生成：workflow-runner 生成 final-report.json 包含完整的执行摘要",
+      "criteria": "final-report.json 包含 task_id、status、test_summary、review_summary 字段，status 为 done 或 blocked",
+      "priority": "critical"
+    }
+  ],
+  "test_environment": {
+    "dependencies": [
+      "workflow-runner agent 配置 (.claude/agents/workflow-runner.md)",
+      "dev-test-review.yaml 工作流规范 (.workflow/specs/dev-test-review.yaml)",
+      "所有 artifact schema 文件 (.workflow/templates/*.schema.json)",
+      "测试用 dev-output.json 样本（模拟开发输出）"
+    ],
+    "setup_steps": [
+      "1. 创建测试任务目录 .workflow/artifacts/test-v5-workflow/",
+      "2. 准备模拟的 dev-output.json 样本文件",
+      "3. 确认 workflow-runner agent 配置可访问",
+      "4. 确认所有 schema 模板文件存在",
+      "5. 验证 shell 环境可用（用于 artifact 检查脚本）"
+    ]
+  }
+}
