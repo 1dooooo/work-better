@@ -306,6 +306,7 @@ architecture.md 之前声称 94.7% (427/452) 完成度。实际情况：
 | 文档 | 内容 |
 |------|------|
 | [architecture.md](architecture.md) | 本文档：总体架构、框架选型、设计目标 |
+| [e2e-guide.md](e2e-guide.md) | **E2E 测试开发指南**：快速开始、选择器策略、已知限制、调试技巧 |
 | [conventions.md](conventions.md) | 命名、组织、编写规范 |
 | [layers/overview.md](layers/overview.md) | 层级定义与边界划分 |
 | [layers/security.md](layers/security.md) | H 层安全测试定义 |
