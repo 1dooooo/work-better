@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/ts/e2e",
-  timeout: 30000,
+  timeout: 60000, // Tauri 启动需要更多时间
   projects: [
     {
       name: "chromium",
@@ -12,12 +12,12 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: "http://localhost:4173",
+    baseURL: "http://localhost:1420", // Tauri dev server 默认端口
   },
   webServer: {
-    command: "pnpm vite preview --port 4173 --strictPort",
-    port: 4173,
+    command: "cargo tauri dev", // 启动真实 Tauri app
+    port: 1420,
     reuseExistingServer: !process.env.CI,
-    timeout: 15000,
+    timeout: 120000, // Tauri 编译需要较长时间
   },
 });
