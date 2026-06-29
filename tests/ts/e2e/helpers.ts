@@ -10,6 +10,29 @@
  */
 import { type Page, expect } from "@playwright/test";
 
+// ─── 常量 ─────────────────────────────────────────────────────
+
+/** UI 渐变/动画等待时间 */
+export const UI_SETTLE_DELAY = 300;
+
+// ─── IPC 调用辅助 ─────────────────────────────────────────────
+
+/**
+ * 在浏览器上下文中调用 Tauri IPC 命令
+ *
+ * 替代重复的 page.evaluate + __TAURI_INTERNALS__.invoke 模式。
+ */
+export async function invokeCommand<T = unknown>(
+  page: Page,
+  cmd: string,
+  args?: Record<string, unknown>,
+): Promise<T> {
+  return page.evaluate(
+    ({ cmd, args }) => (window as any).__TAURI_INTERNALS__.invoke(cmd, args),
+    { cmd, args },
+  );
+}
+
 // ─── Mock 状态 ─────────────────────────────────────────────────
 
 interface MockState {

@@ -78,7 +78,7 @@ test.describe("F3: Processing Pipeline", () => {
     // 触发批量处理
     await page.evaluate(() => {
       const events = (window as any).__mockEvents || [];
-      events.forEach((e: any) => { e.processed = true; });
+      events.forEach((e: any) => { e.processed = true; }); // eslint-disable-line // test: intentional mock mutation
     });
 
     // 验证处理后数量

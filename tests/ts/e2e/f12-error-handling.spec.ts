@@ -98,9 +98,8 @@ test.describe("F12: Error Handling", () => {
     await page.goto("/?view=invalid");
     await waitForMainWindow(page);
 
-    // 验证 URL 被修正为 dashboard
+    // 验证 URL 包含 view 参数（应用正常加载）
     const url = page.url();
-    // 可能保持 invalid 或被修正为 dashboard
-    expect(true).toBe(true);
+    expect(url).toContain("/?view=");
   });
 });
